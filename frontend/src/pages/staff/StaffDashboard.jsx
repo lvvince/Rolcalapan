@@ -1,8 +1,8 @@
-// frontend/src/pages/staff/StaffPages.jsx
 import { useEffect, useState } from "react";
 import api from "../../api";
 import DataPage, { hm } from "../../components/DataPage";
 import QrView from "../../components/QrView";
+import QrCameraScanner from "../../components/QrCameraScanner";
 import { StaffNotifications } from "../../components/Notifications";
 import "../../components/portal.css";
 
