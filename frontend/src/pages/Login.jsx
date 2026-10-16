@@ -1,11 +1,13 @@
 // frontend/src/pages/Login.jsx
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, homeForRole } from "../context/AuthContext";
+import "../components/portal.css";
 
 export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -33,6 +35,7 @@ export default function Login() {
         <h1>River of Life</h1>
         <p className="muted">Calapan Church Management System</p>
 
+        {location.state?.message && <div className="msg ok">{location.state.message}</div>}
         {error && <div className="alert">{error}</div>}
 
         <label>Email</label>
@@ -41,7 +44,15 @@ export default function Login() {
         <label>Password</label>
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
+        <div style={{ textAlign: "right", marginTop: 8, fontSize: 14 }}>
+          <Link to="/forgot-password">Forgot password?</Link>
+        </div>
+
         <button type="submit" disabled={loading}>{loading ? "Signing in..." : "Login"}</button>
+
+        <p style={{ textAlign: "center", fontSize: 14, marginBottom: 0 }}>
+          Bagong member? <Link to="/register">Register here</Link>
+        </p>
       </form>
     </div>
   );

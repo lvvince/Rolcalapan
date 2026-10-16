@@ -69,13 +69,13 @@ function CodeCheckin({ onDone }) {
   const [eventId, setEventId] = useState(0);
   const [events, setEvents] = useState([]);
   const [msg, setMsg] = useState(null);
+  const [camera, setCamera] = useState(false);
 
   useEffect(() => { api.get("/resource", { params: { name: "events" } }).then((r) => setEvents(r.data)); }, []);
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const checkin = async (value) => {
     try {
-      const { data } = await api.post("/portal/checkin", { code, event_id: Number(eventId) });
+      const { data } = await api.post("/portal/checkin", { code: value, event_id: Number(eventId) });
       setMsg({ ok: true, text: data.message });
       setCode("");
       onDone();
@@ -84,10 +84,15 @@ function CodeCheckin({ onDone }) {
     }
   };
 
+  const submit = (e) => {
+    e.preventDefault();
+    checkin(code);
+  };
+
   return (
     <form className="panel" onSubmit={submit}>
       <h4>QR / Code Check-in</h4>
-      <p className="muted" style={{ marginTop: 0 }}>I-scan ang QR ng member (USB scanner) o i-type ang member code.</p>
+      <p className="muted" style={{ marginTop: 0 }}>I-scan ang QR ng member (camera o USB scanner) o i-type ang member code.</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <input autoFocus placeholder="ROL-XXXXXX" value={code} onChange={(e) => setCode(e.target.value)}
           style={{ padding: 8, border: "1px solid #cbd5e1", borderRadius: 6 }} required />
@@ -97,7 +102,18 @@ function CodeCheckin({ onDone }) {
           {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date})</option>)}
         </select>
         <button className="btn" type="submit">Check in</button>
+        <button className="btn secondary" type="button" onClick={() => setCamera((c) => !c)}>
+          {camera ? "Close camera" : "Scan with camera"}
+        </button>
       </div>
+
+      {camera && (
+        <QrCameraScanner
+          onScan={(text) => checkin(text)}
+          onClose={() => setCamera(false)}
+        />
+      )}
+
       {msg && <div className={`msg ${msg.ok ? "ok" : "err"}`}>{msg.text}</div>}
     </form>
   );
