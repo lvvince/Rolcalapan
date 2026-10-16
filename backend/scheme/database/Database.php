@@ -268,6 +268,13 @@ class Database {
             PDO::ATTR_EMULATE_PREPARES   => false,
         );
 
+        // Optional SSL (para sa TiDB Cloud / online MySQL)
+        $ssl_ca = getenv('DB_SSL_CA');
+        if ($driver === 'mysql' && $ssl_ca && defined('PDO::MYSQL_ATTR_SSL_CA')) {
+            $options[PDO::MYSQL_ATTR_SSL_CA] = $ssl_ca;
+            $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+        }
+
         try {
             $this->db = new PDO($dsn, $username, $password, $options);
             $this->driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
