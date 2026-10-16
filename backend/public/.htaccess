@@ -5,19 +5,20 @@
 
     RewriteEngine On
 
-    # Handle Authorization Header
+    # Authorization header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+    # /api/... -> LavaLust
+    RewriteRule ^api/(.*)$ index.php/api/$1 [END,QSA]
 
-    # Handle Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^(.*)$ index.php/$1 [L]
+    # Totoong files at folders (React assets, favicon, atbp.)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Lahat ng iba -> React (/staff/attendance, /verify-email, atbp.)
+    RewriteRule ^ index.html [L]
 </IfModule>
 
 <FilesMatch "^(\.env|composer\.(json|lock)|package\.json|package-lock\.json|\.git)">
