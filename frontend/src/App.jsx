@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleLayout from "./components/RoleLayout";
+import ChatWidget from "./components/ChatWidget";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -173,6 +174,9 @@ export default function App() {
           {/* DEFAULT ROUTE */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+
+        {/* Floating chatbot, lalabas sa lahat ng page */}
+        <ChatWidget />
       </BrowserRouter>
     </AuthProvider>
   );

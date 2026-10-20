@@ -113,3 +113,5 @@ $router->post('/api/portal/checkin', 'PortalController::checkin');
 $router->get('/api/portal/reports', 'PortalController::reports');
 // Notifications
 $router->get('/api/portal/notifications', 'PortalController::my_notifications');
+
+$router->post('/api/chat', 'ChatController::ask');
