@@ -1,8 +1,6 @@
 // frontend/src/components/ChatWidget.jsx
 import { useState, useRef, useEffect } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-
 // Ginagawang clickable link ang mga URL sa sagot (hal. Facebook page)
 function linkify(text) {
   return text.split(/(https?:\/\/[^\s]*[^\s.,;)])/g).map((part, i) =>
@@ -36,14 +34,14 @@ export default function ChatWidget() {
     setInput("");
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/chat`, {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: q }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Connection error. Try again.");
+        throw new Error(data.message || `Server error (${res.status}). Try again.`);
       }
       setMessages((m) => [...m, { from: "bot", text: data.answer }]);
     } catch (err) {
