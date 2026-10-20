@@ -6,24 +6,49 @@ const empty = { id: null, category: "FAQ", question: "", answer: "", keywords: "
 export default function KnowledgeBasePage() {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState(empty);
+  const [error, setError] = useState("");
 
   const load = async () => {
-    const { data } = await api.get("/chatbot/kb");
-    setItems(data);
+    try {
+      const { data } = await api.get("/chatbot/kb");
+      const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : null;
+      if (!list) {
+        setItems([]);
+        setError(
+          typeof data === "string" && data.trim().startsWith("<")
+            ? "Server returned HTML instead of JSON. Check .htaccess /api routing."
+            : "Unexpected response format from /chatbot/kb."
+        );
+        return;
+      }
+      setItems(list);
+      setError("");
+    } catch (err) {
+      setItems([]);
+      setError(err.response?.data?.message || `Failed to load (${err.response?.status || "network error"}).`);
+    }
   };
   useEffect(() => { load(); }, []);
 
   const save = async (e) => {
     e.preventDefault();
-    await api.post("/chatbot/kb", form);
-    setForm(empty);
-    load();
+    try {
+      await api.post("/chatbot/kb", form);
+      setForm(empty);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save.");
+    }
   };
 
   const remove = async (id) => {
     if (!confirm("Delete this entry?")) return;
-    await api.post("/chatbot/kb/delete", { id });
-    load();
+    try {
+      await api.post("/chatbot/kb/delete", { id });
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete.");
+    }
   };
 
   const input = { width: "100%", padding: 8, border: "1px solid #cbd5e1", borderRadius: 6, marginBottom: 8 };
@@ -31,6 +56,13 @@ export default function KnowledgeBasePage() {
   return (
     <div style={{ maxWidth: 900 }}>
       <h2>Chatbot Knowledge Base</h2>
+
+      {error && (
+        <div style={{ background: "#fee2e2", color: "#991b1b", padding: 10, borderRadius: 6, marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
+
       <form onSubmit={save} style={{ marginBottom: 24 }}>
         <input style={input} placeholder="Category (Schedule, Ministry, FAQ...)" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
         <input style={input} placeholder="Question" value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} required />
