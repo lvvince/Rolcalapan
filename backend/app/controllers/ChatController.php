@@ -33,8 +33,8 @@ class ChatController extends Controller
 
     private function process()
     {
-        $this->call->database();
-        $this->call->model('KnowledgeModel');
+        require_once __DIR__ . '/../models/KnowledgeModel.php';
+        $kb = new KnowledgeModel();
 
         $body = json_decode(file_get_contents('php://input'), true);
         if (!is_array($body)) {
@@ -53,7 +53,7 @@ class ChatController extends Controller
         }
 
         // 1. RETRIEVE
-        $rows = $this->KnowledgeModel->get_active();
+        $rows = $kb->get_active();
         if (!is_array($rows)) {
             $rows = [];
         }
@@ -104,7 +104,7 @@ class ChatController extends Controller
 
         // 4. LOG (hindi dapat sumira sa chat kung mag-fail)
         try {
-            $this->KnowledgeModel->log_chat([
+            $kb->log_chat([
                 'question' => $question,
                 'answer' => $answer,
                 'provider' => $provider,
