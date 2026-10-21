@@ -5,16 +5,79 @@ class ChatController extends Controller
     public function __construct()
     {
         parent::__construct();
+        ob_start(); // para hindi masira ang JSON ng PHP notices/warnings
         require_once __DIR__ . '/../libraries/Rag.php';
         require_once __DIR__ . '/../libraries/Ai.php';
+        $this->cors();
+    }
+
+    private function env($key)
+    {
+        $v = getenv($key);
+        if ($v === false || $v === '') {
+            $v = $_ENV[$key] ?? ($_SERVER[$key] ?? '');
+        }
+        return (string)$v;
+    }
+
+    private function debug_on()
+    {
+        return in_array(strtolower($this->env('APP_DEBUG')), ['1', 'true', 'on', 'yes'], true);
+    }
+
+    private function with_debug(array $payload, $msg)
+    {
+        if ($this->debug_on()) {
+            $payload['debug'] = $msg;
+        }
+        return $payload;
+    }
+
+    // ALLOW_ORIGIN (pwedeng maraming URL, paghiwalayin ng comma) + localhost
+    private function cors()
+    {
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $allowed = array_filter(array_map('trim', explode(',', $this->env('ALLOW_ORIGIN'))));
+
+        $ok = $origin !== '' && (
+            in_array($origin, $allowed, true) ||
+            preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#', $origin)
+        );
+
+        if ($ok) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Vary: Origin');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization');
+            header('Access-Control-Allow-Methods: POST, OPTIONS');
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
     }
 
     private function json($data, $code = 200)
     {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
         http_response_code($code);
-        header('Content-Type: application/json');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         exit;
+    }
+
+    // Simpleng language check para sa fallback na sagot
+    private function is_tagalog($text)
+    {
+        $words = [
+            'ano', 'saan', 'kailan', 'sino', 'paano', 'bakit', 'ba', 'po', 'opo', 'ang', 'ng', 'mga',
+            'sa', 'ko', 'mo', 'niyo', 'namin', 'kayo', 'ako', 'pwede', 'puwede', 'meron', 'magkano',
+            'oras', 'simba', 'nasaan', 'yung', 'ito', 'iyan', 'araw', 'anong', 'paki',
+        ];
+        $tokens = preg_split('/[^\p{L}]+/u', mb_strtolower($text, 'UTF-8'), -1, PREG_SPLIT_NO_EMPTY);
+        return count(array_intersect($tokens, $words)) >= 1;
     }
 
     // POST /api/chat   body: { "message": "...", "provider": "claude|openai|gemini" (optional) }
@@ -23,11 +86,10 @@ class ChatController extends Controller
         try {
             $this->process();
         } catch (Throwable $e) {
-            $this->json([
-                'success' => false,
-                'message' => 'May error sa server.',
-                'debug' => $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(),
-            ], 500);
+            $this->json($this->with_debug(
+                ['success' => false, 'message' => 'May error sa server.'],
+                $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine()
+            ), 500);
         }
     }
 
@@ -61,9 +123,25 @@ class ChatController extends Controller
         $hits = $rag->retrieve($question, $rows, 3);
 
         if (!$hits) {
+            // I-log ang tanong na walang nahanap para madagdagan ang knowledge base
+            try {
+                $kb->log_chat([
+                    'question' => $question,
+                    'answer' => '[NO MATCH]',
+                    'provider' => 'none',
+                    'matched_ids' => '',
+                ]);
+            } catch (Throwable $e) {
+            }
+
+            $fb = 'https://www.facebook.com/riveroflifeintcalapan';
+            $answer = $this->is_tagalog($question)
+                ? 'Pasensya na, wala pa akong impormasyon tungkol diyan. Pakikontak po ang church office o bisitahin ang Facebook page namin: ' . $fb
+                : "Sorry, I don't have information about that yet. Please contact the church office or visit our Facebook page: " . $fb;
+
             $this->json([
                 'success' => true,
-                'answer' => 'Pasensya na, wala pa akong impormasyon tungkol diyan. Pakikontak po ang church office para sa tulong.',
+                'answer' => $answer,
                 'sources' => [],
                 'provider' => null,
             ]);
@@ -89,13 +167,12 @@ class ChatController extends Controller
 
         // 3. GENERATE
         try {
-            $answer = $ai->ask($provider, $system, $question);
-        } catch (Exception $e) {
-            $this->json([
-                'success' => false,
-                'message' => 'Hindi makakonekta sa AI ngayon. Subukan ulit mamaya.',
-                'debug' => $e->getMessage(),
-            ], 502);
+            $answer = trim((string)$ai->ask($provider, $system, $question));
+        } catch (Throwable $e) {
+            $this->json($this->with_debug(
+                ['success' => false, 'message' => 'Hindi makakonekta sa AI ngayon. Subukan ulit mamaya.'],
+                $e->getMessage()
+            ), 502);
         }
 
         if ($answer === '') {

@@ -1,7 +1,10 @@
-// frontend/src/components/ChatWidget.jsx
 import { useState, useRef, useEffect } from "react";
 
-// Ginagawang clickable link ang mga URL sa sagot (hal. Facebook page)
+// Local dev: iwanang walang VITE_API_URL para gumamit ng Vite proxy (/api)
+// Production: i-set ang VITE_API_URL sa backend URL (walang trailing slash)
+const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+const TIMEOUT_MS = 60000;
+
 function linkify(text) {
   return text.split(/(https?:\/\/[^\s]*[^\s.,;)])/g).map((part, i) =>
     i % 2 === 1 ? (
@@ -18,6 +21,7 @@ export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [messages, setMessages] = useState([
     { from: "bot", text: "Hi! Kumusta! I'm the River of Life assistant. Ask me in English or Tagalog about schedules, ministries, and FAQs." },
   ]);
@@ -25,7 +29,7 @@ export default function ChatWidget() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, open]);
+  }, [messages, open, loading]);
 
   const send = async () => {
     const q = input.trim();
@@ -33,23 +37,45 @@ export default function ChatWidget() {
     setMessages((m) => [...m, { from: "user", text: q }]);
     setInput("");
     setLoading(true);
+    setSlow(false);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const slowTimer = setTimeout(() => setSlow(true), 8000);
+
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: q }),
+        signal: controller.signal,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || `Server error (${res.status}). Try again.`);
+
+      const raw = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = null;
       }
+      if (!data) throw new Error("Hindi valid ang sagot ng server. Subukan ulit.");
+      if (!res.ok || !data.success) throw new Error(data.message || "Connection error. Try again.");
+
       setMessages((m) => [...m, { from: "bot", text: data.answer }]);
     } catch (err) {
-      setMessages((m) => [...m, { from: "bot", text: err.message || "Connection error. Try again." }]);
+      let msg = err.message || "Connection error. Try again.";
+      if (err.name === "AbortError") msg = "Natagalan ang server. Subukan ulit.";
+      else if (err instanceof TypeError) msg = "Hindi makakonekta sa server. Subukan ulit.";
+      setMessages((m) => [...m, { from: "bot", text: msg }]);
     } finally {
+      clearTimeout(timeout);
+      clearTimeout(slowTimer);
       setLoading(false);
+      setSlow(false);
     }
   };
+
+  const disabled = loading || !input.trim();
 
   return (
     <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 50 }}>
@@ -68,7 +94,11 @@ export default function ChatWidget() {
                 </div>
               </div>
             ))}
-            {loading && <div style={{ fontSize: 12, color: "#64748b" }}>Typing...</div>}
+            {loading && (
+              <div style={{ fontSize: 12, color: "#64748b" }}>
+                {slow ? "Ginigising pa ang server, sandali lang po..." : "Typing..."}
+              </div>
+            )}
             <div ref={endRef} />
           </div>
           <div style={{ display: "flex", borderTop: "1px solid #e2e8f0" }}>
@@ -83,8 +113,8 @@ export default function ChatWidget() {
             />
             <button
               onClick={send}
-              disabled={loading || !input.trim()}
-              style={{ padding: "0 16px", border: "none", background: "#1e3a8a", color: "#fff", cursor: loading || !input.trim() ? "default" : "pointer", opacity: loading || !input.trim() ? 0.5 : 1 }}
+              disabled={disabled}
+              style={{ padding: "0 16px", border: "none", background: "#1e3a8a", color: "#fff", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1 }}
             >
               Send
             </button>

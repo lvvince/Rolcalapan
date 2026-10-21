@@ -1,4 +1,22 @@
-
+# Env / secrets
+.env
+.env.*
 frontend/.env
+frontend/.env.*
+backend/.env
+
+# Test files
 body.json
 backend/mail_test.php
+
+# Dependencies
+node_modules/
+backend/vendor/
+
+# Build output
+frontend/dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
