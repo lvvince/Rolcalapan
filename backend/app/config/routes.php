@@ -80,10 +80,17 @@ $router->post('/api/admin/users/delete', 'AdminController::user_delete');
 | CHATBOT
 |--------------------------------------------------------------------------
 */
-$router->post('/api/chatbot/ask', 'ChatbotController::ask');
-$router->get('/api/chatbot/kb', 'ChatbotController::kb_list');
-$router->post('/api/chatbot/kb', 'ChatbotController::kb_save');
-$router->post('/api/chatbot/kb/delete', 'ChatbotController::kb_delete');
+// Chatbot (admin KB + ask)
+$router->post('/api/chatbot/ask',        'ChatbotController::ask');
+$router->get( '/api/chatbot/kb',         'ChatbotController::kb_list');
+$router->post('/api/chatbot/kb',         'ChatbotController::kb_save');
+$router->post('/api/chatbot/kb/delete',  'ChatbotController::kb_delete');
+
+// Floating chatbot widget (RAG)
+$router->post('/api/chat',               'ChatbotController::ask');
+
+// Auto-translate (tl, ceb, ilo)
+$router->post('/api/translate',          'TranslateController::batch');
 /*
 |--------------------------------------------------------------------------
 | GENERIC RESOURCE

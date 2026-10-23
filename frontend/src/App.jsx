@@ -1,10 +1,11 @@
-// frontend/src/App.jsx
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleLayout from "./components/RoleLayout";
 import ChatWidget from "./components/ChatWidget";
 
+import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -33,7 +34,7 @@ import {
   Reports,
   Sermons,
   StaffNotifications,
-} from "./pages/staff/StaffDashboard";
+} from "./pages/secretary/StaffDashboard";
 
 import {
   LeaderSchedule,
@@ -78,12 +79,13 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* HOME PAGE */}
+          <Route path="/" element={<Home />} />
+
+          {/* AUTHENTICATION */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
-          {/* Email Verification */}
           <Route path="/verify-email" element={<VerifyEmail />} />
-
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -172,10 +174,10 @@ export default function App() {
           )}
 
           {/* DEFAULT ROUTE */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
-        {/* Floating chatbot, lalabas sa lahat ng page */}
+        {/* Floating chatbot */}
         <ChatWidget />
       </BrowserRouter>
     </AuthProvider>

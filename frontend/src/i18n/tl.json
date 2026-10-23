@@ -1,0 +1,142 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "members": "Mga Miyembro",
+    "ministries": "Mga Ministeryo",
+    "events": "Mga Event",
+    "announcements": "Mga Anunsyo",
+    "attendance": "Attendance",
+    "giving": "Pagbibigay",
+    "prayers": "Mga Kahilingan sa Panalangin",
+    "sermons": "Mga Sermon",
+    "reports": "Mga Ulat",
+    "notifications": "Mga Abiso",
+    "profile": "Profile",
+    "language": "Wika",
+    "save": "I-save",
+    "cancel": "Kanselahin",
+    "edit": "I-edit",
+    "delete": "Burahin",
+    "add": "Magdagdag",
+    "search": "Maghanap",
+    "login": "Mag-login",
+    "register": "Mag-register",
+    "logout": "Mag-logout",
+    "loading": "Naglo-load...",
+    "translate": "Isalin sa Tagalog",
+    "showOriginal": "Ipakita ang orihinal"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "users": "Mga User at Role",
+    "members": "Mga Miyembro at Pamilya",
+    "ministries": "Mga Ministeryo at Grupo",
+    "events": "Mga Event at Schedule",
+    "giving": "Pagbibigay",
+    "attendance": "Attendance at Analytics",
+    "prayers": "Mga Kahilingan sa Panalangin",
+    "chatbot": "Chatbot at Impormasyon ng Simbahan"
+  },
+  "layout": {
+    "adminPastor": "Admin / Pastor"
+  },
+  "dashboard": {
+    "welcome": "Maligayang pagdating, {{name}}"
+  },
+  "menu": {
+    "title": {
+      "staff": "Secretary ng Simbahan",
+      "ministry_leader": "Lider ng Ministeryo",
+      "member": "Portal ng Miyembro"
+    },
+    "label": {
+      "staff": {
+        "members": "Mga Miyembro at Records",
+        "qr": "Mga QR Code",
+        "attendance": "Attendance",
+        "events": "Mga Event at Anunsyo",
+        "geofence": "Geofence",
+        "schedules": "Mga Schedule ng Ministeryo",
+        "giving": "Pagbibigay",
+        "reports": "Mga Ulat",
+        "sermons": "Archive ng Sermon",
+        "notifications": "Mga Abiso"
+      },
+      "ministry_leader": {
+        "schedule": "Schedule ng Ministeryo",
+        "members": "Mga Miyembro ng Ministeryo",
+        "volunteers": "Mga Volunteer",
+        "activities": "Mga Aktibidad",
+        "events": "Mga Event ng Ministeryo",
+        "attendance": "Attendance",
+        "notifications": "Mga Abiso"
+      },
+      "member": {
+        "profile": "Aking Profile",
+        "qr": "Aking QR Code",
+        "checkin": "GPS Check-in",
+        "prayers": "Mga Kahilingan sa Panalangin",
+        "announcements": "Mga Anunsyo at Sermon",
+        "events": "Mga Event at RSVP",
+        "ministries": "Mga Ministeryo at Grupo",
+        "recommended": "Mga Rekomendasyon",
+        "language": "Wika",
+        "notifications": "Mga Abiso"
+      }
+    },
+    "desc": {
+      "staff": {
+        "members": "Magdagdag at mag-update ng member records",
+        "qr": "Gumawa ng QR code para sa mga miyembro",
+        "attendance": "Pamahalaan ang attendance records",
+        "events": "Pamahalaan ang mga event at anunsyo",
+        "geofence": "Itakda ang lokasyon para sa off-site events",
+        "schedules": "Pamahalaan ang schedule ng mga ministeryo",
+        "giving": "Itala ang mga transaksyon sa pagbibigay",
+        "reports": "Gumawa ng mga ulat",
+        "sermons": "Mag-upload ng audio para sa transcript at summary",
+        "notifications": "Magpadala ng mga abiso"
+      },
+      "ministry_leader": {
+        "schedule": "Tingnan ang schedule ng ministeryo",
+        "members": "Pamahalaan ang mga miyembro ng ministeryo",
+        "volunteers": "Mag-assign ng mga volunteer",
+        "activities": "Pamahalaan at i-update ang status ng mga aktibidad",
+        "events": "Pamahalaan ang mga event ng ministeryo",
+        "attendance": "Tingnan ang attendance ng ministeryo",
+        "notifications": "Mga abiso at alerto sa conflict ng schedule"
+      },
+      "member": {
+        "profile": "Mag-register at i-update ang iyong profile",
+        "qr": "Ipakita ang QR code mo para sa check-in",
+        "checkin": "Mag-check in sa mga off-site event",
+        "prayers": "Magsumite ng kahilingan sa panalangin",
+        "announcements": "Tingnan ang mga anunsyo, transcript, at summary",
+        "events": "Mag-RSVP sa mga event",
+        "ministries": "Sumali sa mga ministeryo at small group",
+        "recommended": "Mga inirerekomendang ministeryo at grupo",
+        "language": "Piliin ang gustong wika",
+        "notifications": "Tingnan ang iyong mga abiso"
+      }
+    }
+  },
+  "language": {
+    "title": "Piniling Wika",
+    "label": "Wika",
+    "note": "Binabago ng pipiliin mo ang wika ng app. Ang Cebuano at Ilocano ay English muna sa ngayon.",
+    "saved": "Na-save ang piniling wika."
+  },
+  "chat": {
+    "title": "Katulong ng Simbahan",
+    "greeting": "Hi! Kumusta! Ako ang assistant ng River of Life. Magtanong ka sa English o Tagalog tungkol sa mga schedule, ministeryo, at FAQ.",
+    "placeholder": "I-type ang tanong mo...",
+    "send": "Ipadala",
+    "typing": "Nagta-type...",
+    "waking": "Ginigising pa ang server, sandali lang po...",
+    "toggle": "Buksan o isara ang chatbot",
+    "invalidResponse": "Hindi valid ang sagot ng server. Subukan ulit.",
+    "connectionError": "May problema sa koneksyon. Subukan ulit.",
+    "timeout": "Natagalan ang server. Subukan ulit.",
+    "cannotConnect": "Hindi makakonekta sa server. Subukan ulit."
+  }
+}

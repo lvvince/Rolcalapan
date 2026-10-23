@@ -1,6 +1,6 @@
 <?php
 
-class ChatController extends Controller
+class ChatbotController extends Controller
 {
     // Kung wala talagang match, ipasa ang LAHAT ng rows sa AI basta hindi lalampas dito
     const MAX_ALL_ROWS = 40;
@@ -11,6 +11,7 @@ class ChatController extends Controller
         ob_start(); // para hindi masira ang JSON ng PHP notices/warnings
         require_once __DIR__ . '/../libraries/Rag.php';
         require_once __DIR__ . '/../libraries/Ai.php';
+        require_once __DIR__ . '/../models/KnowledgeModel.php';
         $this->cors();
     }
 
@@ -51,7 +52,7 @@ class ChatController extends Controller
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Vary: Origin');
             header('Access-Control-Allow-Headers: Content-Type, Authorization');
-            header('Access-Control-Allow-Methods: POST, OPTIONS');
+            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
         }
 
         if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
@@ -69,6 +70,22 @@ class ChatController extends Controller
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         exit;
+    }
+
+    private function body()
+    {
+        $body = json_decode(file_get_contents('php://input'), true);
+        return is_array($body) ? $body : [];
+    }
+
+    /**
+     * TODO: ISAKABIT ANG AUTH DITO.
+     * Dapat admin/pastor lang ang makapasok sa kb_save at kb_delete.
+     * Sa ngayon BUKAS ito sa lahat hanggang hindi pa naikakabit ang token check.
+     */
+    private function require_admin()
+    {
+        // halimbawa: i-verify ang Bearer token, tapos 403 kung hindi admin/pastor
     }
 
     // Simpleng language check para sa fallback na sagot
@@ -91,30 +108,97 @@ class ChatController extends Controller
             : "Sorry, I don't have information about that yet. Please contact the church office or visit our Facebook page: " . $fb;
     }
 
-    // POST /api/chat   body: { "message": "...", "provider": "claude|openai|gemini" (optional) }
+    // ------------------------------------------------------------------
+    // ADMIN KB
+    // ------------------------------------------------------------------
+
+    // GET /api/chatbot/kb
+    public function kb_list()
+    {
+        try {
+            $this->require_admin();
+            $kb = new KnowledgeModel();
+            $this->json(['success' => true, 'data' => $kb->get_all()]);
+        } catch (Throwable $e) {
+            $this->fail($e);
+        }
+    }
+
+    // POST /api/chatbot/kb   body: { id?, question, answer, intent?, is_active? }
+    public function kb_save()
+    {
+        try {
+            $this->require_admin();
+            $b = $this->body();
+
+            $question = trim($b['question'] ?? '');
+            $answer = trim($b['answer'] ?? '');
+            if ($question === '' || $answer === '') {
+                $this->json(['success' => false, 'message' => 'Kailangan ang question at answer.'], 400);
+            }
+
+            $kb = new KnowledgeModel();
+            $id = $kb->save([
+                'id' => $b['id'] ?? 0,
+                'question' => $question,
+                'answer' => $answer,
+                'intent' => isset($b['intent']) ? trim($b['intent']) : null,
+                'is_active' => array_key_exists('is_active', $b) ? $b['is_active'] : 1,
+            ]);
+
+            $this->json(['success' => true, 'id' => $id]);
+        } catch (Throwable $e) {
+            $this->fail($e);
+        }
+    }
+
+    // POST /api/chatbot/kb/delete   body: { id }
+    public function kb_delete()
+    {
+        try {
+            $this->require_admin();
+            $b = $this->body();
+            $id = (int)($b['id'] ?? 0);
+            if ($id <= 0) {
+                $this->json(['success' => false, 'message' => 'Walang id.'], 400);
+            }
+
+            $kb = new KnowledgeModel();
+            $kb->delete($id);
+            $this->json(['success' => true]);
+        } catch (Throwable $e) {
+            $this->fail($e);
+        }
+    }
+
+    private function fail(Throwable $e)
+    {
+        $msg = $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine();
+        error_log('[chatbot] ' . $msg);
+        $this->json($this->with_debug(
+            ['success' => false, 'message' => 'May error sa server.'],
+            $msg
+        ), 500);
+    }
+
+    // ------------------------------------------------------------------
+    // CHAT (RAG)
+    // ------------------------------------------------------------------
+
+    // POST /api/chatbot/ask  o  /api/chat   body: { "message": "...", "provider": "claude|openai|gemini" (optional) }
     public function ask()
     {
         try {
             $this->process();
         } catch (Throwable $e) {
-            $msg = $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine();
-            error_log('[chat] ' . $msg);
-            $this->json($this->with_debug(
-                ['success' => false, 'message' => 'May error sa server.'],
-                $msg
-            ), 500);
+            $this->fail($e);
         }
     }
 
     private function process()
     {
-        require_once __DIR__ . '/../models/KnowledgeModel.php';
         $kb = new KnowledgeModel();
-
-        $body = json_decode(file_get_contents('php://input'), true);
-        if (!is_array($body)) {
-            $body = [];
-        }
+        $body = $this->body();
 
         $question = trim($body['message'] ?? '');
         if ($question === '' || mb_strlen($question, 'UTF-8') > 500) {

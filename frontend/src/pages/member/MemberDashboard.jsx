@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api";
 import DataPage, { hm } from "../../components/DataPage";
+import { useTranslation } from "react-i18next";
 import QrView from "../../components/QrView";
 import NotificationsView from "../../components/Notifications";
 import "../../components/portal.css";
@@ -282,6 +283,7 @@ export function Recommended() {
 }
 
 /* ------------------------------------------------------------ Language */
+
 const langs = [
   { value: "en", label: "English" },
   { value: "tl", label: "Filipino (Tagalog)" },
@@ -290,15 +292,21 @@ const langs = [
 ];
 
 export function Language() {
-  const [lang, setLang] = useState("en");
+  const { t, i18n } = useTranslation();
+  const [lang, setLang] = useState(i18n.language || "en");
   const [msg, setMsg] = useState(null);
-  useEffect(() => { api.get("/portal/me").then((r) => setLang(r.data.member.language || "en")); }, []);
+
+  useEffect(() => {
+    api.get("/portal/me").then((r) => setLang(r.data.member.language || "en"));
+  }, []);
 
   const save = async () => {
     try {
       await api.post("/portal/me", { language: lang });
       localStorage.setItem("language", lang);
-      setMsg({ ok: true, text: "Preferred language saved." });
+      // en at tl lang ang may translation file; ang iba ay English muna
+      i18n.changeLanguage(lang === "tl" ? "tl" : "en");
+      setMsg({ ok: true, text: t("language.saved") });
     } catch (x) {
       setMsg({ ok: false, text: err(x) });
     }
@@ -306,17 +314,17 @@ export function Language() {
 
   return (
     <>
-      <h2>Preferred Language</h2>
+      <h2>{t("language.title")}</h2>
       <div className="panel" style={{ maxWidth: 420 }}>
         <div className="field">
-          <label>Language</label>
+          <label>{t("language.label")}</label>
           <select value={lang} onChange={(e) => setLang(e.target.value)}>
             {langs.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
         </div>
-        <p className="muted">Ang auto-translate (AI) ng content ay idadagdag sa susunod na phase. Naka-save muna ang preference mo.</p>
+        <p className="muted">{t("language.note")}</p>
         {msg && <div className={`msg ${msg.ok ? "ok" : "err"}`}>{msg.text}</div>}
-        <button className="btn" onClick={save}>Save</button>
+        <button className="btn" onClick={save}>{t("common.save")}</button>
       </div>
     </>
   );

@@ -84,7 +84,6 @@ class AuthController extends Controller
 
     // ---------------------------------------------------------- REGISTER
     // Member lang ang pwedeng mag-register. Ang ibang role ay si Admin ang gagawa.
-
 public function register()
 {
     $in    = $this->input();
@@ -99,6 +98,10 @@ public function register()
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $this->out(['error' => 'A valid email is required'], 422);
+    }
+
+    if (!preg_match('/^\d{11}$/', $phone)) {
+        $this->out(['error' => 'Phone number is required and must be exactly 11 digits.'], 422);
     }
 
     if (strlen($pass) < 6) {
@@ -133,16 +136,20 @@ public function register()
     $m = $this->db->table('members')->where('email', $email)->get();
 
     if ($m && empty($m['user_id'])) {
+        $update = ['user_id' => $user['id']];
+        if (empty($m['phone'])) {
+            $update['phone'] = $phone;
+        }
         $this->db->table('members')
             ->where('id', $m['id'])
-            ->update(['user_id' => $user['id']]);
+            ->update($update);
     } elseif (!$m) {
         $this->db->table('members')->insert([
             'user_id'     => $user['id'],
             'member_code' => 'ROL-' . strtoupper(bin2hex(random_bytes(3))),
             'full_name'   => $name,
             'email'       => $email,
-            'phone'       => $phone !== '' ? $phone : null,
+            'phone'       => $phone,
             'status'      => 'active',
         ]);
     }

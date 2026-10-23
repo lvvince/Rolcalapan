@@ -94,6 +94,47 @@ class KnowledgeModel
             ->fetchAll();
     }
 
+    // Para sa admin: kasama pati inactive
+    public function get_all()
+    {
+        return $this->pdo()
+            ->query('SELECT id, question, answer, intent, is_active FROM knowledge_base ORDER BY id DESC')
+            ->fetchAll();
+    }
+
+    // Insert kung walang id, update kung may id. Ibinabalik ang id.
+    public function save($data)
+    {
+        $id = (int)($data['id'] ?? 0);
+        $params = [
+            $data['question'],
+            $data['answer'],
+            $data['intent'] ?? null,
+            !empty($data['is_active']) ? 1 : 0,
+        ];
+
+        if ($id > 0) {
+            $st = $this->pdo()->prepare(
+                'UPDATE knowledge_base SET question = ?, answer = ?, intent = ?, is_active = ? WHERE id = ?'
+            );
+            $params[] = $id;
+            $st->execute($params);
+            return $id;
+        }
+
+        $st = $this->pdo()->prepare(
+            'INSERT INTO knowledge_base (question, answer, intent, is_active) VALUES (?, ?, ?, ?)'
+        );
+        $st->execute($params);
+        return (int)$this->pdo()->lastInsertId();
+    }
+
+    public function delete($id)
+    {
+        $st = $this->pdo()->prepare('DELETE FROM knowledge_base WHERE id = ?');
+        return $st->execute([(int)$id]);
+    }
+
     public function log_chat($data)
     {
         $st = $this->pdo()->prepare(

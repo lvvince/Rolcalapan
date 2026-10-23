@@ -1,0 +1,65 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "members": "Members",
+    "ministries": "Ministries",
+    "events": "Events",
+    "announcements": "Announcements",
+    "attendance": "Attendance",
+    "giving": "Giving",
+    "prayers": "Prayer Requests",
+    "sermons": "Sermons",
+    "reports": "Reports",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "language": "Language",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "add": "Add",
+    "search": "Search",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "loading": "Loading...",
+    "translate": "Translate to Tagalog",
+    "showOriginal": "Show original"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "users": "Users & Roles",
+    "members": "Members & Families",
+    "ministries": "Ministries & Groups",
+    "events": "Events & Schedules",
+    "giving": "Giving",
+    "attendance": "Attendance & Analytics",
+    "prayers": "Prayer Requests",
+    "chatbot": "Chatbot & Church Info"
+  },
+  "layout": {
+    "adminPastor": "Admin / Pastor"
+  },
+  "dashboard": {
+    "welcome": "Welcome, {{name}}"
+  },
+  "language": {
+    "title": "Preferred Language",
+    "label": "Language",
+    "note": "Your choice changes the app language. Cebuano and Ilocano will show English for now.",
+    "saved": "Preferred language saved."
+  },
+  "chat": {
+    "title": "Church Assistant",
+    "greeting": "Hi! Kumusta! I'm the River of Life assistant. Ask me in English or Tagalog about schedules, ministries, and FAQs.",
+    "placeholder": "Type your question...",
+    "send": "Send",
+    "typing": "Typing...",
+    "waking": "Waking up the server, please wait...",
+    "toggle": "Toggle chatbot",
+    "invalidResponse": "Invalid response from the server. Please try again.",
+    "connectionError": "Connection error. Try again.",
+    "timeout": "The server took too long. Please try again.",
+    "cannotConnect": "Cannot connect to the server. Please try again."
+  }
+}

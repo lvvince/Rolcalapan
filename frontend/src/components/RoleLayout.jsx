@@ -1,11 +1,14 @@
 // frontend/src/components/RoleLayout.jsx
-// Layout para sa Staff, Ministry Leader, at Member. May chatbot widget ang Member.
+// Layout para sa Secretary, Ministry Leader, at Member. May chatbot widget ang Member.
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { roleMenus } from "../config/roleMenus";
 import ChatWidget from "./ChatWidget";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function RoleLayout({ role }) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const menu = roleMenus[role];
@@ -21,11 +24,11 @@ export default function RoleLayout({ role }) {
         <div className="brand">River of Life</div>
         <nav>
           <NavLink to={menu.base} end className={({ isActive }) => (isActive ? "active" : "")}>
-            Dashboard
+            {t("common.dashboard")}
           </NavLink>
           {menu.items.map((i) => (
             <NavLink key={i.path} to={`${menu.base}/${i.path}`} className={({ isActive }) => (isActive ? "active" : "")}>
-              {i.label}
+              {t(`menu.label.${role}.${i.path}`, { defaultValue: i.label })}
             </NavLink>
           ))}
         </nav>
@@ -33,10 +36,11 @@ export default function RoleLayout({ role }) {
 
       <div className="main">
         <header className="topbar">
-          <span>{menu.title}</span>
-          <div>
+          <span>{t(`menu.title.${role}`, { defaultValue: menu.title })}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <LanguageSwitcher />
             <strong>{user?.name}</strong>
-            <button className="ghost" onClick={doLogout}>Logout</button>
+            <button className="ghost" onClick={doLogout}>{t("common.logout")}</button>
           </div>
         </header>
         <main className="content">

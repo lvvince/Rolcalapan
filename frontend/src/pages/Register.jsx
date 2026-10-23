@@ -3,19 +3,15 @@ import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import api from "../api";
 import { useAuth, homeForRole } from "../context/AuthContext";
+import { LoginLayout, PasswordInput, SubmitButton } from "../components/LoginLayout.jsx";
 import "../components/portal.css";
+
+const EMPTY_FORM = { full_name: "", email: "", phone: "", password: "", confirm: "" };
 
 export default function Register() {
   const { user } = useAuth();
 
-  const [form, setForm] = useState({
-    full_name: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirm: "",
-  });
-
+  const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -27,20 +23,12 @@ export default function Register() {
   }
 
   const set = (key) => (e) => {
-    setForm((prev) => ({
-      ...prev,
-      [key]: e.target.value,
-    }));
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };
 
-  const clearForm = () => {
-    setForm({
-      full_name: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirm: "",
-    });
+  const setPhone = (e) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+    setForm((prev) => ({ ...prev, phone: digits }));
   };
 
   const submit = async (e) => {
@@ -50,6 +38,11 @@ export default function Register() {
     setMessage("");
     setMessageType("");
     setDebugNote("");
+
+    if (!/^\d{11}$/.test(form.phone)) {
+      setError("Phone number is required and must be exactly 11 digits (e.g. 09123456789).");
+      return;
+    }
 
     if (form.password !== form.confirm) {
       setError("Passwords do not match.");
@@ -74,136 +67,136 @@ export default function Register() {
             "Registration successful! Please check your email and verify your account."
         );
         setMessageType("success");
-        clearForm();
       } else if (data.email_sent === false) {
         setMessage(
           "Your account was created, but the verification email could not be sent. Please check the error details or contact the administrator."
         );
         setMessageType("warning");
         setDebugNote(data.debug_note || data.message || "");
-        clearForm();
       } else {
         setMessage(
           "The server responded, but it did not confirm whether the verification email was sent. Please check the backend registration code."
         );
         setMessageType("warning");
-        setDebugNote(
-          `Backend response: ${JSON.stringify(data)}`
-        );
-        clearForm();
+        setDebugNote(`Backend response: ${JSON.stringify(data)}`);
       }
+      setForm(EMPTY_FORM);
     } catch (err) {
-      setError(
-        err.response?.data?.error ||
-          "Hindi makakonekta sa server. Pakisubukang muli."
-      );
+      setError(err.response?.data?.error || "Hindi makakonekta sa server. Pakisubukang muli.");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="login-wrap">
-      <form className="login-card" onSubmit={submit}>
-        <h1>Member Registration</h1>
-        <p className="muted">River of Life Calapan</p>
+  const passwordMismatch = error === "Passwords do not match.";
 
+  return (
+    <LoginLayout title="Member registration" subtitle="Create your River of Life Calapan account">
+      <form onSubmit={submit}>
         {message && (
-          <div
-            className={
-              messageType === "success" ? "msg ok" : "alert"
-            }
-            role="status"
-          >
+          <div className={`auth-alert ${messageType === "success" ? "ok" : "warn"}`} role="status">
             {message}
           </div>
         )}
 
         {debugNote && (
-          <div className="alert" role="alert">
-            <strong>Registration details:</strong>
+          <div className="auth-alert warn" role="alert">
+            <strong>Registration details</strong>
             <p>{debugNote}</p>
           </div>
         )}
 
         {error && (
-          <div className="alert" role="alert">
+          <div className="auth-alert error" role="alert">
             {error}
           </div>
         )}
 
         {!message && (
           <>
-            <label htmlFor="full_name">Full name *</label>
-            <input
-              id="full_name"
-              value={form.full_name}
-              onChange={set("full_name")}
-              autoComplete="name"
-              required
-              autoFocus
-            />
+            <div className="auth-field">
+              <label htmlFor="full_name">Full name</label>
+              <input
+                id="full_name"
+                value={form.full_name}
+                onChange={set("full_name")}
+                autoComplete="name"
+                required
+                autoFocus
+              />
+            </div>
 
-            <label htmlFor="email">Email *</label>
-            <input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={set("email")}
-              autoComplete="email"
-              required
-            />
+            <div className="auth-field">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                value={form.email}
+                onChange={set("email")}
+                placeholder="you@example.com"
+                autoComplete="email"
+                required
+              />
+            </div>
 
-            <label htmlFor="phone">Phone</label>
-            <input
-              id="phone"
-              type="tel"
-              value={form.phone}
-              onChange={set("phone")}
-              autoComplete="tel"
-            />
+            <div className="auth-field">
+              <label htmlFor="phone">
+                Phone <span className="hint">(11 digits)</span>
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                inputMode="numeric"
+                maxLength={11}
+                minLength={11}
+                pattern="[0-9]{11}"
+                title="11 digits lang (e.g. 09123456789)"
+                placeholder="09123456789"
+                value={form.phone}
+                onChange={setPhone}
+                autoComplete="tel"
+                required
+              />
+            </div>
 
-            <label htmlFor="password">
-              Password * (min 6 characters)
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={set("password")}
-              autoComplete="new-password"
-              minLength={6}
-              required
-            />
+            <div className="auth-field">
+              <label htmlFor="password">
+                Password <span className="hint">(at least 6 characters)</span>
+              </label>
+              <PasswordInput
+                id="password"
+                value={form.password}
+                onChange={set("password")}
+                autoComplete="new-password"
+                minLength={6}
+                aria-invalid={passwordMismatch}
+                required
+              />
+            </div>
 
-            <label htmlFor="confirm">Confirm password *</label>
-            <input
-              id="confirm"
-              type="password"
-              value={form.confirm}
-              onChange={set("confirm")}
-              autoComplete="new-password"
-              minLength={6}
-              required
-            />
+            <div className="auth-field">
+              <label htmlFor="confirm">Confirm password</label>
+              <PasswordInput
+                id="confirm"
+                value={form.confirm}
+                onChange={set("confirm")}
+                autoComplete="new-password"
+                minLength={6}
+                aria-invalid={passwordMismatch}
+                required
+              />
+            </div>
 
-            <button type="submit" disabled={loading}>
-              {loading ? "Creating account..." : "Register"}
-            </button>
+            <SubmitButton loading={loading} loadingText="Creating account…">
+              Create account
+            </SubmitButton>
           </>
         )}
 
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: 14,
-            marginBottom: 0,
-            marginTop: 16,
-          }}
-        >
-          May account na? <Link to="/login">Login</Link>
+        <p className="auth-alt">
+          Already have an account? <Link to="/login">Login</Link>
         </p>
       </form>
-    </div>
+    </LoginLayout>
   );
 }

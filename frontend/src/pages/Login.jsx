@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, homeForRole } from "../context/AuthContext";
+import { LoginLayout, PasswordInput, SubmitButton } from "../components/LoginLayout.jsx";
 import "../components/portal.css";
 
 export default function Login() {
@@ -23,37 +24,58 @@ export default function Login() {
       const u = await login(email, password);
       navigate(homeForRole(u.role), { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || "Hindi makakonekta sa server umay.");
+      setError(err.response?.data?.error || "Hindi makakonekta sa server ngayon.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-wrap">
-      <form className="login-card" onSubmit={submit}>
-        <h1>River of Life</h1>
-        <p className="muted">Calapan Church Management System</p>
+    <LoginLayout title="Welcome back" subtitle="Sign in to River of Life Calapan Church Management System">
+      <form onSubmit={submit}>
+        {location.state?.message && (
+          <div className="auth-alert ok" role="status">{location.state.message}</div>
+        )}
+        {error && <div className="auth-alert error" role="alert">{error}</div>}
 
-        {location.state?.message && <div className="msg ok">{location.state.message}</div>}
-        {error && <div className="alert">{error}</div>}
+        <div className="auth-field">
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+            aria-invalid={!!error}
+            required
+            autoFocus
+          />
+        </div>
 
-        <label>Email</label>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+        <div className="auth-field">
+          <label htmlFor="password">Password</label>
+          <PasswordInput
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            aria-invalid={!!error}
+            required
+          />
+        </div>
 
-        <label>Password</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-
-        <div style={{ textAlign: "right", marginTop: 8, fontSize: 14 }}>
+        <div className="auth-row">
           <Link to="/forgot-password">Forgot password?</Link>
         </div>
 
-        <button type="submit" disabled={loading}>{loading ? "Signing in..." : "Login"}</button>
+        <SubmitButton loading={loading}>Login</SubmitButton>
 
-        <p style={{ textAlign: "center", fontSize: 14, marginBottom: 0 }}>
+        <p className="auth-alt">
           New member here? <Link to="/register">Register here</Link>
         </p>
       </form>
-    </div>
+    </LoginLayout>
   );
 }

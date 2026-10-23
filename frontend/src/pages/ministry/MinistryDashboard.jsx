@@ -2,7 +2,7 @@
 import { useState } from "react";
 import DataPage, { hm } from "../../components/DataPage";
 import NotificationsView from "../../components/Notifications";
-import { eventFields, eventColumns } from "../staff/StaffDashboard";
+import { eventFields, eventColumns } from "../secretary/StaffDashboard";
 const mineLookup = { ministries: { resource: "ministries", params: { mine: 1 }, label: "name" } };
 
 export function LeaderSchedule() {
