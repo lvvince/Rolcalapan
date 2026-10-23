@@ -1,22 +1,16 @@
-import { useTranslation } from "react-i18next";
-
-const options = [
-  { value: "en", label: "English" },
-  { value: "tl", label: "Tagalog" },
-  { value: "ceb", label: "Cebuano" },
-  { value: "ilo", label: "Ilocano" },
-];
+import { LANGS, useLang } from '../i18n/LanguageContext';
 
 export default function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { lang, setLang } = useLang();
   return (
     <select
-      value={i18n.language}
-      onChange={(e) => i18n.changeLanguage(e.target.value)}
+      value={lang}
+      onChange={(e) => setLang(e.target.value)}
       className="border rounded px-2 py-1 text-sm"
+      aria-label="Language"
     >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
+      {LANGS.map((l) => (
+        <option key={l.code} value={l.code}>{l.label}</option>
       ))}
     </select>
   );

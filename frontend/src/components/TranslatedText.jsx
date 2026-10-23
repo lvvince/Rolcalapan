@@ -1,24 +1,7 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { translateText } from "../lib/api";
+import { useLang } from "../i18n/LanguageContext";
 
-export default function TranslatedText({ text }) {
-  const { i18n } = useTranslation();
-  const [out, setOut] = useState(text);
-
-  useEffect(() => {
-    let alive = true;
-    if (i18n.language === "tl" && text) {
-      translateText(text, "tl")
-        .then((t) => alive && setOut(t))
-        .catch(() => alive && setOut(text));
-    } else {
-      setOut(text);
-    }
-    return () => {
-      alive = false;
-    };
-  }, [text, i18n.language]);
-
-  return <>{out}</>;
+export default function TranslatedText({ text, children }) {
+  const { t } = useLang();
+  const value = text ?? (typeof children === "string" ? children : "");
+  return <>{t(value)}</>;
 }

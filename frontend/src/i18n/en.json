@@ -23,7 +23,7 @@
     "register": "Register",
     "logout": "Logout",
     "loading": "Loading...",
-    "translate": "Translate to Tagalog",
+    "translate": "Translate",
     "showOriginal": "Show original"
   },
   "nav": {
@@ -46,7 +46,7 @@
   "language": {
     "title": "Preferred Language",
     "label": "Language",
-    "note": "Your choice changes the app language. Cebuano and Ilocano will show English for now.",
+    "note": "Your choice changes the app language. Non-English text is translated automatically.",
     "saved": "Preferred language saved."
   },
   "chat": {

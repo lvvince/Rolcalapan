@@ -113,7 +113,7 @@ class Ai
             ['x-api-key: ' . $key, 'anthropic-version: 2023-06-01'],
             [
                 'model' => $this->env('ANTHROPIC_MODEL', 'claude-haiku-5-5'),
-                'max_tokens' => 600,
+                'max_tokens' => 2000,
                 'system' => $system,
                 'messages' => [['role' => 'user', 'content' => $question]],
             ]
