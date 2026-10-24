@@ -36,10 +36,19 @@ const GROUPS = [
 const STAT_ICONS = ["🙌", "✅", "📅"];
 
 const greeting = () => {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
+  // Oras sa Pilipinas, kahit iba ang timezone ng device
+  const h = Number(
+    new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "Asia/Manila",
+    }).format(new Date())
+  ) % 24;
+
+  if (h >= 5 && h < 11) return "Good morning";    // 5:00 AM - 10:59 AM
+  if (h >= 11 && h < 13) return "Good noon";      // 11:00 AM - 12:59 PM
+  if (h >= 13 && h < 18) return "Good afternoon"; // 1:00 PM - 5:59 PM
+  return "Good evening";                          // 6:00 PM - 4:59 AM
 };
 
 export default function MemberHome() {
