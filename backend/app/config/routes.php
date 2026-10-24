@@ -107,6 +107,7 @@ $router->post('/api/resource/delete', 'ResourceController::delete');
 // Member profile
 $router->get('/api/portal/me', 'PortalController::me');
 $router->post('/api/portal/me', 'PortalController::me_update');
+$router->post('/api/portal/me/picture', 'PortalController::me_picture');
 // Dashboard overview
 $router->get('/api/portal/overview', 'PortalController::overview');
 // Ministries

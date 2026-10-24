@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -58,8 +57,9 @@ import {
   Language,
   MemberNotifications,
 } from "./pages/member/MemberDashboard";
+import MemberHome from "./pages/member/MemberHome";
 
-const portal = (path, role, children) => (
+const portal = (path, role, children, home) => (
   <Route
     path={path}
     element={
@@ -68,7 +68,7 @@ const portal = (path, role, children) => (
       </ProtectedRoute>
     }
   >
-    <Route index element={<RoleDashboard role={role} />} />
+    <Route index element={home || <RoleDashboard role={role} />} />
     {children}
     <Route path="*" element={<ComingSoon />} />
   </Route>
@@ -170,7 +170,8 @@ export default function App() {
                 path="notifications"
                 element={<MemberNotifications />}
               />
-            </>
+            </>,
+            <MemberHome />
           )}
 
           {/* DEFAULT ROUTE */}

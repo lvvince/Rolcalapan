@@ -179,7 +179,7 @@ class Ai
         return trim($text);
     }
 
-    private function post($url, $headers, $payload)
+       private function post($url, $headers, $payload)
     {
         $res = false;
         $code = 0;
@@ -190,8 +190,9 @@ class Ai
             curl_setopt_array($ch, [
                 CURLOPT_POST => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_CONNECTTIMEOUT => 8,
-                CURLOPT_TIMEOUT => 25,
+                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                CURLOPT_CONNECTTIMEOUT => 20,
+                CURLOPT_TIMEOUT => 60,
                 CURLOPT_SSL_VERIFYPEER => $this->env('AI_SSL_VERIFY', '1') !== '0',
                 CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers),
                 CURLOPT_POSTFIELDS => json_encode($payload),
@@ -201,8 +202,8 @@ class Ai
             $err = curl_error($ch);
             curl_close($ch);
 
-            // Isang retry lang kung overloaded (429/503)
-            if ($res !== false && ($code === 429 || $code === 503) && $attempt === 1) {
+            // Isang retry lang kung overloaded (429/503) o pumalya ang network (DNS/timeout)
+            if ($attempt === 1 && ($res === false || $code === 429 || $code === 503)) {
                 sleep(1);
                 continue;
             }

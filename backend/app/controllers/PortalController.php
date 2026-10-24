@@ -3,7 +3,7 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
 /**
  * backend/app/controllers/PortalController.php
- * Custom endpoints: profile, overview, join/leave, recommender, check-in, reports, notifications.
+ * Custom endpoints: profile, profile picture, overview, join/leave, recommender, check-in, reports, notifications.
  */
 class PortalController extends Controller
 {
@@ -99,6 +99,24 @@ class PortalController extends Controller
             }
         }
         $this->out(['success' => true, 'member' => $this->db->table('members')->where('id', $m['id'])->get()]);
+    }
+
+    // ------------------------------------------------------ PROFILE PICTURE
+    public function me_picture()
+    {
+        $m   = $this->member_row();
+        $in  = $this->input();
+        $pic = $in['picture'] ?? '';
+
+        if (!is_string($pic) || !preg_match('#^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$#', $pic)) {
+            $this->out(['error' => 'Invalid image'], 422);
+        }
+        if (strlen($pic) > 500000) {
+            $this->out(['error' => 'Image is too large'], 422);
+        }
+
+        $this->db->table('members')->where('id', $m['id'])->update(['profile_pic' => $pic]);
+        $this->out(['success' => true, 'profile_pic' => $pic]);
     }
 
     // ----------------------------------------------------------- OVERVIEW

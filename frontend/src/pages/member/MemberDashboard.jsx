@@ -1,6 +1,8 @@
 // frontend/src/pages/member/MemberPages.jsx
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../../api";
+import ProfilePicture from "../../components/ProfilePicture";
 import DataPage, { hm } from "../../components/DataPage";
 import { useTranslation } from "react-i18next";
 import QrView from "../../components/QrView";
@@ -14,6 +16,7 @@ export function Profile() {
   const [form, setForm] = useState(null);
   const [mins, setMins] = useState([]);
   const [msg, setMsg] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     api.get("/portal/me").then((r) => { setForm(r.data.member); setMins(r.data.ministries); }).catch((e) => setMsg({ ok: false, text: err(e) }));
@@ -21,11 +24,15 @@ export function Profile() {
 
   const save = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
-      await api.post("/portal/me", form);
+      const { profile_pic, ...payload } = form; // hindi isinasama ang pic
+      await api.post("/portal/me", payload);
       setMsg({ ok: true, text: "Profile saved." });
     } catch (x) {
       setMsg({ ok: false, text: err(x) });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -35,19 +42,71 @@ export function Profile() {
   return (
     <>
       <h2>My Profile</h2>
-      <form className="panel" style={{ maxWidth: 520 }} onSubmit={save}>
-        <div className="field"><label>Member code</label><input value={form.member_code} disabled /></div>
-        <div className="field"><label>Full name *</label><input value={form.full_name || ""} onChange={set("full_name")} required /></div>
-        <div className="field"><label>Family name</label><input value={form.family_name || ""} onChange={set("family_name")} /></div>
-        <div className="field"><label>Phone</label><input value={form.phone || ""} onChange={set("phone")} /></div>
-        <div className="field"><label>Address</label><input value={form.address || ""} onChange={set("address")} /></div>
-        <div className="field"><label>Birthdate</label><input type="date" value={form.birthdate || ""} onChange={set("birthdate")} /></div>
-        {msg && <div className={`msg ${msg.ok ? "ok" : "err"}`}>{msg.text}</div>}
-        <button className="btn" type="submit">Save profile</button>
-      </form>
-      <div className="panel" style={{ maxWidth: 520 }}>
-        <h4>My Ministries & Groups</h4>
-        {mins.length === 0 ? <span className="muted">You have not joined any yet.</span> : mins.map((m) => <div key={m.id}>{m.name} <span className="badge">{m.role}</span></div>)}
+      <div className="pf-page">
+        {/* LEFT: profile card */}
+        <aside className="panel pf-card">
+          <ProfilePicture
+            name={form.full_name}
+            currentPic={form.profile_pic}
+            onUploaded={(pic) => setForm((f) => ({ ...f, profile_pic: pic }))}
+          />
+          <h3 className="pf-name">{form.full_name || "Member"}</h3>
+          {form.family_name && <div className="pf-family">{form.family_name} family</div>}
+          <span className="pf-code">{form.member_code}</span>
+
+          <div className="pf-stats">
+            <div><strong>{mins.length}</strong><span>{mins.length === 1 ? "Ministry" : "Ministries"}</span></div>
+          </div>
+
+          <Link to="/portal/qr" className="btn sm secondary pf-qr">View my QR code</Link>
+        </aside>
+
+        {/* RIGHT: form + ministries */}
+        <div className="pf-main">
+          <form className="panel" onSubmit={save}>
+            <h4>Personal Information</h4>
+            <div className="pf-grid">
+              <div className="field"><label>Full name *</label><input value={form.full_name || ""} onChange={set("full_name")} required /></div>
+              <div className="field"><label>Family name</label><input value={form.family_name || ""} onChange={set("family_name")} /></div>
+              <div className="field">
+                <label>Phone</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
+                  pattern="[0-9]{11}"
+                  title="11 digits (e.g. 09123456789)"
+                  placeholder="09123456789"
+                  value={form.phone || ""}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
+                />
+              </div>
+              <div className="field"><label>Birthdate</label><input type="date" value={form.birthdate || ""} onChange={set("birthdate")} /></div>
+              <div className="field full"><label>Address</label><input value={form.address || ""} onChange={set("address")} /></div>
+            </div>
+
+            <div className="pf-actions">
+              {msg ? <div className={`msg ${msg.ok ? "ok" : "err"}`}>{msg.text}</div> : <span />}
+              <button className="btn" type="submit" disabled={saving}>{saving ? "Saving..." : "Save profile"}</button>
+            </div>
+          </form>
+
+          <div className="panel">
+            <h4>My Ministries &amp; Groups</h4>
+            {mins.length === 0 ? (
+              <div className="pf-empty">
+                <span className="muted">You have not joined any yet.</span>
+                <Link to="/portal/ministries" className="btn sm">Browse ministries</Link>
+              </div>
+            ) : (
+              <div className="pf-chips">
+                {mins.map((m) => (
+                  <span className="pf-chip" key={m.id}>{m.name}{m.role && <span className="badge">{m.role}</span>}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </>
   );
@@ -61,8 +120,8 @@ export function MyQr() {
   return (
     <>
       <h2>My QR Code</h2>
-      <p className="muted">Ipakita ito sa staff sa entrance para sa attendance.</p>
-      <QrView code={m.member_code} name={m.full_name} />
+      <p className="muted">Show this to the admin, secretary or staff at the entrance for attendance verification.</p>
+      <QrView code={m.member_code} name={m.full_name} photo={m.profile_pic} guide />
     </>
   );
 }
@@ -231,29 +290,120 @@ export function EventsRsvp() {
 export function Ministries() {
   const [list, setList] = useState([]);
   const [msg, setMsg] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(null);
+
   const load = () => api.get("/portal/ministries").then((r) => setList(r.data));
   useEffect(() => { load(); }, []);
 
   const act = async (path, id) => {
-    try { await api.post(`/portal/${path}`, { ministry_id: id }); load(); } catch (x) { setMsg({ ok: false, text: err(x) }); }
+    setBusy(id);
+    try {
+      await api.post(`/portal/${path}`, { ministry_id: id });
+      setMsg(null);
+      await load();
+    } catch (x) {
+      setMsg({ ok: false, text: err(x) });
+    } finally {
+      setBusy(null);
+    }
   };
+
+  const leave = (m) => {
+    if (window.confirm(`Leave "${m.name}"?`)) act("leave", m.id);
+  };
+
+  const pills = [
+    { key: "all", label: "All" },
+    { key: "ministry", label: "Ministries" },
+    { key: "small_group", label: "Small groups" },
+    { key: "joined", label: "Joined" },
+  ];
+
+  const shown = list.filter((m) => {
+    if (filter === "ministry" && m.type !== "ministry") return false;
+    if (filter === "small_group" && m.type !== "small_group") return false;
+    if (filter === "joined" && !m.joined) return false;
+    const s = q.trim().toLowerCase();
+    if (s && !`${m.name} ${m.description || ""}`.toLowerCase().includes(s)) return false;
+    return true;
+  });
+
+  const joinedCount = list.filter((m) => m.joined).length;
 
   return (
     <>
       <h2>Ministries & Small Groups</h2>
+      <p className="min-summary">
+        {list.length} available · You joined {joinedCount}
+      </p>
+
       {msg && <div className="msg err">{msg.text}</div>}
-      {list.map((m) => (
-        <div className="item" key={m.id}>
-          <h4>{m.name} <span className="badge">{m.type === "small_group" ? "Small group" : "Ministry"}</span></h4>
-          <p>{m.description}</p>
-          <small className="muted">{m.member_count} members{m.leader_name ? ` · Leader: ${m.leader_name}` : ""}</small>
-          <div className="row-actions">
-            {m.joined
-              ? <button className="btn sm danger" onClick={() => act("leave", m.id)}>Leave</button>
-              : <button className="btn sm" onClick={() => act("join", m.id)}>Join</button>}
-          </div>
+
+      <div className="min-toolbar">
+        <input
+          className="min-search"
+          placeholder="Search ministries or groups..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <div className="min-pills">
+          {pills.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              className={`min-pill ${filter === p.key ? "active" : ""}`}
+              onClick={() => setFilter(p.key)}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
-      ))}
+      </div>
+
+      {shown.length === 0 ? (
+        <div className="min-empty">Walang nahanap na ministry o group.</div>
+      ) : (
+        <div className="min-grid">
+          {shown.map((m) => {
+            const isGroup = m.type === "small_group";
+            return (
+              <div className={`min-card ${m.joined ? "joined" : ""}`} key={m.id}>
+                <div className="min-head">
+                  <div className={`min-icon ${isGroup ? "group" : ""}`}>{isGroup ? "🏠" : "🙌"}</div>
+                  <div>
+                    <h4 className="min-title">{m.name}</h4>
+                    <div className="min-tags">
+                      <span className={`min-tag ${isGroup ? "group" : ""}`}>{isGroup ? "Small group" : "Ministry"}</span>
+                      {m.joined && <span className="min-tag joined">✓ Joined</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="min-desc">{m.description}</p>
+
+                <div className="min-meta">
+                  <span>👥 {m.member_count} {m.member_count === 1 ? "member" : "members"}</span>
+                  {m.leader_name && <span>⭐ {m.leader_name}</span>}
+                </div>
+
+                <div className="min-foot">
+                  {m.joined ? (
+                    <button className="min-btn leave" disabled={busy === m.id} onClick={() => leave(m)}>
+                      {busy === m.id ? "Please wait..." : "Leave"}
+                    </button>
+                  ) : (
+                    <button className="min-btn" disabled={busy === m.id} onClick={() => act("join", m.id)}>
+                      {busy === m.id ? "Joining..." : "Join"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }
@@ -261,23 +411,83 @@ export function Ministries() {
 /* ---------------------------------------------------------- Recommended */
 export function Recommended() {
   const [list, setList] = useState([]);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(null);
+
   const load = () => api.get("/portal/recommended").then((r) => setList(r.data));
   useEffect(() => { load(); }, []);
 
-  const join = async (id) => { await api.post("/portal/join", { ministry_id: id }); load(); };
+  const join = async (id) => {
+    setBusy(id);
+    try {
+      await api.post("/portal/join", { ministry_id: id });
+      setMsg(null);
+      await load();
+    } catch (x) {
+      setMsg({ ok: false, text: err(x) });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const maxScore = Math.max(0.01, ...list.map((m) => m.score));
 
   return (
     <>
       <h2>Recommended for You</h2>
-      {list.length === 0 && <div className="empty">No recommendations right now. You may have joined everything!</div>}
-      {list.map((m) => (
-        <div className="item" key={m.id}>
-          <h4>{m.name} <span className="badge">{m.type === "small_group" ? "Small group" : "Ministry"}</span></h4>
-          <p>{m.description}</p>
-          <small className="muted">{m.reason} · match score {m.score}</small>
-          <div className="row-actions"><button className="btn sm" onClick={() => join(m.id)}>Join</button></div>
+      <p className="min-summary">
+        Mga ministry at group na bagay sa iyo, batay sa mga sinalihan at dinaluhan mong events.
+      </p>
+
+      {msg && <div className="msg err">{msg.text}</div>}
+
+      {list.length === 0 ? (
+        <div className="min-empty">No recommendations right now. You may have joined everything!</div>
+      ) : (
+        <div className="min-grid">
+          {list.map((m, i) => {
+            const isGroup = m.type === "small_group";
+            const similar = m.reason.startsWith("Similar");
+            const pct = Math.max(5, Math.round((m.score / maxScore) * 100));
+            return (
+              <div className="min-card" key={m.id}>
+                <div className="min-head">
+                  <div className={`min-icon ${isGroup ? "group" : ""}`}>{isGroup ? "🏠" : "🙌"}</div>
+                  <div>
+                    <h4 className="min-title">{m.name}</h4>
+                    <div className="min-tags">
+                      <span className={`min-tag ${isGroup ? "group" : ""}`}>{isGroup ? "Small group" : "Ministry"}</span>
+                      {i === 0 && similar && <span className="min-tag top">★ Top pick</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="min-desc">{m.description}</p>
+
+                <div className={`min-reason ${similar ? "" : "popular"}`}>
+                  {similar ? "✨" : "👥"} {m.reason}
+                </div>
+
+                {similar && (
+                  <div className="min-match" title={`Match score ${m.score}`}>
+                    <span style={{ width: `${pct}%` }} />
+                  </div>
+                )}
+
+                <div className="min-meta">
+                  <span>👥 {m.member_count} {m.member_count === 1 ? "member" : "members"}</span>
+                </div>
+
+                <div className="min-foot">
+                  <button className="min-btn" disabled={busy === m.id} onClick={() => join(m.id)}>
+                    {busy === m.id ? "Joining..." : "Join"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      ))}
+      )}
     </>
   );
 }
