@@ -21,7 +21,16 @@ export default function RoleLayout({ role }) {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">River of Life</div>
+        <div className="brand" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img
+            src="/logo.png"
+            alt="River of Life Calapan logo"
+            width={36}
+            height={36}
+            style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }}
+          />
+          <span>River of Life</span>
+        </div>
         <nav>
           <NavLink to={menu.base} end className={({ isActive }) => (isActive ? "active" : "")}>
             {t("common.dashboard")}

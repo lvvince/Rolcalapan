@@ -3,20 +3,23 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import "./login.css";
 
-function DropIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-      <path d="M12 2.5c-.3 0-.6.14-.8.4C9 6.2 5.5 10.3 5.5 14.3a6.5 6.5 0 0 0 13 0c0-4-3.5-8.1-5.7-11.4a1 1 0 0 0-.8-.4Z" />
-    </svg>
-  );
-}
-
 function Logo({ className = "" }) {
+  const onLight = className.includes("on-light");
   return (
     <Link to="/" className={`auth-logo ${className}`}>
-      <span className="auth-logo-mark">
-        <DropIcon />
-      </span>
+      <img
+        src="/logo.png"
+        alt="River of Life Calapan logo"
+        width={44}
+        height={44}
+        style={{
+          width: 44,
+          height: 44,
+          objectFit: "contain",
+          flexShrink: 0,
+          filter: onLight ? "invert(1)" : "none",
+        }}
+      />
       <span className="auth-logo-text">
         River of Life <strong>Calapan</strong>
       </span>
