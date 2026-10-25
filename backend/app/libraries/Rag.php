@@ -8,11 +8,11 @@ class Rag
 {
     private $stop = [
         // Tagalog
-        'ang', 'ng', 'sa', 'na', 'ay', 'mga', 'ba', 'po', 'opo', 'ko', 'ako', 'ano', 'saan', 'nasaan',
+        'ang', 'ng', 'sa', 'na', 'ay', 'mga', 'ba', 'po', 'opo', 'ko', 'ako', 'ano',
         'kailan', 'paano', 'pwede', 'puwede', 'anong', 'saang', 'yung', 'yong', 'may', 'meron', 'mayroon',
         'mo', 'ka', 'namin', 'natin', 'ito', 'iyan', 'yan', 'dito', 'doon', 'diyan', 'kayo', 'niyo', 'nyo',
         'kami', 'tayo', 'ikaw', 'lang', 'naman', 'din', 'rin', 'kung', 'para', 'at', 'si', 'ni', 'kay',
-        'nga', 'pa', 'pag', 'kapag', 'mag', 'sino', 'bakit', 'hindi', 'ba', 'kumusta', 'magandang',
+        'nga', 'pa', 'pag', 'kapag', 'mag', 'sino', 'bakit', 'hindi', 'kumusta', 'magandang',
         // English
         'the', 'a', 'an', 'is', 'are', 'of', 'to', 'in', 'at', 'what', 'when', 'where', 'how', 'do',
         'does', 'i', 'you', 'we', 'for', 'and', 'or', 'me', 'my', 'can', 'be', 'there', 'any', 'your',
@@ -22,6 +22,10 @@ class Rag
 
     // Tagalog (o ibang salita) -> mga English na termino sa knowledge base
     private $syn = [
+        'saan' => ['location', 'located', 'address'],
+        'nasaan' => ['location', 'located', 'address'],
+        'simbahan' => ['church', 'location'],
+        'iglesia' => ['church', 'location'],
         'lokasyon' => ['location', 'located', 'address'],
         'lugar' => ['location', 'located', 'address'],
         'address' => ['location', 'located'],

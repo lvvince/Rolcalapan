@@ -58,15 +58,21 @@ class Ai
         return false;
     }
 
-    public function ask($provider, $system, $question)
+    /**
+     * $messages = string (isang tanong) o array ng ['role' => 'user|assistant', 'content' => '...']
+     */
+    public function ask($provider, $system, $messages)
     {
+        if (is_string($messages)) {
+            $messages = [['role' => 'user', 'content' => $messages]];
+        }
         switch ($provider) {
             case 'claude':
-                return $this->claude($system, $question);
+                return $this->claude($system, $messages);
             case 'gemini':
-                return $this->gemini($system, $question);
+                return $this->gemini($system, $messages);
             case 'openai':
-                return $this->openai($system, $question);
+                return $this->openai($system, $messages);
             default:
                 throw new Exception('Unknown AI provider: ' . $provider);
         }
@@ -75,9 +81,8 @@ class Ai
     /**
      * Susubukan muna ang piniling provider, tapos ang iba pang may API key.
      * Return: ['provider' => ..., 'answer' => ...] o null kung lahat pumalya.
-     * $errors = listahan ng mga error (para sa debug/log).
      */
-    public function ask_with_fallback($provider, $system, $question, &$errors)
+    public function ask_with_fallback($provider, $system, $messages, &$errors)
     {
         $errors = [];
         $order = array_values(array_unique(array_merge([$provider], ['gemini', 'openai', 'claude'])));
@@ -90,7 +95,7 @@ class Ai
                 continue;
             }
             try {
-                $answer = trim((string)$this->ask($p, $system, $question));
+                $answer = trim((string)$this->ask($p, $system, $messages));
                 if ($answer !== '') {
                     return ['provider' => $p, 'answer' => $answer];
                 }
@@ -102,7 +107,7 @@ class Ai
         return null;
     }
 
-    private function claude($system, $question)
+    private function claude($system, $messages)
     {
         $key = $this->env('ANTHROPIC_API_KEY');
         if ($key === '') {
@@ -113,9 +118,10 @@ class Ai
             ['x-api-key: ' . $key, 'anthropic-version: 2023-06-01'],
             [
                 'model' => $this->env('ANTHROPIC_MODEL', 'claude-haiku-5-5'),
-                'max_tokens' => 2000,
+                'max_tokens' => 700,
+                'temperature' => 0.5,
                 'system' => $system,
-                'messages' => [['role' => 'user', 'content' => $question]],
+                'messages' => $messages,
             ]
         );
         $text = '';
@@ -125,7 +131,7 @@ class Ai
         return trim($text);
     }
 
-    private function openai($system, $question)
+    private function openai($system, $messages)
     {
         $key = $this->env('OPENAI_API_KEY');
         if ($key === '') {
@@ -137,18 +143,15 @@ class Ai
             ['Authorization: Bearer ' . $key],
             [
                 'model' => $this->env('OPENAI_MODEL', 'llama-3.3-70b-versatile'),
-                'max_tokens' => 600,
-                'temperature' => 0.2,
-                'messages' => [
-                    ['role' => 'system', 'content' => $system],
-                    ['role' => 'user', 'content' => $question],
-                ],
+                'max_tokens' => 700,
+                'temperature' => 0.5,
+                'messages' => array_merge([['role' => 'system', 'content' => $system]], $messages),
             ]
         );
         return trim($data['choices'][0]['message']['content'] ?? '');
     }
 
-    private function gemini($system, $question)
+    private function gemini($system, $messages)
     {
         $key = $this->env('GEMINI_API_KEY');
         if ($key === '') {
@@ -156,10 +159,18 @@ class Ai
         }
         $model = $this->env('GEMINI_MODEL', 'gemini-2.5-flash');
 
-        $gen = ['temperature' => 0.2, 'maxOutputTokens' => 800];
+        $gen = ['temperature' => 0.5, 'maxOutputTokens' => 800];
         // Ang 2.5-flash ay "nagiisip" muna at inuubos ang tokens; patayin para laging may sagot
         if (strpos($model, '2.5-flash') !== false) {
             $gen['thinkingConfig'] = ['thinkingBudget' => 0];
+        }
+
+        $contents = [];
+        foreach ($messages as $m) {
+            $contents[] = [
+                'role' => $m['role'] === 'assistant' ? 'model' : 'user',
+                'parts' => [['text' => $m['content']]],
+            ];
         }
 
         $data = $this->post(
@@ -167,7 +178,7 @@ class Ai
             ['x-goog-api-key: ' . $key],
             [
                 'system_instruction' => ['parts' => [['text' => $system]]],
-                'contents' => [['role' => 'user', 'parts' => [['text' => $question]]]],
+                'contents' => $contents,
                 'generationConfig' => $gen,
             ]
         );
@@ -179,7 +190,7 @@ class Ai
         return trim($text);
     }
 
-       private function post($url, $headers, $payload)
+    private function post($url, $headers, $payload)
     {
         $res = false;
         $code = 0;
@@ -190,9 +201,8 @@ class Ai
             curl_setopt_array($ch, [
                 CURLOPT_POST => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                CURLOPT_CONNECTTIMEOUT => 20,
-                CURLOPT_TIMEOUT => 60,
+                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_TIMEOUT => 25,
                 CURLOPT_SSL_VERIFYPEER => $this->env('AI_SSL_VERIFY', '1') !== '0',
                 CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers),
                 CURLOPT_POSTFIELDS => json_encode($payload),
@@ -202,8 +212,8 @@ class Ai
             $err = curl_error($ch);
             curl_close($ch);
 
-            // Isang retry lang kung overloaded (429/503) o pumalya ang network (DNS/timeout)
-            if ($attempt === 1 && ($res === false || $code === 429 || $code === 503)) {
+            // Isang retry lang kung overloaded (429/503)
+            if ($res !== false && ($code === 429 || $code === 503) && $attempt === 1) {
                 sleep(1);
                 continue;
             }
