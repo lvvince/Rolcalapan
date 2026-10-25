@@ -1,0 +1,66 @@
+/* ---- Toggle button ---- */
+.theme-toggle { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--field-border); background: var(--surface); color: var(--accent); cursor: pointer; transition: background .2s, color .2s, border-color .2s, transform .2s; flex-shrink: 0; padding: 0; }
+.theme-toggle:hover { background: var(--teal-50); transform: translateY(-1px); }
+.theme-toggle:focus-visible { outline: 3px solid var(--teal-400); outline-offset: 2px; }
+
+/* ================= PORTAL (portal.css components) ================= */
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .item,
+html[data-theme="dark"] .min-card,
+html[data-theme="dark"] .dash-stat,
+html[data-theme="dark"] .dash-event,
+html[data-theme="dark"] .dash-action,
+html[data-theme="dark"] .qr-box,
+html[data-theme="dark"] .modal-card,
+html[data-theme="dark"] .empty,
+html[data-theme="dark"] .min-empty,
+html[data-theme="dark"] .dash-empty { background: #111c2e; border-color: #1e293b; color: #cbd5e1; }
+html[data-theme="dark"] .min-card.joined { background: linear-gradient(180deg, #0f2a22 0%, #111c2e 60%); border-color: #166534; }
+
+html[data-theme="dark"] .panel h4, html[data-theme="dark"] .item h4, html[data-theme="dark"] .min-title,
+html[data-theme="dark"] .dash-event-body h4, html[data-theme="dark"] .modal-card h3,
+html[data-theme="dark"] .dash-section-head h3, html[data-theme="dark"] .pf-name,
+html[data-theme="dark"] .qr-box strong, html[data-theme="dark"] .qr-box h3, html[data-theme="dark"] .qr-box h4,
+html[data-theme="dark"] .qr-steps strong { color: #f1f5f9; }
+html[data-theme="dark"] .item p, html[data-theme="dark"] .min-desc, html[data-theme="dark"] .dash-event-body p,
+html[data-theme="dark"] .dash-action p, html[data-theme="dark"] .qr-steps p, html[data-theme="dark"] .pf-family,
+html[data-theme="dark"] .min-summary, html[data-theme="dark"] .min-meta, html[data-theme="dark"] .bar-row { color: #94a3b8; }
+html[data-theme="dark"] .dash-stat strong, html[data-theme="dark"] .dash-action strong,
+html[data-theme="dark"] .dash-section-head a, html[data-theme="dark"] .pf-stats strong { color: #67e8f9; }
+html[data-theme="dark"] .dash-stat-icon, html[data-theme="dark"] .dash-action-icon { background: #0f2a35; }
+
+html[data-theme="dark"] table.tbl { background: #111c2e; border-color: #1e293b; }
+html[data-theme="dark"] table.tbl th { background: #0f2a35; color: #67e8f9; border-color: #1e293b; }
+html[data-theme="dark"] table.tbl td { color: #cbd5e1; border-color: #1e293b; }
+html[data-theme="dark"] table.tbl tbody tr:hover { background: #0f1b2a; }
+
+html[data-theme="dark"] .field label { color: #cbd5e1; }
+html[data-theme="dark"] .field input, html[data-theme="dark"] .field select, html[data-theme="dark"] .field textarea,
+html[data-theme="dark"] .min-search { background: #0b1220; border-color: #334155; color: #f1f5f9; }
+html[data-theme="dark"] .field input:focus, html[data-theme="dark"] .field select:focus, html[data-theme="dark"] .field textarea:focus { background: #0f1b2a; border-color: #22d3ee; }
+html[data-theme="dark"] .btn.secondary { background: transparent; color: #67e8f9; border-color: #22d3ee; }
+html[data-theme="dark"] .btn.secondary:hover:not(:disabled) { background: #0f2a35; }
+html[data-theme="dark"] .min-pill { background: #111c2e; border-color: #334155; color: #cbd5e1; }
+html[data-theme="dark"] .min-pill.active { background: #0891b2; border-color: #0891b2; color: #fff; }
+html[data-theme="dark"] .min-tag { background: #0c4a6e; color: #bae6fd; }
+html[data-theme="dark"] .min-reason { background: #0f2a35; border-color: #134e5e; color: #5eead4; }
+html[data-theme="dark"] .min-btn.leave { background: transparent; border-color: #7f1d1d; color: #fca5a5; }
+html[data-theme="dark"] .badge { background: #1e293b; color: #cbd5e1; }
+html[data-theme="dark"] .pf-code, html[data-theme="dark"] .pf-chip, html[data-theme="dark"] .qr-box small,
+html[data-theme="dark"] .qr-box span, html[data-theme="dark"] .qr-box p { background: #0f2a35; border-color: #134e5e; color: #67e8f9; }
+html[data-theme="dark"] .pf-stats { border-color: #1e293b; }
+html[data-theme="dark"] .pf-empty { background: #0f1b2a; border-color: #334155; }
+html[data-theme="dark"] .pf-actions { background: linear-gradient(180deg, rgba(17,28,46,0), #111c2e 30%); }
+html[data-theme="dark"] .msg.ok { background: #0f2a22; color: #86efac; border-color: #166534; }
+html[data-theme="dark"] .msg.err { background: #2a1215; color: #fca5a5; border-color: #7f1d1d; }
+
+/* ================= CHATBOT ================= */
+html[data-theme="dark"] .rol-window { background: #111c2e; }
+html[data-theme="dark"] .rol-body { background: #0b1220; }
+html[data-theme="dark"] .rol-bubble.bot, html[data-theme="dark"] .rol-typing { background: #1e293b; color: #e2e8f0; }
+html[data-theme="dark"] .rol-footer { background: #111c2e; border-top-color: #1e293b; }
+html[data-theme="dark"] .rol-inputwrap { background: #0b1220; }
+html[data-theme="dark"] .rol-inputwrap:focus-within { background: #0f1b2a; }
+html[data-theme="dark"] .rol-input { color: #f1f5f9; }
+html[data-theme="dark"] .rol-chip { background: #1e293b; color: #67e8f9; border-color: #134e5e; }
+html[data-theme="dark"] .rol-bubble.error { background: #2a1215; color: #fca5a5; border-color: #7f1d1d; }

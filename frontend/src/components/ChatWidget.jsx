@@ -132,6 +132,31 @@ const STYLES = `
 .rol-body::-webkit-scrollbar { width: 6px; }
 .rol-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 
+/* ---------- DARK MODE ---------- */
+html[data-theme="dark"] .rol-window { background: #111c2e; box-shadow: 0 20px 50px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4); border: 1px solid #1e293b; }
+html[data-theme="dark"] .rol-header { background: linear-gradient(135deg, #07303d 0%, #0b5d75 60%, #0e7490 100%); }
+html[data-theme="dark"] .rol-avatar::after { border-color: #07303d; }
+html[data-theme="dark"] .rol-body { background: #0b1220; }
+html[data-theme="dark"] .rol-body::-webkit-scrollbar-thumb { background: #334155; }
+html[data-theme="dark"] .rol-bubble.bot,
+html[data-theme="dark"] .rol-typing { background: #1e293b; color: #e2e8f0; box-shadow: none; }
+html[data-theme="dark"] .rol-bubble.user { background: linear-gradient(135deg, #0e7490, #0b5d75); }
+html[data-theme="dark"] .rol-bubble.error { background: #2a1215; color: #fca5a5; border-color: #7f1d1d; }
+html[data-theme="dark"] .rol-time,
+html[data-theme="dark"] .rol-count { color: #64748b; }
+html[data-theme="dark"] .rol-slow { color: #94a3b8; }
+html[data-theme="dark"] .rol-chip { background: #1e293b; color: #67e8f9; border-color: #134e5e; }
+html[data-theme="dark"] .rol-chip:hover { background: #0891b2; color: #fff; border-color: #0891b2; }
+html[data-theme="dark"] .rol-footer { background: #111c2e; border-top-color: #1e293b; }
+html[data-theme="dark"] .rol-inputwrap { background: #0b1220; }
+html[data-theme="dark"] .rol-inputwrap:focus-within { background: #0f1b2a; border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,.18); }
+html[data-theme="dark"] .rol-input { color: #f1f5f9; }
+html[data-theme="dark"] .rol-input::placeholder { color: #94a3b8; }
+html[data-theme="dark"] .rol-send,
+html[data-theme="dark"] .rol-toggle { background: linear-gradient(135deg, #0e7490, #0b5d75); }
+html[data-theme="dark"] .rol-toggle { box-shadow: 0 8px 20px rgba(0,0,0,.5); }
+html[data-theme="dark"] .rol-toggle.pulse::before { border-color: #22d3ee; }
+
 @media (max-width: 480px) {
   .rol-root { bottom: 12px; right: 12px; }
   .rol-window { position: fixed; inset: 0; width: 100%; height: 100%; max-height: none; border-radius: 0; margin: 0; }
@@ -242,7 +267,7 @@ export default function ChatWidget() {
             </div>
             <div>
               <div className="rol-title">River of Life Assistant</div>
-              <div className="rol-sub">Online </div>
+              <div className="rol-sub">Online • Sumasagot sa English at Tagalog</div>
             </div>
             <button className="rol-close" onClick={() => setOpen(false)} aria-label="Close chat">
               <CloseIcon size={18} />

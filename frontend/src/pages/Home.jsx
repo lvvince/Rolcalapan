@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
+import ThemeToggle from "../components/ThemeToggle";
 import "./home.css";
 
 const FACEBOOK_URL = "https://www.facebook.com/riveroflifeintcalapan";
+const INSTAGRAM_URL = "https://www.instagram.com/riveroflifecalapan";
 
 const services = [
   { title: "Sunday Worship", time: "Every Sunday", desc: "Join us in worship, the Word, and fellowship." },
@@ -16,13 +18,36 @@ const features = [
   { icon: "💬", title: "AI Assistant", desc: "Ask questions about the church anytime." },
 ];
 
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+    </svg>
+  );
+}
+
+function InstagramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+
 export default function Home() {
   return (
     <div className="home">
       {/* NAVBAR */}
       <header className="home-nav">
         <div className="home-container home-nav-inner">
-          <a href="#top" className="home-logo">River of Life <span>Calapan</span></a>
+          <a href="#top" className="home-logo">
+            <img src="/logo.png" alt="River of Life Calapan logo" />
+            <span className="home-logo-text">
+              River of Life <span>Calapan</span>
+            </span>
+          </a>
           <nav className="home-links">
             <a href="#about">About</a>
             <a href="#services">Services</a>
@@ -30,6 +55,7 @@ export default function Home() {
             <a href="#contact">Contact</a>
           </nav>
           <div className="home-actions">
+            <ThemeToggle />
             <Link to="/login" className="btn btn-outline">Login</Link>
             <Link to="/register" className="btn btn-primary">Register</Link>
           </div>
@@ -39,6 +65,7 @@ export default function Home() {
       {/* HERO */}
       <section id="top" className="home-hero">
         <div className="home-container">
+          <img src="/logo.png" alt="" className="home-hero-logo" />
           <p className="home-eyebrow">Welcome to</p>
           <h1>River of Life Calapan</h1>
           <p className="home-sub">A church family where everyone is welcome. Let your life flow with God's love.</p>
@@ -120,12 +147,22 @@ export default function Home() {
       {/* CONTACT / FOOTER */}
       <footer id="contact" className="home-footer">
         <div className="home-container home-footer-inner">
-          <div>
-            <strong>River of Life Calapan</strong>
-            <p>Calapan City, Oriental Mindoro</p>
+          <div className="home-footer-brand">
+            <img src="/logo.png" alt="River of Life Calapan logo" />
+            <div>
+              <strong>River of Life Calapan</strong>
+              <p>Calapan City, Oriental Mindoro</p>
+            </div>
           </div>
-          <div>
-            <a href={FACEBOOK_URL} target="_blank" rel="noreferrer">Facebook Page</a>
+          <div className="home-footer-links">
+            <a href={FACEBOOK_URL} target="_blank" rel="noreferrer" className="home-social">
+              <FacebookIcon />
+              <span>Facebook</span>
+            </a>
+            <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="home-social">
+              <InstagramIcon />
+              <span>Instagram</span>
+            </a>
           </div>
         </div>
         <p className="home-copy">© {new Date().getFullYear()} River of Life Calapan. All rights reserved.</p>

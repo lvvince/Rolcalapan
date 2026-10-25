@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { roleMenus } from "../config/roleMenus";
 import ChatWidget from "./ChatWidget";
 import LanguageSwitcher from "./LanguageSwitcher";
+import ThemeToggle from "./ThemeToggle";
 
 export default function RoleLayout({ role }) {
   const { t } = useTranslation();
@@ -21,13 +22,12 @@ export default function RoleLayout({ role }) {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="brand">
           <img
             src="/logo.png"
             alt="River of Life Calapan logo"
             width={36}
             height={36}
-            style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }}
           />
           <span>River of Life</span>
         </div>
@@ -47,6 +47,7 @@ export default function RoleLayout({ role }) {
         <header className="topbar">
           <span>{t(`menu.title.${role}`, { defaultValue: menu.title })}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <ThemeToggle />
             <LanguageSwitcher />
             <strong>{user?.name}</strong>
             <button className="ghost" onClick={doLogout}>{t("common.logout")}</button>
