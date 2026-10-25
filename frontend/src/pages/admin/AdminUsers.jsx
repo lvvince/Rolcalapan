@@ -1,27 +1,41 @@
 // frontend/src/pages/admin/AdminUsers.jsx
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import "../../components/portal.css";
 
 const roles = [
-  { value: "admin", label: "Admin / Pastor" },
-  { value: "staff", label: "Church Staff / Secretary" },
-  { value: "ministry_leader", label: "Ministry Leader" },
-  { value: "member", label: "Member / Congregant / Volunteer" },
+  { value: "admin", label: "Admin / Pastor", short: "Admin", badge: "warn" },
+  { value: "staff", label: "Church Staff / Secretary", short: "Staff", badge: "" },
+  { value: "ministry_leader", label: "Ministry Leader", short: "Ministry Leader", badge: "" },
+  { value: "member", label: "Member / Congregant / Volunteer", short: "Member", badge: "" },
 ];
-const roleLabel = (v) => roles.find((r) => r.value === v)?.label || v;
+const roleOf = (v) => roles.find((r) => r.value === v);
+const validRole = (v) => (roles.some((r) => r.value === v) ? v : "all");
 const empty = { id: null, full_name: "", email: "", role: "member", status: "active", password: "" };
+
+const fmtDate = (d) => {
+  if (!d) return "—";
+  const x = new Date(d);
+  return isNaN(x) ? d : x.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+};
 
 export default function AdminUsers() {
   const { user: me } = useAuth();
-  const [rows, setRows] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [rows, setRows] = useState(null);
   const [form, setForm] = useState(null);
-  const [filter, setFilter] = useState("all");
+  const filter = validRole(searchParams.get("role"));
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const setFilter = (v) => {
+    if (v === "all") setSearchParams({}, { replace: true });
+    else setSearchParams({ role: v }, { replace: true });
+  };
 
   const load = async () => {
     try {
@@ -33,6 +47,13 @@ export default function AdminUsers() {
     }
   };
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!form) return;
+    const onKey = (e) => e.key === "Escape" && setForm(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [form]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -68,60 +89,91 @@ export default function AdminUsers() {
     }
   };
 
-  const shown = rows.filter((r) =>
+  const all = rows || [];
+  const countFor = (v) => (v === "all" ? all.length : all.filter((r) => r.role === v).length);
+  const shown = all.filter((r) =>
     (filter === "all" || r.role === filter) &&
-    (`${r.full_name} ${r.email}`.toLowerCase().includes(search.toLowerCase()))
+    `${r.full_name} ${r.email}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <>
-      <div className="toolbar">
+      <div className="toolbar" style={{ marginTop: 4 }}>
         <h2>Users & Roles</h2>
-        <button className="btn" onClick={() => { setFormError(""); setForm({ ...empty }); }}>+ Add User</button>
+        <button
+          className="btn"
+          onClick={() => {
+            setFormError("");
+            setForm({ ...empty, role: filter === "all" ? "member" : filter });
+          }}
+        >
+          + Add User
+        </button>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-        <input placeholder="Search name or email..." value={search} onChange={(e) => setSearch(e.target.value)}
-          style={{ padding: 8, border: "1px solid #cbd5e1", borderRadius: 6, minWidth: 220 }} />
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}
-          style={{ padding: 8, border: "1px solid #cbd5e1", borderRadius: 6 }}>
-          <option value="all">All roles</option>
-          {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-        </select>
+      <div className="min-toolbar">
+        <input
+          className="min-search"
+          placeholder="Search name or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="min-pills">
+          {[{ value: "all", short: "All" }, ...roles].map((r) => (
+            <button
+              key={r.value}
+              type="button"
+              className={`min-pill ${filter === r.value ? "active" : ""}`}
+              onClick={() => setFilter(r.value)}
+            >
+              {r.short} ({countFor(r.value)})
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && <div className="msg err">{error}</div>}
 
-      {shown.length === 0 ? (
+      {rows === null && !error ? (
+        <p>Loading...</p>
+      ) : shown.length === 0 ? (
         <div className="empty">No users found.</div>
       ) : (
-        <div className="tbl-wrap">
-          <table className="tbl">
-            <thead>
-              <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr>
-            </thead>
-            <tbody>
-              {shown.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.full_name}{u.id === me?.id && <span className="badge" style={{ marginLeft: 6 }}>you</span>}</td>
-                  <td>{u.email}</td>
-                  <td><span className="badge">{roleLabel(u.role)}</span></td>
-                  <td><span className={`badge ${u.status === "active" ? "ok" : "bad"}`}>{u.status}</span></td>
-                  <td>{u.created_at}</td>
-                  <td className="actions">
-                    <button className="btn sm secondary" onClick={() => { setFormError(""); setForm({ ...u, password: "" }); }}>Edit</button>{" "}
-                    {u.id !== me?.id && (
-                      <>
-                        <button className="btn sm secondary" onClick={() => toggle(u)}>{u.status === "active" ? "Deactivate" : "Activate"}</button>{" "}
-                        <button className="btn sm danger" onClick={() => remove(u)}>Delete</button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="min-summary">Showing {shown.length} of {all.length} users</div>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr><th>Name</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr>
+              </thead>
+              <tbody>
+                {shown.map((u) => (
+                  <tr key={u.id}>
+                    <td>
+                      <div style={{ fontWeight: 600, color: "#0f172a" }}>
+                        {u.full_name}
+                        {u.id === me?.id && <span className="badge" style={{ marginLeft: 8 }}>you</span>}
+                      </div>
+                      <div style={{ fontSize: 13, color: "#64748b" }}>{u.email}</div>
+                    </td>
+                    <td><span className={`badge ${roleOf(u.role)?.badge || ""}`}>{roleOf(u.role)?.short || u.role}</span></td>
+                    <td><span className={`badge ${u.status === "active" ? "ok" : "bad"}`}>{u.status}</span></td>
+                    <td>{fmtDate(u.created_at)}</td>
+                    <td className="actions">
+                      <button className="btn sm secondary" onClick={() => { setFormError(""); setForm({ ...u, password: "" }); }}>Edit</button>{" "}
+                      {u.id !== me?.id && (
+                        <>
+                          <button className="btn sm secondary" onClick={() => toggle(u)}>{u.status === "active" ? "Deactivate" : "Activate"}</button>{" "}
+                          <button className="btn sm danger" onClick={() => remove(u)}>Delete</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {form && (
@@ -132,7 +184,7 @@ export default function AdminUsers() {
 
             <div className="field">
               <label>Full name *</label>
-              <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
+              <input autoFocus value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
             </div>
             <div className="field">
               <label>Email *</label>

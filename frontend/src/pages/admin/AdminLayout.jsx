@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthContext";
 import LanguageSwitcher from "../../components/LanguageSwitcher";
+import ThemeToggle from "../../components/ThemeToggle";
 
 const links = [
   { to: "/admin", key: "nav.dashboard", end: true },
@@ -29,7 +30,16 @@ export default function AdminLayout() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">River of Life</div>
+        <div className="brand">
+          {/* Same logo file as RoleLayout (member/staff/ministry) */}
+          <img
+            src="/logo.png"
+            alt="River of Life Calapan logo"
+            width={36}
+            height={36}
+          />
+          <span>River of Life</span>
+        </div>
         <nav>
           {links.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end} className={({ isActive }) => (isActive ? "active" : "")}>
@@ -43,6 +53,7 @@ export default function AdminLayout() {
         <header className="topbar">
           <span>{t("layout.adminPastor")}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <ThemeToggle />
             <LanguageSwitcher />
             <strong>{user?.name}</strong>
             <button className="ghost" onClick={doLogout}>{t("common.logout")}</button>
