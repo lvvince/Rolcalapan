@@ -1,6 +1,21 @@
 // frontend/src/pages/member/MemberHome.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  QrCode,
+  MapPin,
+  Megaphone,
+  CalendarDays,
+  HeartHandshake,
+  Sparkles,
+  HandHeart,
+  User,
+  Globe,
+  Bell,
+  ClipboardCheck,
+  ArrowRight,
+  Clock,
+} from "lucide-react";
 import api from "../../api";
 import { hm } from "../../components/DataPage";
 import "../../components/portal.css";
@@ -9,31 +24,32 @@ const GROUPS = [
   {
     title: "Attendance",
     items: [
-      { to: "/portal/qr", icon: "🔳", name: "My QR Code", desc: "Show your QR code for check-in" },
-      { to: "/portal/checkin", icon: "📍", name: "GPS Check-in", desc: "Check in at off-site events" },
+      { to: "/portal/qr", icon: QrCode, name: "My QR Code", desc: "Show your QR code for check-in" },
+      { to: "/portal/checkin", icon: MapPin, name: "GPS Check-in", desc: "Check in at off-site events" },
     ],
   },
   {
     title: "Church Life",
     items: [
-      { to: "/portal/announcements", icon: "📢", name: "Announcements & Sermons", desc: "Updates, transcripts and summaries" },
-      { to: "/portal/events", icon: "📅", name: "Events & RSVP", desc: "RSVP to upcoming events" },
-      { to: "/portal/ministries", icon: "🙌", name: "Ministries & Groups", desc: "Join ministries and small groups" },
-      { to: "/portal/recommended", icon: "✨", name: "Recommended", desc: "Ministries picked for you" },
-      { to: "/portal/prayers", icon: "🙏", name: "Prayer Requests", desc: "Submit a prayer request" },
+      { to: "/portal/announcements", icon: Megaphone, name: "Announcements & Sermons", desc: "Updates, transcripts and summaries" },
+      { to: "/portal/events", icon: CalendarDays, name: "Events & RSVP", desc: "RSVP to upcoming events" },
+      { to: "/portal/ministries", icon: HeartHandshake, name: "Ministries & Groups", desc: "Join ministries and small groups" },
+      { to: "/portal/recommended", icon: Sparkles, name: "Recommended", desc: "Ministries picked for you" },
+      { to: "/portal/prayers", icon: HandHeart, name: "Prayer Requests", desc: "Submit a prayer request" },
     ],
   },
   {
     title: "Account",
     items: [
-      { to: "/portal/profile", icon: "👤", name: "My Profile", desc: "Update your personal information" },
-      { to: "/portal/language", icon: "🌐", name: "Language", desc: "Choose preferred language" },
-      { to: "/portal/notifications", icon: "🔔", name: "Notifications", desc: "View your notifications" },
+      { to: "/portal/profile", icon: User, name: "My Profile", desc: "Update your personal information" },
+      { to: "/portal/language", icon: Globe, name: "Language", desc: "Choose preferred language" },
+      { to: "/portal/notifications", icon: Bell, name: "Notifications", desc: "View your notifications" },
     ],
   },
 ];
 
-const STAT_ICONS = ["🙌", "✅", "📅"];
+// Pareho ang pagkakasunod sa dati: ministries, attendance, events
+const STAT_ICONS = [HeartHandshake, ClipboardCheck, CalendarDays];
 
 const greeting = () => {
   // Oras sa Pilipinas, kahit iba ang timezone ng device
@@ -91,26 +107,35 @@ export default function MemberHome() {
           <h2>{name}</h2>
           {member?.member_code && <span className="dash-code">{member.member_code}</span>}
         </div>
-        <Link to="/portal/qr" className="dash-hero-btn">Show my QR</Link>
+        <Link to="/portal/qr" className="dash-hero-btn">
+          <QrCode size={16} aria-hidden="true" /> Show my QR
+        </Link>
       </div>
 
       {/* Stats */}
       <div className="dash-stats">
-        {stats.map((s, i) => (
-          <div className="dash-stat" key={s.label}>
-            <div className="dash-stat-icon">{STAT_ICONS[i % STAT_ICONS.length]}</div>
-            <div>
-              <strong>{s.value}</strong>
-              <span>{s.label}</span>
+        {stats.map((s, i) => {
+          const Icon = STAT_ICONS[i % STAT_ICONS.length];
+          return (
+            <div className="dash-stat" key={s.label}>
+              <div className="dash-stat-icon">
+                <Icon size={22} aria-hidden="true" />
+              </div>
+              <div>
+                <strong>{s.value}</strong>
+                <span>{s.label}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Upcoming events */}
       <div className="dash-section-head">
         <h3>Upcoming Events</h3>
-        <Link to="/portal/events">View all</Link>
+        <Link to="/portal/events" className="dash-viewall">
+          View all <ArrowRight size={14} aria-hidden="true" />
+        </Link>
       </div>
       {events.length === 0 ? (
         <div className="dash-empty">No upcoming events yet.</div>
@@ -126,9 +151,16 @@ export default function MemberHome() {
                 </div>
                 <div className="dash-event-body">
                   <h4>{e.title}</h4>
-                  <p>
-                    {e.start_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : "All day"}
-                    {e.location ? ` · ${e.location}` : ""}
+                  <p className="dash-event-meta">
+                    <span>
+                      <Clock size={13} aria-hidden="true" />{" "}
+                      {e.start_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : "All day"}
+                    </span>
+                    {e.location && (
+                      <span>
+                        <MapPin size={13} aria-hidden="true" /> {e.location}
+                      </span>
+                    )}
                   </p>
                 </div>
                 {e.event_type === "outside" && <span className="badge warn">Off-site</span>}
@@ -143,15 +175,20 @@ export default function MemberHome() {
         <div key={g.title}>
           <div className="dash-section-head"><h3>{g.title}</h3></div>
           <div className="dash-actions">
-            {g.items.map((it) => (
-              <Link to={it.to} className="dash-action" key={it.to}>
-                <span className="dash-action-icon">{it.icon}</span>
-                <div>
-                  <strong>{it.name}</strong>
-                  <p>{it.desc}</p>
-                </div>
-              </Link>
-            ))}
+            {g.items.map((it) => {
+              const Icon = it.icon;
+              return (
+                <Link to={it.to} className="dash-action" key={it.to}>
+                  <span className="dash-action-icon">
+                    <Icon size={22} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <strong>{it.name}</strong>
+                    <p>{it.desc}</p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       ))}

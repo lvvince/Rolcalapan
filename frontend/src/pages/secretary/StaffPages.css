@@ -1,0 +1,97 @@
+/* ---------- Page header ---------- */
+.sp-head { display: flex; align-items: center; gap: 14px; margin: 4px 0 18px; }
+.sp-head h2 { margin: 0; font-size: 1.4rem; color: var(--text, #0f172a); }
+.sp-head p { margin: 2px 0 0; color: var(--muted, #64748b); font-size: 0.9rem; }
+.sp-head-icon, .sp-tile {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none; border-radius: 12px;
+  background: rgba(14, 116, 144, 0.12); color: var(--brand, #0e7490);
+}
+.sp-head-icon { width: 46px; height: 46px; }
+.sp-tile { width: 40px; height: 40px; }
+
+/* ---------- Cards ---------- */
+.sp-card {
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.sp-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.sp-card-head h4, .sp-card-title { margin: 0; font-size: 1rem; color: var(--text, #0f172a); }
+.sp-card-head p { margin: 2px 0 0; color: var(--muted, #64748b); font-size: 0.85rem; }
+.sp-card-title { margin-bottom: 12px; }
+
+.sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.sp-grid > .sp-card { margin-bottom: 0; }
+
+/* ---------- Forms ---------- */
+.sp-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.sp-field { display: flex; flex-direction: column; gap: 6px; }
+.sp-field.grow { flex: 1 1 180px; }
+.sp-field label { font-size: 0.8rem; font-weight: 600; color: var(--muted, #475569); }
+.sp-field input, .sp-field select {
+  padding: 10px 12px; border-radius: 10px; font: inherit;
+  border: 1px solid var(--border, #cbd5e1);
+  background: var(--card, #fff); color: var(--text, #0f172a);
+}
+.sp-field input:focus, .sp-field select:focus {
+  outline: 2px solid rgba(14, 116, 144, 0.35); border-color: var(--brand, #0e7490);
+}
+
+.sp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.sp-row .sp-actions { margin-top: 0; }
+.sp-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border, #cbd5e1);
+  background: var(--card, #fff); color: var(--text, #0f172a);
+}
+.sp-btn:hover { background: rgba(14, 116, 144, 0.08); }
+.sp-btn.primary { background: var(--brand, #0e7490); border-color: var(--brand, #0e7490); color: #fff; }
+.sp-btn.primary:hover { filter: brightness(1.08); }
+
+.sp-camera { margin-top: 14px; }
+
+/* ---------- Notices / empty ---------- */
+.sp-notice {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 10px; margin: 12px 0; font-size: 0.9rem;
+}
+.sp-notice.ok { background: rgba(22, 163, 74, 0.12); color: #15803d; }
+.sp-notice.err { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+
+.sp-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  padding: 36px 16px; border: 1px dashed var(--border, #cbd5e1); border-radius: 14px;
+  color: var(--muted, #64748b);
+}
+.sp-empty strong { color: var(--text, #0f172a); }
+.sp-muted { color: var(--muted, #64748b); }
+
+/* ---------- Reports ---------- */
+.sp-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+.sp-summary .sp-btn { margin-left: auto; }
+.sp-pill {
+  display: flex; flex-direction: column; padding: 10px 16px; border-radius: 12px;
+  background: var(--card, #fff); border: 1px solid var(--border, #e2e8f0);
+}
+.sp-pill strong { font-size: 1.3rem; color: var(--brand, #0e7490); line-height: 1.1; }
+.sp-pill span { font-size: 0.8rem; color: var(--muted, #64748b); }
+
+.sp-bars { display: flex; flex-direction: column; gap: 10px; }
+.sp-bar-row { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; gap: 10px; font-size: 0.88rem; }
+.sp-bar-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted, #475569); }
+.sp-bar-track { height: 10px; border-radius: 999px; background: rgba(148, 163, 184, 0.25); overflow: hidden; }
+.sp-bar-track i { display: block; height: 100%; border-radius: 999px; background: var(--brand, #0e7490); }
+
+/* ---------- Secretary home: 5 stat cards ---------- */
+.dsh .staff-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1280px) { .dsh .staff-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px)  { .dsh .staff-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+@media print {
+  .sp-card { box-shadow: none; break-inside: avoid; }
+}

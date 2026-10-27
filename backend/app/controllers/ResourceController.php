@@ -5,8 +5,12 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
  * backend/app/controllers/ResourceController.php
  * Generic CRUD na may role permissions.
  *   GET  /api/resource?name=members
- *   POST /api/resource/save    {name, id?, ...fields}
- *   POST /api/resource/delete  {name, id}
+ *   POST /api/resource/save    {resource, id?, ...fields}
+ *   POST /api/resource/delete  {resource, id}
+ *
+ * FIX: ang resource name ay galing na sa "resource" (body) o sa query string
+ * (?resource= / ?name=), hindi na sa body "name", para hindi mag-collide
+ * sa "name" field ng ministries.
  */
 class ResourceController extends Controller
 {
@@ -34,6 +38,19 @@ class ResourceController extends Controller
     private function input()
     {
         return json_decode(file_get_contents('php://input'), true) ?: [];
+    }
+
+    /**
+     * Alamin kung anong resource ang tinutukoy.
+     * Priority: body.resource > query ?resource > query ?name > body.name (kung valid resource lang)
+     */
+    private function res_name($in = [])
+    {
+        if (!empty($in['resource']) && is_string($in['resource'])) return $in['resource'];
+        if (!empty($_GET['resource'])) return (string)$_GET['resource'];
+        if (!empty($_GET['name']))     return (string)$_GET['name'];
+        if (!empty($in['name']) && is_string($in['name']) && isset($this->R[$in['name']])) return $in['name'];
+        return '';
     }
 
     private function config()
@@ -178,7 +195,7 @@ class ResourceController extends Controller
 
     private function cfg($name)
     {
-        if (!isset($this->R[$name])) $this->out(['error' => 'Unknown resource'], 404);
+        if (!$name || !isset($this->R[$name])) $this->out(['error' => 'Unknown resource'], 404);
         return $this->R[$name];
     }
 
@@ -215,7 +232,7 @@ class ResourceController extends Controller
     // ---------------------------------------------------------------- READ
     public function index()
     {
-        $name = $_GET['name'] ?? '';
+        $name = $this->res_name();
         $c    = $this->cfg($name);
         $role = $this->u['role'];
         $rows = $this->all($c['table']);
@@ -281,7 +298,7 @@ class ResourceController extends Controller
     public function save()
     {
         $in   = $this->input();
-        $name = $in['name'] ?? '';
+        $name = $this->res_name($in);
         $c    = $this->cfg($name);
         $role = $this->u['role'];
         $id   = !empty($in['id']) ? (int)$in['id'] : null;
@@ -404,10 +421,15 @@ class ResourceController extends Controller
     public function delete()
     {
         $in   = $this->input();
-        $c    = $this->cfg($in['name'] ?? '');
+        $c    = $this->cfg($this->res_name($in));
         $role = $this->u['role'];
         $id   = (int)($in['id'] ?? 0);
         if (!$id) $this->out(['error' => 'id required'], 422);
+
+        // Secretary (staff) ay hindi pwedeng mag-delete ng kahit anong record.
+        if ($role === 'staff') {
+            $this->out(['error' => 'Secretary cannot delete records'], 403);
+        }
 
         if (!in_array($role, $c['write'], true)) {
             if ($role === 'ministry_leader' && !empty($c['leader_write'])) {

@@ -58,7 +58,9 @@ export default function DataPage({
     setFormError("");
     setSaving(true);
     try {
-      await api.post("/resource/save", { name: resource, ...form });
+      // FIX: "resource" ang ginagamit (nasa dulo) para hindi ma-override
+      // ng "name" field ng form (hal. ministries.name).
+      await api.post("/resource/save", { ...form, resource });
       setForm(null);
       load();
     } catch (err) {
@@ -71,7 +73,7 @@ export default function DataPage({
   const remove = async (id) => {
     if (!confirm("Delete this record?")) return;
     try {
-      await api.post("/resource/delete", { name: resource, id });
+      await api.post("/resource/delete", { resource, id });
       load();
     } catch (err) {
       setError(err.response?.data?.error || "Failed to delete");

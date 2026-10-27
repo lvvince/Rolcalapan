@@ -12,6 +12,13 @@ class TranslateController extends Controller
 {
     private $langs = ['tl' => 'Tagalog', 'ceb' => 'Cebuano', 'ilo' => 'Ilocano'];
 
+    // Gabay sa istilo at salitang gagamitin ng AI kada wika
+    private $style = [
+        'tl' => "Use natural, modern, conversational Filipino like Philippine mobile apps and church communities (light Taglish is fine). Do NOT use deep, archaic or overly literal Tagalog. Keep common English UI terms as they are: Profile, QR Code, GPS, Check-in, RSVP, Dashboard, Login, Logout, Event, Email, Password. Glossary: Prayer Requests = Mga Kahilingan sa Panalangin; Ministries = Mga Ministeryo; Sermons = Mga Sermon; Announcements = Mga Anunsyo; Events = Mga Event; Giving = Pagbibigay; Members = Mga Miyembro; Language = Wika; Save = I-save; Cancel = Kanselahin; Notifications = Mga Abiso.",
+        'ceb' => "Use natural, everyday Cebuano (Bisaya) as spoken in the Philippines: simple, respectful, not overly formal. Keep common English UI terms as they are: Profile, QR Code, GPS, Check-in, RSVP, Dashboard, Login, Logout, Email, Password. Glossary: Prayer Requests = Mga Hangyo sa Pag-ampo; Ministries = Mga Ministeryo; Sermons = Mga Sermon; Announcements = Mga Pahibalo; Events = Mga Kalihokan; Giving = Paghatag; Members = Mga Miyembro; Save = I-save.",
+        'ilo' => "Use natural, everyday Ilocano as spoken in the Philippines: simple and respectful. Keep common English UI terms as they are: Profile, QR Code, GPS, Check-in, RSVP, Dashboard, Login, Logout, Event, Email, Password. Glossary: Prayer Requests = Dagiti Dawat a Kararag; Announcements = Dagiti Pakaammo; Members = Dagiti Miembro; Language = Pagsasao. If you are not sure of the correct Ilocano word, keep the common English term instead of inventing one.",
+    ];
+
     const CHUNK = 8;
 
     public function __construct()
@@ -91,7 +98,7 @@ class TranslateController extends Controller
             $gotAny   = false;
 
             foreach (array_chunk($missing, self::CHUNK) as $chunk) {
-                $res = $this->translateChunk($ai, $chunk, $this->langs[$lang]);
+                $res = $this->translateChunk($ai, $chunk, $lang);
                 if (!$res['ok']) {
                     $lastErr = $res['error'];
                     continue; // subukan ang susunod na chunk
@@ -125,16 +132,16 @@ class TranslateController extends Controller
     }
 
     // Kapag pumalya ang chunk, hatiin sa dalawa at subukan ulit (isang beses)
-    private function translateChunk($ai, array $chunk, $langName, $depth = 0)
+    private function translateChunk($ai, array $chunk, $lang, $depth = 0)
     {
-        $res = $this->aiTranslate($ai, $chunk, $langName);
+        $res = $this->aiTranslate($ai, $chunk, $lang);
         if ($res['ok'] || $depth >= 1 || count($chunk) < 2) {
             return $res;
         }
 
         $half = (int) ceil(count($chunk) / 2);
-        $a = $this->translateChunk($ai, array_slice($chunk, 0, $half), $langName, $depth + 1);
-        $b = $this->translateChunk($ai, array_slice($chunk, $half), $langName, $depth + 1);
+        $a = $this->translateChunk($ai, array_slice($chunk, 0, $half), $lang, $depth + 1);
+        $b = $this->translateChunk($ai, array_slice($chunk, $half), $lang, $depth + 1);
 
         if (!$a['ok'] && !$b['ok']) {
             return $a;
@@ -153,19 +160,24 @@ class TranslateController extends Controller
         return ['ok' => true, 'data' => $data];
     }
 
-    private function aiTranslate($ai, array $items, $langName)
+    private function aiTranslate($ai, array $items, $lang)
     {
+        $langName = $this->langs[$lang];
         $payload = [];
         foreach ($items as $i => $text) {
             $payload[(string) $i] = $text;
         }
 
-        $system = "You translate website text for a church website from English to {$langName}. "
+        $system = "You are a professional translator localizing a church management web app "
+            . "(River of Life Calapan) from English to {$langName}. The strings are UI labels, buttons, "
+            . "menus, short descriptions and announcements. Translate by meaning, not word for word, "
+            . "so it reads naturally to a native speaker. "
+            . $this->style[$lang] . " "
             . "The user message is a JSON object: keys are ids, values are English strings. "
-            . "Return ONLY a JSON object with the SAME keys and each value translated to {$langName}. "
-            . "Keep placeholders like {name} and {{name}}, HTML tags, numbers, dates, URLs, emails and "
-            . "proper names (River of Life, Alvin Jester Culla) unchanged. Use natural, respectful wording. "
-            . "No explanations, no markdown, no code fences.";
+            . "Return ONLY a JSON object with the SAME keys and each value translated. "
+            . "Keep placeholders like {name} and {{name}}, HTML tags, numbers, dates, times, URLs, emails "
+            . "and proper names (River of Life, Alvin Jester Culla) unchanged. Keep the same tone and length "
+            . "(short labels stay short). No explanations, no markdown, no code fences.";
 
         $errors = [];
         $result = $ai->ask_with_fallback(

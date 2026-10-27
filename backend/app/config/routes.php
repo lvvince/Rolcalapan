@@ -43,83 +43,99 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 |
 */
 /** @var object $router **/
+
 /*
 |--------------------------------------------------------------------------
 | WELCOME PAGE
 |--------------------------------------------------------------------------
 */
 $router->get('/', 'Welcome::index');
+
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATION
 |--------------------------------------------------------------------------
 */
-// Login
-$router->post('/api/auth/login', 'AuthController::login');
-// Current logged-in user
-$router->get('/api/auth/me', 'AuthController::me');
-// Member registration
-$router->post('/api/auth/register', 'AuthController::register');
-// Email verification
-$router->get('/api/auth/verify-email', 'AuthController::verify_email');
-// Forgot password
-$router->post('/api/auth/forgot', 'AuthController::forgot');
-// Reset password
-$router->post('/api/auth/reset', 'AuthController::reset');
+$router->post('/api/auth/login',        'AuthController::login');
+$router->get( '/api/auth/me',           'AuthController::me');
+$router->post('/api/auth/register',     'AuthController::register');
+$router->get( '/api/auth/verify-email', 'AuthController::verify_email');
+$router->post('/api/auth/forgot',       'AuthController::forgot');
+$router->post('/api/auth/reset',        'AuthController::reset');
+
+// My Profile (admin / lahat ng roles): update info, change password, photo
+$router->put(   '/api/auth/me',          'AuthController::update_me');
+$router->put(   '/api/auth/me/password', 'AuthController::change_password');
+$router->post(  '/api/auth/me/photo',    'AuthController::upload_photo');
+$router->delete('/api/auth/me/photo',    'AuthController::remove_photo');
+$router->get('/api/avatar', 'AuthController::avatar');
 /*
 |--------------------------------------------------------------------------
 | ADMIN / PASTOR
 |--------------------------------------------------------------------------
 */
-$router->get('/api/admin/stats', 'AdminController::stats');
-$router->get('/api/admin/users', 'AdminController::users_list');
-$router->post('/api/admin/users/save', 'AdminController::user_save');
+$router->get( '/api/admin/stats',        'AdminController::stats');
+$router->get( '/api/admin/users',        'AdminController::users_list');
+$router->post('/api/admin/users/save',   'AdminController::user_save');
 $router->post('/api/admin/users/delete', 'AdminController::user_delete');
+
+/*
+|--------------------------------------------------------------------------
+| GENERIC RESOURCE (members, ministries, events, giving, etc.)
+|--------------------------------------------------------------------------
+| GET  /api/resource?name=ministries
+| POST /api/resource/save    {resource: 'ministries', id?, ...fields}
+| POST /api/resource/delete  {resource: 'ministries', id}
+*/
+$router->get( '/api/resource',        'ResourceController::index');
+$router->post('/api/resource/save',   'ResourceController::save');
+$router->post('/api/resource/delete', 'ResourceController::delete');
+
 /*
 |--------------------------------------------------------------------------
 | CHATBOT
 |--------------------------------------------------------------------------
 */
-// Chatbot (admin KB + ask)
-$router->post('/api/chatbot/ask',        'ChatbotController::ask');
-$router->get( '/api/chatbot/kb',         'ChatbotController::kb_list');
-$router->post('/api/chatbot/kb',         'ChatbotController::kb_save');
-$router->post('/api/chatbot/kb/delete',  'ChatbotController::kb_delete');
+// Admin knowledge base + ask
+$router->post('/api/chatbot/ask',       'ChatbotController::ask');
+$router->get( '/api/chatbot/kb',        'ChatbotController::kb_list');
+$router->post('/api/chatbot/kb',        'ChatbotController::kb_save');
+$router->post('/api/chatbot/kb/delete', 'ChatbotController::kb_delete');
 
-// Floating chatbot widget (RAG)
-$router->post('/api/chat',               'ChatbotController::ask');
+// Floating chatbot widget (RAG) - ChatbotController na ang gamit (FIXED)
+$router->post('/api/chat',              'ChatbotController::ask');
 
-// Auto-translate (tl, ceb, ilo)
-$router->post('/api/translate',          'TranslateController::batch');
 /*
 |--------------------------------------------------------------------------
-| GENERIC RESOURCE
+| AUTO-TRANSLATE (tl, ceb, ilo)
 |--------------------------------------------------------------------------
 */
-$router->get('/api/resource', 'ResourceController::index');
-$router->post('/api/resource/save', 'ResourceController::save');
-$router->post('/api/resource/delete', 'ResourceController::delete');
+$router->post('/api/translate', 'TranslateController::batch');
+
 /*
 |--------------------------------------------------------------------------
-| PORTAL
+| PORTAL (Member / Congregant)
 |--------------------------------------------------------------------------
 */
-// Member profile
-$router->get('/api/portal/me', 'PortalController::me');
-$router->post('/api/portal/me', 'PortalController::me_update');
+// Profile
+$router->get( '/api/portal/me',         'PortalController::me');
+$router->post('/api/portal/me',         'PortalController::me_update');
 $router->post('/api/portal/me/picture', 'PortalController::me_picture');
+
 // Dashboard overview
 $router->get('/api/portal/overview', 'PortalController::overview');
+
 // Ministries
-$router->get('/api/portal/ministries', 'PortalController::ministries');
-$router->post('/api/portal/join', 'PortalController::join');
-$router->post('/api/portal/leave', 'PortalController::leave');
-$router->get('/api/portal/recommended', 'PortalController::recommended');
+$router->get( '/api/portal/ministries',   'PortalController::ministries');
+$router->post('/api/portal/join',         'PortalController::join');
+$router->post('/api/portal/leave',        'PortalController::leave');
+$router->get( '/api/portal/recommended',  'PortalController::recommended');
+
 // Attendance (QR / code check-in, ginagamit din ng camera scanner)
 $router->post('/api/portal/checkin', 'PortalController::checkin');
+
 // Reports
 $router->get('/api/portal/reports', 'PortalController::reports');
+
 // Notifications
 $router->get('/api/portal/notifications', 'PortalController::my_notifications');
-
-$router->post('/api/chat', 'ChatController::ask');

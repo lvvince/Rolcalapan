@@ -1,4 +1,6 @@
+// frontend/src/components/ProfilePicture.jsx
 import { useRef, useState } from "react";
+import { Camera, User } from "lucide-react";
 import api from "../api";
 
 const resize = (file, size = 256) =>
@@ -16,14 +18,17 @@ const resize = (file, size = 256) =>
       URL.revokeObjectURL(url);
       resolve(c.toDataURL("image/jpeg", 0.85));
     };
-    img.onerror = () => reject(new Error("Invalid image file"));
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Invalid image file"));
+    };
     img.src = url;
   });
 
 const initialsOf = (name = "") =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 
-// Optional new prop: `name` (shows initials when there is no photo)
+// Optional prop: `name` (shows initials when there is no photo)
 export default function ProfilePicture({ currentPic, onUploaded, name = "" }) {
   const inputRef = useRef(null);
   const [preview, setPreview] = useState(null);
@@ -66,18 +71,35 @@ export default function ProfilePicture({ currentPic, onUploaded, name = "" }) {
 
   return (
     <div className="pfp">
-      <button type="button" className="pfp-ring" onClick={pick} aria-label="Change profile photo" disabled={loading}>
+      <button
+        type="button"
+        className="pfp-ring"
+        onClick={pick}
+        aria-label="Change profile photo"
+        disabled={loading}
+      >
         <span className="pfp-avatar">
           {src ? (
             <img src={src} alt="Profile" />
           ) : (
-            <span className="pfp-placeholder">{initials || "👤"}</span>
+            <span className="pfp-placeholder">
+              {initials || <User size={44} aria-hidden="true" />}
+            </span>
           )}
           <span className={`pfp-overlay ${loading ? "show" : ""}`}>
-            {loading ? <span className="pfp-spinner" /> : <>📷<small>Change</small></>}
+            {loading ? (
+              <span className="pfp-spinner" />
+            ) : (
+              <>
+                <Camera size={22} aria-hidden="true" />
+                <small>Change</small>
+              </>
+            )}
           </span>
         </span>
-        <span className="pfp-badge" aria-hidden="true">📷</span>
+        <span className="pfp-badge" aria-hidden="true">
+          <Camera size={14} />
+        </span>
       </button>
 
       <input

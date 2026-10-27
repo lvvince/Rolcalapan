@@ -3,7 +3,8 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
 /**
  * backend/app/controllers/AuthController.php
- * Login, Register (member lang), Forgot password, Reset password.
+ * Login, Register (member lang), Verify email, Forgot/Reset password,
+ * My profile (update, change password, photo upload/remove).
  */
 class AuthController extends Controller
 {
@@ -13,12 +14,14 @@ class AuthController extends Controller
         date_default_timezone_set('Asia/Manila');
         $this->call->database();
         $this->call->helper('jwt');
-        header('Content-Type: application/json');
+        // Huwag i-force ang JSON header dito, kasi image ang sagot ng avatar().
+        // Ang out() na ang nagse-set ng JSON header.
     }
 
     private function out($data, $code = 200)
     {
         http_response_code($code);
+        header('Content-Type: application/json');
         echo json_encode($data);
         exit;
     }
@@ -34,217 +37,382 @@ class AuthController extends Controller
         return in_array($host, ['localhost', '127.0.0.1'], true);
     }
 
+    // Standard user shape na ibinabalik sa frontend
+    private function user_payload($row)
+    {
+        return [
+            'id'    => (int) $row['id'],
+            'name'  => $row['full_name'],
+            'email' => $row['email'],
+            'role'  => $row['role'],
+            'phone' => $row['phone'] ?? '',
+            'photo' => $row['photo'] ?? null,
+        ];
+    }
+
     // ------------------------------------------------------------- LOGIN
     public function login()
-{
-    $in    = $this->input();
-    $email = strtolower(trim($in['email'] ?? ''));
-    $pass  = $in['password'] ?? '';
+    {
+        $in    = $this->input();
+        $email = strtolower(trim($in['email'] ?? ''));
+        $pass  = $in['password'] ?? '';
 
-    if ($email === '' || $pass === '') {
-        $this->out(['error' => 'Email and password are required'], 422);
-    }
+        if ($email === '' || $pass === '') {
+            $this->out(['error' => 'Email and password are required'], 422);
+        }
 
-    $user = $this->db->table('users')->where('email', $email)->get();
+        $user = $this->db->table('users')->where('email', $email)->get();
 
-    if (!$user || !password_verify($pass, $user['password'])) {
-        $this->out(['error' => 'Invalid email or password'], 401);
-    }
-    if ($user['status'] !== 'active') {
-        $this->out(['error' => 'Account is inactive'], 403);
-    }
-    if ((int) $user['email_verified'] !== 1) {
-        $this->out(['error' => 'Please verify your email before logging in.'], 403);
-    }
+        if (!$user || !password_verify($pass, $user['password'])) {
+            $this->out(['error' => 'Invalid email or password'], 401);
+        }
+        if ($user['status'] !== 'active') {
+            $this->out(['error' => 'Account is inactive'], 403);
+        }
+        if ((int) $user['email_verified'] !== 1) {
+            $this->out(['error' => 'Please verify your email before logging in.'], 403);
+        }
 
-    $token = jwt_encode([
-        'id'    => (int)$user['id'],
-        'name'  => $user['full_name'],
-        'email' => $user['email'],
-        'role'  => $user['role'],
-    ]);
-
-    $this->out([
-        'token' => $token,
-        'user'  => [
-            'id'    => (int)$user['id'],
+        $token = jwt_encode([
+            'id'    => (int) $user['id'],
             'name'  => $user['full_name'],
             'email' => $user['email'],
             'role'  => $user['role'],
-        ],
-    ]);
-}
+        ]);
+
+        $this->out([
+            'token' => $token,
+            'user'  => $this->user_payload($user),
+        ]);
+    }
+
+    // ---------------------------------------------------------------- ME
     public function me()
     {
+        $u   = require_auth();
+        $row = $this->db->table('users')->where('id', $u['id'])->get();
+        if (!$row) $this->out(['error' => 'User not found'], 404);
+
+        $this->out(['user' => $this->user_payload($row)]);
+    }
+
+    // ------------------------------------------------------ UPDATE PROFILE
+    public function update_me()
+    {
+        $u     = require_auth();
+        $in    = $this->input();
+        $name  = trim($in['full_name'] ?? '');
+        $email = strtolower(trim($in['email'] ?? ''));
+        $phone = trim($in['phone'] ?? '');
+
+        if ($name === '') $this->out(['error' => 'Full name is required'], 422);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->out(['error' => 'A valid email is required'], 422);
+        }
+        if ($phone !== '' && !preg_match('/^\d{11}$/', $phone)) {
+            $this->out(['error' => 'Phone must be exactly 11 digits'], 422);
+        }
+
+        $dup = $this->db->table('users')->where('email', $email)->get();
+        if ($dup && (int) $dup['id'] !== (int) $u['id']) {
+            $this->out(['error' => 'This email is already used by another account'], 409);
+        }
+
+        $this->db->table('users')->where('id', $u['id'])->update([
+            'full_name' => $name,
+            'email'     => $email,
+            'phone'     => $phone,
+        ]);
+
+        // Sync sa linked member record (kung meron)
+        $this->db->table('members')->where('user_id', $u['id'])->update([
+            'full_name' => $name,
+            'email'     => $email,
+            'phone'     => $phone,
+        ]);
+
+        $row = $this->db->table('users')->where('id', $u['id'])->get();
+        $this->out(['success' => true, 'user' => $this->user_payload($row)]);
+    }
+
+    // ----------------------------------------------------- CHANGE PASSWORD
+    public function change_password()
+    {
+        $u    = require_auth();
+        $in   = $this->input();
+        $cur  = $in['current_password'] ?? '';
+        $next = $in['new_password'] ?? '';
+
+        if ($cur === '' || $next === '') {
+            $this->out(['error' => 'All fields are required'], 422);
+        }
+        if (strlen($next) < 6) {
+            $this->out(['error' => 'New password must be at least 6 characters'], 422);
+        }
+
+        $row = $this->db->table('users')->where('id', $u['id'])->get();
+        if (!$row || !password_verify($cur, $row['password'])) {
+            $this->out(['error' => 'Current password is incorrect'], 400);
+        }
+        if (password_verify($next, $row['password'])) {
+            $this->out(['error' => 'New password must be different from the current one'], 422);
+        }
+
+        $this->db->table('users')->where('id', $u['id'])->update([
+            'password' => password_hash($next, PASSWORD_BCRYPT),
+        ]);
+
+        $this->out(['success' => true, 'message' => 'Password changed']);
+    }
+
+    // --------------------------------------------------------- PHOTO UPLOAD
+    private function avatar_dir()
+    {
+        $dir = dirname(__DIR__, 2) . '/public/uploads/avatars/';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        return $dir;
+    }
+
+    public function upload_photo()
+    {
         $u = require_auth();
-        $this->out(['user' => [
-            'id' => $u['id'], 'name' => $u['name'], 'email' => $u['email'], 'role' => $u['role'],
-        ]]);
+
+        if (empty($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+            $this->out(['error' => 'No file uploaded or upload failed'], 422);
+        }
+        $f = $_FILES['photo'];
+
+        if ($f['size'] > 2 * 1024 * 1024) {
+            $this->out(['error' => 'Max 2MB lang'], 422);
+        }
+
+        $finfo   = new finfo(FILEINFO_MIME_TYPE);
+        $mime    = $finfo->file($f['tmp_name']);
+        $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!isset($allowed[$mime])) {
+            $this->out(['error' => 'JPG, PNG, o WEBP lang'], 422);
+        }
+
+        $name = 'u' . (int) $u['id'] . '_' . bin2hex(random_bytes(6)) . '.' . $allowed[$mime];
+        $dir  = $this->avatar_dir();
+
+        if (!move_uploaded_file($f['tmp_name'], $dir . $name)) {
+            $this->out(['error' => 'Unable to save the file'], 500);
+        }
+
+        // Burahin yung lumang photo
+        $row = $this->db->table('users')->where('id', $u['id'])->get();
+        if (!empty($row['photo']) && is_file($dir . basename($row['photo']))) {
+            @unlink($dir . basename($row['photo']));
+        }
+
+        $this->db->table('users')->where('id', $u['id'])->update(['photo' => $name]);
+        $this->out(['success' => true, 'photo' => $name]);
+    }
+
+    public function remove_photo()
+    {
+        $u   = require_auth();
+        $row = $this->db->table('users')->where('id', $u['id'])->get();
+        $dir = $this->avatar_dir();
+
+        if (!empty($row['photo']) && is_file($dir . basename($row['photo']))) {
+            @unlink($dir . basename($row['photo']));
+        }
+
+        $this->db->table('users')->where('id', $u['id'])->update(['photo' => null]);
+        $this->out(['success' => true]);
+    }
+
+    // Public: nagse-serve ng image para gumana sa <img> at sa Vite proxy (/api)
+        public function avatar()
+    {
+        $file = basename($_GET['f'] ?? '');
+        $path = $this->avatar_dir() . $file;
+
+        if (!preg_match('/^[A-Za-z0-9_]+\.(jpg|png|webp)$/', $file) || !is_file($path)) {
+            http_response_code(404);
+            exit;
+        }
+
+        $types = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
+        header('Content-Type: ' . $types[pathinfo($file, PATHINFO_EXTENSION)]);
+        header('Cache-Control: public, max-age=86400');
+        readfile($path);
+        exit;
     }
 
     // ---------------------------------------------------------- REGISTER
     // Member lang ang pwedeng mag-register. Ang ibang role ay si Admin ang gagawa.
-public function register()
-{
-    $in    = $this->input();
-    $name  = trim($in['full_name'] ?? '');
-    $email = strtolower(trim($in['email'] ?? ''));
-    $pass  = $in['password'] ?? '';
-    $phone = trim($in['phone'] ?? '');
+    public function register()
+    {
+        $in    = $this->input();
+        $name  = trim($in['full_name'] ?? '');
+        $email = strtolower(trim($in['email'] ?? ''));
+        $pass  = $in['password'] ?? '';
+        $phone = trim($in['phone'] ?? '');
 
-    if ($name === '') {
-        $this->out(['error' => 'Full name is required'], 422);
-    }
-
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $this->out(['error' => 'A valid email is required'], 422);
-    }
-
-    if (!preg_match('/^\d{11}$/', $phone)) {
-        $this->out(['error' => 'Phone number is required and must be exactly 11 digits.'], 422);
-    }
-
-    if (strlen($pass) < 6) {
-        $this->out(['error' => 'Password must be at least 6 characters'], 422);
-    }
-
-    if ($this->db->table('users')->where('email', $email)->get()) {
-        $this->out(['error' => 'This email is already registered'], 409);
-    }
-
-    // Gumawa ng secure verification token.
-    $token = bin2hex(random_bytes(32));
-
-    $this->db->table('users')->insert([
-        'full_name'                       => $name,
-        'email'                            => $email,
-        'password'                         => password_hash($pass, PASSWORD_BCRYPT),
-        'role'                             => 'member',
-        'status'                           => 'active',
-        'email_verified'                   => 0,
-        'email_verification_token_hash'    => hash('sha256', $token),
-        'email_verification_expires_at'    => date('Y-m-d H:i:s', time() + 3600),
-    ]);
-
-    $user = $this->db->table('users')->where('email', $email)->get();
-
-    if (!$user) {
-        $this->out(['error' => 'Unable to create the account'], 500);
-    }
-
-    // I-link sa existing member record kung wala pang user_id.
-    $m = $this->db->table('members')->where('email', $email)->get();
-
-    if ($m && empty($m['user_id'])) {
-        $update = ['user_id' => $user['id']];
-        if (empty($m['phone'])) {
-            $update['phone'] = $phone;
+        if ($name === '') {
+            $this->out(['error' => 'Full name is required'], 422);
         }
-        $this->db->table('members')
-            ->where('id', $m['id'])
-            ->update($update);
-    } elseif (!$m) {
-        $this->db->table('members')->insert([
-            'user_id'     => $user['id'],
-            'member_code' => 'ROL-' . strtoupper(bin2hex(random_bytes(3))),
-            'full_name'   => $name,
-            'email'       => $email,
-            'phone'       => $phone,
-            'status'      => 'active',
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->out(['error' => 'A valid email is required'], 422);
+        }
+
+        if (!preg_match('/^\d{11}$/', $phone)) {
+            $this->out(['error' => 'Phone number is required and must be exactly 11 digits.'], 422);
+        }
+
+        if (strlen($pass) < 6) {
+            $this->out(['error' => 'Password must be at least 6 characters'], 422);
+        }
+
+        if ($this->db->table('users')->where('email', $email)->get()) {
+            $this->out(['error' => 'This email is already registered'], 409);
+        }
+
+        // Gumawa ng secure verification token.
+        $token = bin2hex(random_bytes(32));
+
+        $this->db->table('users')->insert([
+            'full_name'                     => $name,
+            'email'                         => $email,
+            'phone'                         => $phone,
+            'password'                      => password_hash($pass, PASSWORD_BCRYPT),
+            'role'                          => 'member',
+            'status'                        => 'active',
+            'email_verified'                => 0,
+            'email_verification_token_hash' => hash('sha256', $token),
+            'email_verification_expires_at' => date('Y-m-d H:i:s', time() + 3600),
         ]);
-    }
 
-    $this->db->table('notifications')->insert([
-        'user_id' => $user['id'],
-        'title'   => 'Welcome to River of Life',
-        'message' => 'Please verify your email address to activate login access.',
-    ]);
+        $user = $this->db->table('users')->where('email', $email)->get();
 
-    // Magpadala ng verification email gamit ang PHPMailer helper.
-    $this->call->helper('rolmail');
-
-    $link = rtrim(APP_URL, '/') . '/verify-email?token=' . urlencode($token);
-
-    $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
-    $safeLink = htmlspecialchars($link, ENT_QUOTES, 'UTF-8');
-
-    $html = '<h2>Welcome to River of Life Calapan!</h2>'
-          . '<p>Hello ' . $safeName . ',</p>'
-          . '<p>Thank you for registering. Please verify your email address by clicking the link below:</p>'
-          . '<p><a href="' . $safeLink . '">Verify My Email</a></p>'
-          . '<p>This verification link expires in 1 hour.</p>'
-          . '<p>If you did not create this account, you can ignore this email.</p>';
-
-    list($sent, $mailError) = rol_send_mail(
-        $email,
-        $name,
-        'Verify your River of Life Calapan account',
-        $html
-    );
-
-    if (!$sent) {
-        error_log('Registration verification email failed: ' . $mailError);
-
-        $response = [
-            'success' => true,
-            'email_sent' => false,
-            'message' => 'Your account was created, but the verification email could not be sent. Please contact the administrator for assistance.'
-        ];
-
-        // Local development only. Never expose tokens in production.
-        if ($this->is_local()) {
-            $response['debug_link'] = $link;
-            $response['debug_note'] = $mailError;
+        if (!$user) {
+            $this->out(['error' => 'Unable to create the account'], 500);
         }
 
-        $this->out($response, 201);
+        // I-link sa existing member record kung wala pang user_id.
+        $m = $this->db->table('members')->where('email', $email)->get();
+
+        if ($m && empty($m['user_id'])) {
+            $update = ['user_id' => $user['id']];
+            if (empty($m['phone'])) {
+                $update['phone'] = $phone;
+            }
+            $this->db->table('members')
+                ->where('id', $m['id'])
+                ->update($update);
+        } elseif (!$m) {
+            $this->db->table('members')->insert([
+                'user_id'     => $user['id'],
+                'member_code' => 'ROL-' . strtoupper(bin2hex(random_bytes(3))),
+                'full_name'   => $name,
+                'email'       => $email,
+                'phone'       => $phone,
+                'status'      => 'active',
+            ]);
+        }
+
+        $this->db->table('notifications')->insert([
+            'user_id' => $user['id'],
+            'title'   => 'Welcome to River of Life',
+            'message' => 'Please verify your email address to activate login access.',
+        ]);
+
+        // Magpadala ng verification email gamit ang PHPMailer helper.
+        $this->call->helper('rolmail');
+
+        $link = rtrim(APP_URL, '/') . '/verify-email?token=' . urlencode($token);
+
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+        $safeLink = htmlspecialchars($link, ENT_QUOTES, 'UTF-8');
+
+        $html = '<h2>Welcome to River of Life Calapan!</h2>'
+              . '<p>Hello ' . $safeName . ',</p>'
+              . '<p>Thank you for registering. Please verify your email address by clicking the link below:</p>'
+              . '<p><a href="' . $safeLink . '">Verify My Email</a></p>'
+              . '<p>This verification link expires in 1 hour.</p>'
+              . '<p>If you did not create this account, you can ignore this email.</p>';
+
+        list($sent, $mailError) = rol_send_mail(
+            $email,
+            $name,
+            'Verify your River of Life Calapan account',
+            $html
+        );
+
+        if (!$sent) {
+            error_log('Registration verification email failed: ' . $mailError);
+
+            $response = [
+                'success'    => true,
+                'email_sent' => false,
+                'message'    => 'Your account was created, but the verification email could not be sent. Please contact the administrator for assistance.',
+            ];
+
+            // Local development only. Never expose tokens in production.
+            if ($this->is_local()) {
+                $response['debug_link'] = $link;
+                $response['debug_note'] = $mailError;
+            }
+
+            $this->out($response, 201);
+        }
+
+        $this->out([
+            'success'    => true,
+            'email_sent' => true,
+            'message'    => 'Registration successful! Please check your email and click the verification link before logging in.',
+        ], 201);
     }
 
-    $this->out([
-        'success' => true,
-        'email_sent' => true,
-        'message' => 'Registration successful! Please check your email and click the verification link before logging in.'
-    ], 201);
-}
-public function verify_email()
-{
-    $token = trim($_GET['token'] ?? '');
+    // ------------------------------------------------------- VERIFY EMAIL
+    public function verify_email()
+    {
+        $token = trim($_GET['token'] ?? '');
 
-    if ($token === '' || !preg_match('/^[a-f0-9]{64}$/', $token)) {
-        $this->out(['success' => false, 'error' => 'Invalid verification link.'], 400);
+        if ($token === '' || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            $this->out(['success' => false, 'error' => 'Invalid verification link.'], 400);
+        }
+
+        $user = $this->db->table('users')
+            ->where('email_verification_token_hash', hash('sha256', $token))
+            ->get();
+
+        if (!$user) {
+            $this->out(['success' => false, 'error' => 'Invalid verification link or token not found.'], 400);
+        }
+
+        if ((int) $user['email_verified'] === 1) {
+            $this->out(['success' => true, 'message' => 'Email already verified. You can log in.']);
+        }
+
+        $expires = $user['email_verification_expires_at'] ?? null;
+
+        if (!$expires || strtotime($expires) < time()) {
+            $this->out(['success' => false, 'error' => 'Verification link expired.'], 400);
+        }
+
+        // Huwag burahin ang token hash, para safe ang paulit-ulit na click.
+        $this->db->table('users')
+            ->where('id', $user['id'])
+            ->update(['email_verified' => 1]);
+
+        $this->out(['success' => true, 'message' => 'Email verified successfully! You can now log in.']);
     }
 
-    $user = $this->db->table('users')
-        ->where('email_verification_token_hash', hash('sha256', $token))
-        ->get();
-
-    if (!$user) {
-        $this->out(['success' => false, 'error' => 'Invalid verification link or token not found.'], 400);
-    }
-
-    if ((int) $user['email_verified'] === 1) {
-        $this->out(['success' => true, 'message' => 'Email already verified. You can log in.']);
-    }
-
-    $expires = $user['email_verification_expires_at'] ?? null;
-
-    if (!$expires || strtotime($expires) < time()) {
-        $this->out(['success' => false, 'error' => 'Verification link expired.'], 400);
-    }
-
-    // Huwag burahin ang token hash, para safe ang paulit-ulit na click.
-    $this->db->table('users')
-        ->where('id', $user['id'])
-        ->update(['email_verified' => 1]);
-
-    $this->out(['success' => true, 'message' => 'Email verified successfully! You can now log in.']);
-}
     // ------------------------------------------------------ FORGOT PASSWORD
     public function forgot()
     {
         $in    = $this->input();
         $email = strtolower(trim($in['email'] ?? ''));
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $this->out(['error' => 'A valid email is required'], 422);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->out(['error' => 'A valid email is required'], 422);
+        }
 
         // Parehong sagot kahit wala ang email (para hindi malaman kung may account)
         $resp = ['success' => true, 'message' => 'If that email is registered, a password reset link has been sent.'];

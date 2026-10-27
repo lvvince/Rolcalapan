@@ -7,6 +7,7 @@ export default function KnowledgeBasePage() {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState(empty);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     try {
@@ -32,17 +33,28 @@ export default function KnowledgeBasePage() {
 
   const save = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
-      await api.post("/chatbot/kb", form);
+      await api.post("/chatbot/kb", {
+        id: form.id || 0,
+        category: form.category.trim() || "FAQ",
+        question: form.question.trim(),
+        answer: form.answer.trim(),
+        intent: form.keywords.trim(),
+        is_active: form.is_active,
+      });
       setForm(empty);
+      setError("");
       load();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save.");
+    } finally {
+      setSaving(false);
     }
   };
 
   const remove = async (id) => {
-    if (!confirm("Delete this entry?")) return;
+    if (!window.confirm("Delete this entry?")) return;
     try {
       await api.post("/chatbot/kb/delete", { id });
       load();
@@ -51,7 +63,19 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const input = { width: "100%", padding: 8, border: "1px solid #cbd5e1", borderRadius: 6, marginBottom: 8 };
+  const edit = (it) => {
+    setForm({
+      id: it.id,
+      category: it.category || "FAQ",
+      question: it.question || "",
+      answer: it.answer || "",
+      keywords: it.intent || "",
+      is_active: Number(it.is_active),
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const input = { width: "100%", padding: 8, border: "1px solid #cbd5e1", borderRadius: 6, marginBottom: 8, boxSizing: "border-box" };
 
   return (
     <div style={{ maxWidth: 900 }}>
@@ -64,15 +88,15 @@ export default function KnowledgeBasePage() {
       )}
 
       <form onSubmit={save} style={{ marginBottom: 24 }}>
-        <input style={input} placeholder="Category (Schedule, Ministry, FAQ...)" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-        <input style={input} placeholder="Question" value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} required />
-        <textarea style={input} rows={3} placeholder="Answer" value={form.answer} onChange={(e) => setForm({ ...form, answer: e.target.value })} required />
-        <input style={input} placeholder="Keywords (space separated)" value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} />
+        <input style={input} placeholder="Category (Schedule, Ministry, FAQ...)" maxLength={50} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+        <input style={input} placeholder="Question" maxLength={500} value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} required />
+        <textarea style={input} rows={3} maxLength={2000} placeholder="Answer (English)" value={form.answer} onChange={(e) => setForm({ ...form, answer: e.target.value })} required />
+        <input style={input} placeholder="Keywords (space separated)" maxLength={255} value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} />
         <label style={{ display: "block", marginBottom: 8 }}>
           <input type="checkbox" checked={!!form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked ? 1 : 0 })} /> Active
         </label>
-        <button type="submit" style={{ padding: "8px 16px", background: "#1e3a8a", color: "#fff", border: "none", borderRadius: 6 }}>
-          {form.id ? "Update" : "Add"}
+        <button type="submit" disabled={saving} style={{ padding: "8px 16px", background: "#1e3a8a", color: "#fff", border: "none", borderRadius: 6 }}>
+          {saving ? "Saving..." : form.id ? "Update" : "Add"}
         </button>
         {form.id && <button type="button" onClick={() => setForm(empty)} style={{ marginLeft: 8, padding: "8px 16px" }}>Cancel</button>}
       </form>
@@ -90,7 +114,7 @@ export default function KnowledgeBasePage() {
               <td>{it.question}</td>
               <td>{Number(it.is_active) ? "Yes" : "No"}</td>
               <td>
-                <button onClick={() => setForm({ ...it, is_active: Number(it.is_active) })}>Edit</button>{" "}
+                <button onClick={() => edit(it)}>Edit</button>{" "}
                 <button onClick={() => remove(it.id)}>Delete</button>
               </td>
             </tr>

@@ -8,6 +8,9 @@ class ChatbotController extends Controller
     const TOP_HITS = 8;
     // Ilang naunang messages ang tatandaan
     const HISTORY_LIMIT = 6;
+    // Rate limit para sa /ask: ilang request kada ilang segundo, kada IP
+    const RATE_MAX = 20;
+    const RATE_WINDOW = 60;
 
     public function __construct()
     {
@@ -83,13 +86,76 @@ class ChatbotController extends Controller
     }
 
     /**
-     * TODO: ISAKABIT ANG AUTH DITO.
-     * Dapat admin/pastor lang ang makapasok sa kb_save at kb_delete.
-     * Sa ngayon BUKAS ito sa lahat hanggang hindi pa naikakabit ang token check.
+     * Admin check para sa kb_list, kb_save, kb_delete.
+     * Kung naka-set ang KB_ADMIN_TOKEN sa env, kailangan ng header:
+     *   Authorization: Bearer <KB_ADMIN_TOKEN>
+     * Kung hindi naka-set, bukas pa rin (para hindi masira ang admin page mo habang
+     * wala pang login token). I-set ito at ikabit sa api.js bago i-deploy.
      */
     private function require_admin()
     {
-        // halimbawa: i-verify ang Bearer token, tapos 403 kung hindi admin/pastor
+        $expected = $this->env('KB_ADMIN_TOKEN');
+        if ($expected === '') {
+            error_log('[chatbot] WARNING: KB_ADMIN_TOKEN not set, admin endpoints are open');
+            return;
+        }
+
+        $h = $_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+        if ($h === '' && function_exists('getallheaders')) {
+            foreach (getallheaders() as $k => $v) {
+                if (strtolower($k) === 'authorization') {
+                    $h = $v;
+                    break;
+                }
+            }
+        }
+
+        $token = '';
+        if (stripos($h, 'Bearer ') === 0) {
+            $token = trim(substr($h, 7));
+        }
+
+        if ($token === '' || !hash_equals($expected, $token)) {
+            $this->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+    }
+
+    // Simpleng rate limit kada IP (file-based, walang kailangang extra service)
+    private function rate_limit()
+    {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $xff = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+        if ($xff !== '') {
+            $ip = trim(explode(',', $xff)[0]);
+        }
+
+        $file = sys_get_temp_dir() . '/rol_rl_' . md5($ip);
+        $now = time();
+        $state = ['start' => $now, 'count' => 0];
+
+        $fp = @fopen($file, 'c+');
+        if (!$fp) {
+            return; // kung hindi makasulat, huwag harangin ang chat
+        }
+        flock($fp, LOCK_EX);
+        $raw = stream_get_contents($fp);
+        $saved = json_decode((string)$raw, true);
+        if (is_array($saved) && isset($saved['start'], $saved['count'])
+            && ($now - (int)$saved['start']) < self::RATE_WINDOW) {
+            $state = $saved;
+        }
+        $state['count']++;
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($state));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+
+        if ($state['count'] > self::RATE_MAX) {
+            header('Retry-After: ' . self::RATE_WINDOW);
+            $this->json(['success' => false, 'message' => 'Masyadong maraming tanong. Subukan ulit mamaya.'], 429);
+        }
     }
 
     // Simpleng language check para sa fallback na sagot
@@ -138,7 +204,8 @@ class ChatbotController extends Controller
             if ($r !== 'user' && $r !== 'assistant') {
                 continue;
             }
-            $text = trim((string)($m['content'] ?? ''));
+            $c = $m['content'] ?? '';
+            $text = trim(is_scalar($c) ? (string)$c : '');
             if ($text === '') {
                 continue;
             }
@@ -173,25 +240,34 @@ class ChatbotController extends Controller
         }
     }
 
-    // POST /api/chatbot/kb   body: { id?, question, answer, intent?, is_active? }
+    // POST /api/chatbot/kb   body: { id?, category?, question, answer, intent?, is_active? }
     public function kb_save()
     {
         try {
             $this->require_admin();
             $b = $this->body();
 
-            $question = trim($b['question'] ?? '');
-            $answer = trim($b['answer'] ?? '');
+            $question = trim((string)($b['question'] ?? ''));
+            $answer = trim((string)($b['answer'] ?? ''));
             if ($question === '' || $answer === '') {
                 $this->json(['success' => false, 'message' => 'Kailangan ang question at answer.'], 400);
+            }
+            if (mb_strlen($question, 'UTF-8') > 500 || mb_strlen($answer, 'UTF-8') > 2000) {
+                $this->json(['success' => false, 'message' => 'Masyadong mahaba ang question o answer.'], 400);
+            }
+
+            $category = mb_substr(trim((string)($b['category'] ?? 'FAQ')), 0, 50, 'UTF-8');
+            if ($category === '') {
+                $category = 'FAQ';
             }
 
             $kb = new KnowledgeModel();
             $id = $kb->save([
-                'id' => $b['id'] ?? 0,
+                'id' => (int)($b['id'] ?? 0),
+                'category' => $category,
                 'question' => $question,
                 'answer' => $answer,
-                'intent' => isset($b['intent']) ? trim($b['intent']) : null,
+                'intent' => isset($b['intent']) ? mb_substr(trim((string)$b['intent']), 0, 255, 'UTF-8') : null,
                 'is_active' => array_key_exists('is_active', $b) ? $b['is_active'] : 1,
             ]);
 
@@ -235,7 +311,7 @@ class ChatbotController extends Controller
     // ------------------------------------------------------------------
 
     // POST /api/chatbot/ask  o  /api/chat
-    // body: { "message": "...", "history": [{role, content}], "provider": "claude|openai|gemini" (optional) }
+    // body: { "message": "...", "history": [{role, content}] }
     public function ask()
     {
         try {
@@ -247,27 +323,31 @@ class ChatbotController extends Controller
 
     private function process()
     {
+        $this->rate_limit();
+
         $kb = new KnowledgeModel();
         $body = $this->body();
 
-        $question = trim($body['message'] ?? '');
+        $question = trim((string)($body['message'] ?? ''));
         if ($question === '' || mb_strlen($question, 'UTF-8') > 500) {
             $this->json(['success' => false, 'message' => 'Maglagay ng tanong (hanggang 500 characters).'], 400);
         }
 
+        // Provider ay galing sa env lang (AI_PROVIDER), hindi sa client
         $ai = new Ai();
-        $provider = strtolower($body['provider'] ?? '');
+        $provider = $ai->default_provider();
         if (!in_array($provider, ['claude', 'openai', 'gemini'], true)) {
-            $provider = $ai->default_provider();
+            $provider = 'openai';
         }
 
-        // 1. RETRIEVE
+        // 1. RETRIEVE (isang beses lang tinatawag)
         $rows = $kb->get_active();
         if (!is_array($rows)) {
             $rows = [];
         }
         $rag = new Rag();
-        $hits = $rag->retrieve($question, $rows, 3);
+        $ranked = $rag->retrieve($question, $rows, max(self::TOP_HITS, 3));
+        $hits = array_slice($ranked, 0, 3);
 
         $ids = [];
         foreach ($hits as $h) {
@@ -279,12 +359,12 @@ class ChatbotController extends Controller
         } else {
             $context_rows = array_map(function ($h) {
                 return $h['row'];
-            }, $rag->retrieve($question, $rows, self::TOP_HITS));
+            }, array_slice($ranked, 0, self::TOP_HITS));
         }
 
         // 2. AUGMENT
         $context = '';
-        foreach ($context_rows as $i => $r) {
+        foreach (array_values($context_rows) as $i => $r) {
             $context .= ($i + 1) . '. Q: ' . $r['question'] . "\n   A: " . $r['answer'] . "\n";
         }
         if ($context === '') {
@@ -344,6 +424,7 @@ class ChatbotController extends Controller
                 'matched_ids' => implode(',', $ids),
             ]);
         } catch (Throwable $e) {
+            error_log('[chatbot] log failed: ' . $e->getMessage());
         }
 
         $this->json($this->with_debug([

@@ -1,25 +1,70 @@
 import { useEffect, useState } from "react";
+import {
+  UsersRound,
+  QrCode,
+  ClipboardCheck,
+  CalendarDays,
+  MapPin,
+  Clock,
+  Wallet,
+  BarChart3,
+  Mic,
+  ScanLine,
+  X,
+  LogIn,
+  LocateFixed,
+  Save,
+  Printer,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import api from "../../api";
 import DataPage, { hm } from "../../components/DataPage";
 import QrView from "../../components/QrView";
 import QrCameraScanner from "../../components/QrCameraScanner";
+import MapPicker, { reverseGeocode } from "../../components/MapPicker";
 import { StaffNotifications } from "../../components/Notifications";
 import "../../components/portal.css";
+import "./StaffPages.css";
 
 export { StaffNotifications };
 
 const money = (n) => Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2 });
 const statusBadge = (s) => <span className={`badge ${s === "active" ? "ok" : "warn"}`}>{s}</span>;
 
+function PageHeader({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="sp-head">
+      <span className="sp-head-icon"><Icon size={22} aria-hidden="true" /></span>
+      <div>
+        <h2>{title}</h2>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+function Notice({ msg }) {
+  if (!msg) return null;
+  const Icon = msg.ok ? CheckCircle2 : AlertCircle;
+  return (
+    <div className={`sp-notice ${msg.ok ? "ok" : "err"}`} role="status">
+      <Icon size={18} aria-hidden="true" />
+      <span>{msg.text}</span>
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------- Members */
 export function StaffMembers() {
   return (
     <>
-      <h2>Members & Family Records</h2>
+      <PageHeader icon={UsersRound} title="Members & Family Records" subtitle="Add and update member records." />
       <DataPage
         title="Members"
         resource="members"
         addLabel="Member"
+        canDelete={false}
         columns={[
           { key: "member_code", label: "Code" },
           { key: "full_name", label: "Name" },
@@ -50,13 +95,15 @@ export function QrCodes() {
   const m = members.find((x) => String(x.id) === String(sel));
   return (
     <>
-      <h2>Member QR Codes</h2>
-      <div className="field no-print" style={{ maxWidth: 360 }}>
-        <label>Select member</label>
-        <select value={sel} onChange={(e) => setSel(e.target.value)}>
-          <option value="">-- select --</option>
-          {members.map((x) => <option key={x.id} value={x.id}>{x.full_name} ({x.member_code})</option>)}
-        </select>
+      <PageHeader icon={QrCode} title="Member QR Codes" subtitle="Select a member to view and print their QR code." />
+      <div className="sp-card no-print">
+        <div className="sp-field" style={{ maxWidth: 380 }}>
+          <label htmlFor="qr-member">Select member</label>
+          <select id="qr-member" value={sel} onChange={(e) => setSel(e.target.value)}>
+            <option value="">-- select --</option>
+            {members.map((x) => <option key={x.id} value={x.id}>{x.full_name} ({x.member_code})</option>)}
+          </select>
+        </div>
       </div>
       {m && <QrView code={m.member_code} name={m.full_name} />}
     </>
@@ -90,31 +137,46 @@ function CodeCheckin({ onDone }) {
   };
 
   return (
-    <form className="panel" onSubmit={submit}>
-      <h4>QR / Code Check-in</h4>
-      <p className="muted" style={{ marginTop: 0 }}>I-scan ang QR ng member (camera o USB scanner) o i-type ang member code.</p>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input autoFocus placeholder="ROL-XXXXXX" value={code} onChange={(e) => setCode(e.target.value)}
-          style={{ padding: 8, border: "1px solid #cbd5e1", borderRadius: 6 }} required />
-        <select value={eventId} onChange={(e) => setEventId(e.target.value)}
-          style={{ padding: 8, border: "1px solid #cbd5e1", borderRadius: 6 }}>
-          <option value={0}>Sunday Service</option>
-          {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date})</option>)}
-        </select>
-        <button className="btn" type="submit">Check in</button>
-        <button className="btn secondary" type="button" onClick={() => setCamera((c) => !c)}>
-          {camera ? "Close camera" : "Scan with camera"}
-        </button>
+    <form className="sp-card" onSubmit={submit}>
+      <div className="sp-card-head">
+        <span className="sp-tile"><ScanLine size={20} aria-hidden="true" /></span>
+        <div>
+          <h4>QR / Code Check-in</h4>
+          <p>I-scan ang QR ng member (camera o USB scanner) o i-type ang member code.</p>
+        </div>
+      </div>
+
+      <div className="sp-row">
+        <div className="sp-field grow">
+          <label htmlFor="ci-code">Member code</label>
+          <input id="ci-code" autoFocus placeholder="ROL-XXXXXX" value={code}
+            onChange={(e) => setCode(e.target.value)} required />
+        </div>
+        <div className="sp-field grow">
+          <label htmlFor="ci-event">Event</label>
+          <select id="ci-event" value={eventId} onChange={(e) => setEventId(e.target.value)}>
+            <option value={0}>Sunday Service</option>
+            {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date})</option>)}
+          </select>
+        </div>
+        <div className="sp-actions">
+          <button className="sp-btn primary" type="submit">
+            <LogIn size={16} aria-hidden="true" /> Check in
+          </button>
+          <button className="sp-btn" type="button" onClick={() => setCamera((c) => !c)}>
+            {camera ? <X size={16} aria-hidden="true" /> : <ScanLine size={16} aria-hidden="true" />}
+            {camera ? "Close camera" : "Scan with camera"}
+          </button>
+        </div>
       </div>
 
       {camera && (
-        <QrCameraScanner
-          onScan={(text) => checkin(text)}
-          onClose={() => setCamera(false)}
-        />
+        <div className="sp-camera">
+          <QrCameraScanner onScan={(text) => checkin(text)} onClose={() => setCamera(false)} />
+        </div>
       )}
 
-      {msg && <div className={`msg ${msg.ok ? "ok" : "err"}`}>{msg.text}</div>}
+      <Notice msg={msg} />
     </form>
   );
 }
@@ -123,13 +185,14 @@ export function StaffAttendance() {
   const [k, setK] = useState(0);
   return (
     <>
-      <h2>Attendance</h2>
+      <PageHeader icon={ClipboardCheck} title="Attendance" subtitle="Check in members and review attendance records." />
       <CodeCheckin onDone={() => setK(k + 1)} />
       <DataPage
         title="Attendance Records"
         resource="attendance"
         addLabel="Manual entry"
         canEdit={false}
+        canDelete={false}
         refreshKey={k}
         lookups={{
           members: { resource: "members", label: "full_name" },
@@ -178,11 +241,12 @@ export const eventColumns = [
 export function EventsAnnouncements() {
   return (
     <>
-      <h2>Events & Announcements</h2>
+      <PageHeader icon={CalendarDays} title="Events & Announcements" subtitle="Manage church events and post announcements." />
       <DataPage
         title="Events"
         resource="events"
         addLabel="Event"
+        canDelete={false}
         lookups={{ ministries: { resource: "ministries", label: "name" } }}
         columns={eventColumns}
         fields={eventFields}
@@ -192,6 +256,7 @@ export function EventsAnnouncements() {
         title="Announcements"
         resource="announcements"
         addLabel="Announcement"
+        canDelete={false}
         columns={[
           { key: "title", label: "Title" },
           { key: "body", label: "Message" },
@@ -207,9 +272,28 @@ export function EventsAnnouncements() {
 }
 
 /* ---------------------------------------------------------- Geofence */
+// Basic sanity check so a wrong value (e.g. latitude -7, which is Indonesia) is caught.
+function checkCoords(lat, lng, radius) {
+  const la = Number(lat);
+  const lo = Number(lng);
+  if (lat === "" || lat == null || lng === "" || lng == null || Number.isNaN(la) || Number.isNaN(lo)) {
+    return "Latitude and longitude are required.";
+  }
+  if (la < -90 || la > 90) return "Latitude must be between -90 and 90.";
+  if (lo < -180 || lo > 180) return "Longitude must be between -180 and 180.";
+  // Philippines is roughly lat 4 to 22, lng 116 to 127
+  if (la < 4 || la > 22 || lo < 116 || lo > 127) {
+    return "These coordinates are outside the Philippines. Check the latitude and longitude.";
+  }
+  const r = Number(radius);
+  if (!r || r < 10) return "Geofence radius must be at least 10 meters.";
+  return "";
+}
+
 export function Geofence() {
   const [events, setEvents] = useState([]);
   const [msg, setMsg] = useState(null);
+  const [locBusy, setLocBusy] = useState(null); // id of the event getting its location
 
   const load = () =>
     api.get("/resource", { params: { name: "events" } }).then((r) =>
@@ -217,18 +301,64 @@ export function Geofence() {
     );
   useEffect(() => { load(); }, []);
 
-  const set = (id, key, val) => setEvents(events.map((e) => (e.id === id ? { ...e, [key]: val } : e)));
+  const set = (id, key, val) =>
+    setEvents((list) => list.map((e) => (e.id === id ? { ...e, [key]: val } : e)));
 
-  const useMyLocation = (id) => {
+  // From the map: pin click/drag or a picked search result.
+  // Keep the old location name until a new name arrives.
+  const applyPlace = (id, p) =>
+    setEvents((list) =>
+      list.map((e) =>
+        e.id === id
+          ? { ...e, lat: p.latitude, lng: p.longitude, location: p.name || e.location }
+          : e
+      )
+    );
+
+  const fillMyLocation = (id) => {
+    if (!navigator.geolocation) {
+      setMsg({ ok: false, text: "Hindi supported ng browser mo ang location." });
+      return;
+    }
+    setLocBusy(id);
+    setMsg({ ok: true, text: "Kinukuha ang location mo..." });
+
     navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setEvents((list) => list.map((e) => (e.id === id ? { ...e, lat: p.coords.latitude.toFixed(7), lng: p.coords.longitude.toFixed(7) } : e)));
+      async (p) => {
+        const lat = p.coords.latitude.toFixed(7);
+        const lng = p.coords.longitude.toFixed(7);
+        setEvents((list) => list.map((e) => (e.id === id ? { ...e, lat, lng } : e)));
+
+        const name = await reverseGeocode(lat, lng);
+        if (name) {
+          setEvents((list) => list.map((e) => (e.id === id ? { ...e, location: name } : e)));
+        }
+
+        setMsg({
+          ok: true,
+          text: `Nakuha na ang location. Accuracy: mga ${Math.round(p.coords.accuracy)} meters. I-drag ang pin kung kailangan i-adjust.`,
+        });
+        setLocBusy(null);
       },
-      () => setMsg({ ok: false, text: "Cannot get your location. Allow location access." })
+      (err) => {
+        const text = {
+          1: "Na-block ang location permission. I-click ang lock icon sa address bar, i-allow ang Location, tapos i-refresh.",
+          2: "Hindi ma-detect ang location. I-on ang Location sa Windows (Settings > Privacy & security > Location) o gamitin ang phone.",
+          3: "Nag-timeout. Subukan ulit.",
+        };
+        setMsg({ ok: false, text: text[err.code] || "Hindi makuha ang location." });
+        setLocBusy(null);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
   const save = async (e) => {
+    const problem = checkCoords(e.lat, e.lng, e.radius_m);
+    if (problem) {
+      setMsg({ ok: false, text: problem });
+      return;
+    }
     try {
       await api.post("/resource/save", { name: "events", ...e });
       setMsg({ ok: true, text: `Saved geofence for "${e.title}"` });
@@ -238,26 +368,83 @@ export function Geofence() {
     }
   };
 
-  const inp = { padding: 6, border: "1px solid #cbd5e1", borderRadius: 6, width: 130 };
-
   return (
     <>
-      <h2>Geofence for Off-Site Events</h2>
-      <p className="muted">Gumawa muna ng event na type "Outside" sa Events & Announcements.</p>
-      {msg && <div className={`msg ${msg.ok ? "ok" : "err"}`}>{msg.text}</div>}
-      {events.length === 0 && <div className="empty">No off-site events yet.</div>}
-      {events.map((e) => (
-        <div className="item" key={e.id}>
-          <h4>{e.title} <small className="muted">({e.event_date})</small></h4>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <input style={inp} placeholder="Latitude" value={e.lat ?? ""} onChange={(x) => set(e.id, "lat", x.target.value)} />
-            <input style={inp} placeholder="Longitude" value={e.lng ?? ""} onChange={(x) => set(e.id, "lng", x.target.value)} />
-            <input style={{ ...inp, width: 100 }} placeholder="Radius (m)" value={e.radius_m ?? ""} onChange={(x) => set(e.id, "radius_m", x.target.value)} />
-            <button className="btn secondary sm" onClick={() => useMyLocation(e.id)}>Use my location</button>
-            <button className="btn sm" onClick={() => save(e)}>Save</button>
-          </div>
+      <PageHeader
+        icon={MapPin}
+        title="Geofence for Off-Site Events"
+        subtitle='Gumawa muna ng event na type "Outside" sa Events & Announcements.'
+      />
+      <Notice msg={msg} />
+      {events.length === 0 && (
+        <div className="sp-empty">
+          <MapPin size={28} aria-hidden="true" />
+          <strong>No off-site events yet</strong>
+          <span>Create an "Outside / Off-site" event first, then set its location here.</span>
         </div>
-      ))}
+      )}
+      <div className="sp-grid">
+        {events.map((e) => (
+          <div className="sp-card" key={e.id}>
+            <div className="sp-card-head">
+              <span className="sp-tile"><MapPin size={20} aria-hidden="true" /></span>
+              <div>
+                <h4>{e.title}</h4>
+                <p>{e.event_date}</p>
+              </div>
+            </div>
+
+            <div className="sp-field">
+              <label>Search place o i-click ang mapa (auto-fills latitude, longitude, at location name)</label>
+              <MapPicker
+                latitude={e.lat}
+                longitude={e.lng}
+                radius={e.radius_m}
+                onPick={(p) => applyPlace(e.id, p)}
+              />
+            </div>
+
+            <div className="sp-field">
+              <label>Location name</label>
+              <input
+                placeholder="e.g. Lalud, Calapan City"
+                value={e.location ?? ""}
+                onChange={(x) => set(e.id, "location", x.target.value)}
+              />
+            </div>
+
+            <div className="sp-row">
+              <div className="sp-field grow">
+                <label>Latitude</label>
+                <input placeholder="0.0000000" value={e.lat ?? ""} onChange={(x) => set(e.id, "lat", x.target.value)} />
+              </div>
+              <div className="sp-field grow">
+                <label>Longitude</label>
+                <input placeholder="0.0000000" value={e.lng ?? ""} onChange={(x) => set(e.id, "lng", x.target.value)} />
+              </div>
+              <div className="sp-field" style={{ width: 110 }}>
+                <label>Radius (m)</label>
+                <input placeholder="100" value={e.radius_m ?? ""} onChange={(x) => set(e.id, "radius_m", x.target.value)} />
+              </div>
+            </div>
+
+            <div className="sp-actions">
+              <button
+                className="sp-btn"
+                type="button"
+                disabled={locBusy === e.id}
+                onClick={() => fillMyLocation(e.id)}
+              >
+                <LocateFixed size={16} aria-hidden="true" />{" "}
+                {locBusy === e.id ? "Kinukuha..." : "Use my location"}
+              </button>
+              <button className="sp-btn primary" type="button" onClick={() => save(e)}>
+                <Save size={16} aria-hidden="true" /> Save
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
@@ -266,11 +453,12 @@ export function Geofence() {
 export function StaffSchedules() {
   return (
     <>
-      <h2>Ministry Schedules</h2>
+      <PageHeader icon={Clock} title="Ministry Schedules" subtitle="Plan ministry schedules and volunteers (conflicts are checked)." />
       <DataPage
         title="Schedules"
         resource="ministry_schedules"
         addLabel="Schedule"
+        canDelete={false}
         lookups={{
           ministries: { resource: "ministries", label: "name" },
           members: { resource: "members", label: "full_name" },
@@ -301,11 +489,12 @@ export function StaffSchedules() {
 export function Giving() {
   return (
     <>
-      <h2>Giving Records</h2>
+      <PageHeader icon={Wallet} title="Giving Records" subtitle="Record tithes, offerings, and other giving." />
       <DataPage
         title="Giving"
         resource="giving"
         addLabel="Record"
+        canDelete={false}
         lookups={{ members: { resource: "members", label: "full_name" } }}
         columns={[
           { key: "given_at", label: "Date" },
@@ -331,16 +520,20 @@ export function Giving() {
 function Bars({ title, data, money: isMoney }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
-    <div className="panel">
-      <h4>{title}</h4>
-      {data.length === 0 && <span className="muted">No data</span>}
-      {data.map((d) => (
-        <div className="bar-row" key={d.label}>
-          <span className="lbl">{d.label}</span>
-          <span className="bar" style={{ width: `${(d.value / max) * 60}%` }} />
-          <span>{isMoney ? money(d.value) : d.value}</span>
-        </div>
-      ))}
+    <div className="sp-card">
+      <h4 className="sp-card-title">{title}</h4>
+      {data.length === 0 && <span className="sp-muted">No data</span>}
+      <div className="sp-bars">
+        {data.map((d) => (
+          <div className="sp-bar-row" key={d.label}>
+            <span className="sp-bar-lbl" title={d.label}>{d.label}</span>
+            <div className="sp-bar-track">
+              <i style={{ width: `${(d.value / max) * 100}%` }} />
+            </div>
+            <strong>{isMoney ? money(d.value) : d.value}</strong>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -351,14 +544,19 @@ export function Reports() {
   useEffect(() => {
     api.get("/portal/reports").then((r) => setD(r.data)).catch((e) => setError(e.response?.data?.error || "Failed to load"));
   }, []);
-  if (error) return <div className="msg err">{error}</div>;
-  if (!d) return <p>Loading...</p>;
+  if (error) return <Notice msg={{ ok: false, text: error }} />;
+  if (!d) return <p className="sp-muted">Loading...</p>;
   return (
     <>
-      <h2>Reports</h2>
-      <p className="muted">Members: {d.members_total} total, {d.members_active} active</p>
-      <div className="no-print" style={{ marginBottom: 12 }}><button className="btn" onClick={() => window.print()}>Print report</button></div>
-      <div className="grid2">
+      <PageHeader icon={BarChart3} title="Reports" subtitle="Attendance, giving, and ministry summaries." />
+      <div className="sp-summary no-print">
+        <div className="sp-pill"><strong>{d.members_total}</strong><span>Total members</span></div>
+        <div className="sp-pill"><strong>{d.members_active}</strong><span>Active members</span></div>
+        <button className="sp-btn primary" type="button" onClick={() => window.print()}>
+          <Printer size={16} aria-hidden="true" /> Print report
+        </button>
+      </div>
+      <div className="sp-grid">
         <Bars title="Attendance per week (last 8 weeks)" data={d.attendance_weekly} />
         <Bars title="Giving per month (PHP)" data={d.giving_monthly} money />
         <Bars title="Giving by type (PHP)" data={d.giving_by_type} money />
@@ -373,11 +571,12 @@ export function Reports() {
 export function Sermons() {
   return (
     <>
-      <h2>Sermon Archive</h2>
+      <PageHeader icon={Mic} title="Sermon Archive" subtitle="Upload sermons with transcript and summary." />
       <DataPage
         title="Sermons"
         resource="sermons"
         addLabel="Sermon"
+        canDelete={false}
         columns={[
           { key: "sermon_date", label: "Date" },
           { key: "title", label: "Title" },

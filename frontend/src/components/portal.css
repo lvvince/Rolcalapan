@@ -230,3 +230,185 @@ table.tbl td.actions { white-space: nowrap; }
   object-fit: contain;
   flex-shrink: 0;
 }
+
+.sidebar nav a { display: flex; align-items: center; }
+
+.nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e11d48;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  max-width: 320px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #1e293b;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  animation: toast-in 0.25s ease-out;
+}
+.toast p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.notif-bell {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.notif-bell:hover { background: #f1f5f9; transform: translateY(-1px); }
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.min-icon { display: inline-flex; align-items: center; justify-content: center; }
+.min-tag,
+.min-meta span,
+.min-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.min-tag svg,
+.min-meta svg,
+.min-reason svg { flex-shrink: 0; }
+
+/* icon + text alignment */
+.btn,
+.min-btn,
+.min-tag,
+.min-meta span,
+.min-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn svg,
+.min-btn svg,
+.min-tag svg,
+.min-meta svg,
+.min-reason svg { flex-shrink: 0; }
+
+.min-icon { display: inline-flex; align-items: center; justify-content: center; }
+
+/* date / time / location line */
+.ico-line { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.ico-line span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* search box na may icon */
+.min-searchwrap { position: relative; flex: 1; min-width: 200px; }
+.min-searchwrap > svg {
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%); opacity: .55; pointer-events: none;
+}
+.min-searchwrap .min-search { width: 100%; padding-left: 36px; }
+
+/* icons sa loob ng tiles */
+.dash-stat-icon,
+.dash-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.dash-stat-icon svg,
+.dash-action-icon svg { flex-shrink: 0; }
+
+/* hero button at "View all" link */
+.dash-hero-btn,
+.dash-viewall {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* oras at lokasyon ng event */
+.dash-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.dash-event-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pfp-badge,
+.pfp-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pfp-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.pfp-badge svg,
+.pfp-overlay svg { flex-shrink: 0; }
+
+/* RSVP buttons */
+.rsvp-btn { transition: background .15s, transform .1s; }
+.rsvp-btn:active { transform: scale(.97); }
+.rsvp-btn:disabled { opacity: .6; cursor: wait; }
+.rsvp-btn.active.going { background: #16a34a; border-color: #16a34a; color: #fff; }
+.rsvp-btn.active.maybe { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+.rsvp-btn.active.no    { background: #6b7280; border-color: #6b7280; color: #fff; }
+
+/* status text */
+.rsvp-status { display: block; margin-top: 8px; color: #64748b; }
+.rsvp-status.going { color: #15803d; }
+.rsvp-status.maybe { color: #b45309; }
+.rsvp-status.no    { color: #6b7280; }
+.rsvp-extra { margin-top: 10px; }
+
+/* toast */
+.rsvp-toast {
+  position: fixed; top: 80px; right: 24px; z-index: 50;
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; border-radius: 10px; color: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  animation: rsvp-in .25s ease;
+}
+.rsvp-toast.ok  { background: #16a34a; }
+.rsvp-toast.err { background: #dc2626; }
+@keyframes rsvp-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+

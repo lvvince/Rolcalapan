@@ -16,6 +16,7 @@ export const roleMenus = {
       { path: "reports", label: "Reports", desc: "Generate reports" },
       { path: "sermons", label: "Sermon Archive", desc: "Upload audio for transcript and summary" },
       { path: "notifications", label: "Notifications", desc: "Send notifications" },
+      { path: "profile", label: "My Profile", desc: "Update your profile and photo" },
     ],
   },
   ministry_leader: {
@@ -29,6 +30,7 @@ export const roleMenus = {
       { path: "events", label: "Ministry Events", desc: "Manage ministry events" },
       { path: "attendance", label: "Attendance", desc: "View ministry attendance" },
       { path: "notifications", label: "Notifications", desc: "Notifications and schedule conflict alerts" },
+      { path: "profile", label: "My Profile", desc: "Update your profile and photo" },
     ],
   },
   member: {

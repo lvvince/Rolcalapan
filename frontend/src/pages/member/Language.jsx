@@ -1,59 +1,68 @@
-import { useEffect, useState } from 'react';
-import { LANGS, useLang } from '../../i18n/LanguageContext';
+// ============================================================
+// frontend/src/pages/member/MemberPages.jsx
+//
+// 1) PALITAN ang import na ito sa taas ng file:
+//      import { useTranslation } from "react-i18next";
+//    ng:
+//      import { useLang } from "../../i18n/LanguageContext";
+//
+// 2) PALITAN ang buong "Language" section (mula sa `const langs = [`
+//    hanggang sa dulo ng `export function Language() { ... }`) ng code sa ibaba.
+//    Huwag galawin ang MemberNotifications sa ilalim nito.
+// ============================================================
 
-export default function Language() {
+const langs = [
+  { value: "en", label: "English" },
+  { value: "tl", label: "Filipino (Tagalog)" },
+  { value: "ceb", label: "Cebuano" },
+  { value: "ilo", label: "Ilocano" },
+];
+
+export function Language() {
   const { lang, setLang, t } = useLang();
   const [selected, setSelected] = useState(lang);
-  const [saved, setSaved] = useState(false);
+  const [msg, setMsg] = useState(null);
 
-  // i-sync kapag binago ang wika sa dropdown sa taas
+  // sumusunod sa dropdown sa header (at sa kasalukuyang wika ng app)
   useEffect(() => {
     setSelected(lang);
   }, [lang]);
 
-  const handleSave = () => {
-    setLang(selected);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  const save = async () => {
+    setLang(selected); // ito ang nagpapalit ng buong app at ng header
+    localStorage.setItem("language", selected);
+    try {
+      await api.post("/portal/me", { language: selected });
+      setMsg({ ok: true, saved: true });
+    } catch (x) {
+      setMsg({ ok: false, text: err(x) });
+    }
   };
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">{t('Preferred Language')}</h1>
-
-      <div className="bg-white rounded-xl shadow-sm p-5 max-w-xl">
-        <label htmlFor="lang-select" className="block text-sm text-gray-600 mb-2">
-          {t('Language')}
-        </label>
-        <select
-          id="lang-select"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          className="w-full border rounded-lg px-3 py-3"
-        >
-          {LANGS.map((l) => (
-            <option key={l.code} value={l.code}>{l.label}</option>
-          ))}
-        </select>
-
-        <p className="text-gray-500 mt-4">
-          {t('Your choice changes the app language. Non-English text is translated automatically.')}
-        </p>
-
-        {saved && (
-          <div className="mt-4 rounded-lg bg-green-100 text-green-800 px-4 py-3">
-            {t('Preferred language saved.')}
+    <>
+      <h2>{t("language.title")}</h2>
+      <div className="panel" style={{ maxWidth: 420 }}>
+        <div className="field">
+          <label>{t("language.label")}</label>
+          <select value={selected} onChange={(e) => setSelected(e.target.value)}>
+            {langs.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="muted">{t("language.note")}</p>
+        {msg && (
+          <div className={`msg ${msg.ok ? "ok" : "err"}`}>
+            {msg.saved ? t("language.saved") : msg.text}
           </div>
         )}
-
-        <button
-          type="button"
-          onClick={handleSave}
-          className="mt-4 bg-blue-900 text-white font-semibold rounded-lg px-5 py-2.5"
-        >
-          {t('Save')}
+        <button className="btn" onClick={save}>
+          <Ico icon={Save} /> {t("common.save")}
         </button>
       </div>
-    </div>
+    </>
   );
 }

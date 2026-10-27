@@ -90,7 +90,7 @@ class KnowledgeModel
     public function get_active()
     {
         return $this->pdo()
-            ->query('SELECT id, question, answer, intent FROM knowledge_base WHERE is_active = 1')
+            ->query('SELECT id, category, question, answer, intent FROM knowledge_base WHERE is_active = 1')
             ->fetchAll();
     }
 
@@ -98,7 +98,7 @@ class KnowledgeModel
     public function get_all()
     {
         return $this->pdo()
-            ->query('SELECT id, question, answer, intent, is_active FROM knowledge_base ORDER BY id DESC')
+            ->query('SELECT id, category, question, answer, intent, is_active FROM knowledge_base ORDER BY id DESC')
             ->fetchAll();
     }
 
@@ -106,7 +106,12 @@ class KnowledgeModel
     public function save($data)
     {
         $id = (int)($data['id'] ?? 0);
+        $category = trim((string)($data['category'] ?? ''));
+        if ($category === '') {
+            $category = 'FAQ';
+        }
         $params = [
+            $category,
             $data['question'],
             $data['answer'],
             $data['intent'] ?? null,
@@ -115,7 +120,7 @@ class KnowledgeModel
 
         if ($id > 0) {
             $st = $this->pdo()->prepare(
-                'UPDATE knowledge_base SET question = ?, answer = ?, intent = ?, is_active = ? WHERE id = ?'
+                'UPDATE knowledge_base SET category = ?, question = ?, answer = ?, intent = ?, is_active = ? WHERE id = ?'
             );
             $params[] = $id;
             $st->execute($params);
@@ -123,7 +128,7 @@ class KnowledgeModel
         }
 
         $st = $this->pdo()->prepare(
-            'INSERT INTO knowledge_base (question, answer, intent, is_active) VALUES (?, ?, ?, ?)'
+            'INSERT INTO knowledge_base (category, question, answer, intent, is_active) VALUES (?, ?, ?, ?, ?)'
         );
         $st->execute($params);
         return (int)$this->pdo()->lastInsertId();

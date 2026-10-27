@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleLayout from "./components/RoleLayout";
 import ChatWidget from "./components/ChatWidget";
+import NotifToast from "./components/NotifToast";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -15,13 +16,17 @@ import { ComingSoon } from "./pages/Placeholder";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminProfile from "./pages/admin/AdminProfile";
 import KnowledgeBasePage from "./pages/admin/KnowledgeBasePage";
 import AdminUsers from "./pages/admin/AdminUsers";
 import {
   AdminMinistries,
   AdminPrayers,
+  AdminNotifications,
 } from "./pages/admin/AdminPages";
 
+import SecretaryHome from "./pages/secretary/SecretaryHome";
+import StaffProfile from "./pages/secretary/StaffProfile";
 import {
   StaffMembers,
   QrCodes,
@@ -35,6 +40,7 @@ import {
   StaffNotifications,
 } from "./pages/secretary/StaffDashboard";
 
+import MinistryHome from "./pages/ministry/MinistryHome";
 import {
   LeaderSchedule,
   LeaderMembers,
@@ -43,6 +49,7 @@ import {
   LeaderEvents,
   LeaderAttendance,
   LeaderNotifications,
+  LeaderProfile,
 } from "./pages/ministry/MinistryDashboard";
 
 import {
@@ -59,6 +66,7 @@ import {
 } from "./pages/member/MemberDashboard";
 import MemberHome from "./pages/member/MemberHome";
 
+// path, role, child routes, optional custom home (index) page
 const portal = (path, role, children, home) => (
   <Route
     path={path}
@@ -99,18 +107,20 @@ export default function App() {
             }
           >
             <Route index element={<AdminDashboard />} />
+            <Route path="profile" element={<AdminProfile />} />
             <Route path="users" element={<AdminUsers />} />
-            <Route path="members" element={<StaffMembers />} />
+            <Route path="members" element={<StaffMembers canDelete />} />
             <Route path="ministries" element={<AdminMinistries />} />
-            <Route path="events" element={<EventsAnnouncements />} />
-            <Route path="giving" element={<Giving />} />
-            <Route path="attendance" element={<StaffAttendance />} />
+            <Route path="events" element={<EventsAnnouncements canDelete />} />
+            <Route path="giving" element={<Giving canDelete />} />
+            <Route path="attendance" element={<StaffAttendance canDelete />} />
             <Route path="prayers" element={<AdminPrayers />} />
+            <Route path="notifications" element={<AdminNotifications />} />
             <Route path="chatbot" element={<KnowledgeBasePage />} />
             <Route path="*" element={<ComingSoon />} />
           </Route>
 
-          {/* STAFF */}
+          {/* STAFF / SECRETARY */}
           {portal(
             "/staff",
             "staff",
@@ -124,11 +134,10 @@ export default function App() {
               <Route path="giving" element={<Giving />} />
               <Route path="reports" element={<Reports />} />
               <Route path="sermons" element={<Sermons />} />
-              <Route
-                path="notifications"
-                element={<StaffNotifications />}
-              />
-            </>
+              <Route path="notifications" element={<StaffNotifications />} />
+              <Route path="profile" element={<StaffProfile />} />
+            </>,
+            <SecretaryHome />
           )}
 
           {/* MINISTRY LEADER */}
@@ -142,11 +151,10 @@ export default function App() {
               <Route path="activities" element={<LeaderActivities />} />
               <Route path="events" element={<LeaderEvents />} />
               <Route path="attendance" element={<LeaderAttendance />} />
-              <Route
-                path="notifications"
-                element={<LeaderNotifications />}
-              />
-            </>
+              <Route path="notifications" element={<LeaderNotifications />} />
+              <Route path="profile" element={<LeaderProfile />} />
+            </>,
+            <MinistryHome />
           )}
 
           {/* MEMBER PORTAL */}
@@ -158,18 +166,12 @@ export default function App() {
               <Route path="qr" element={<MyQr />} />
               <Route path="checkin" element={<GpsCheckin />} />
               <Route path="prayers" element={<Prayers />} />
-              <Route
-                path="announcements"
-                element={<AnnouncementsSermons />}
-              />
+              <Route path="announcements" element={<AnnouncementsSermons />} />
               <Route path="events" element={<EventsRsvp />} />
               <Route path="ministries" element={<Ministries />} />
               <Route path="recommended" element={<Recommended />} />
               <Route path="language" element={<Language />} />
-              <Route
-                path="notifications"
-                element={<MemberNotifications />}
-              />
+              <Route path="notifications" element={<MemberNotifications />} />
             </>,
             <MemberHome />
           )}
@@ -180,6 +182,9 @@ export default function App() {
 
         {/* Floating chatbot */}
         <ChatWidget />
+
+        {/* Pop-up para sa bagong notification (lahat ng role) */}
+        <NotifToast />
       </BrowserRouter>
     </AuthProvider>
   );

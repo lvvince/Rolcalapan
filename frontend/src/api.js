@@ -16,21 +16,35 @@ async function request(method, path, body, config = {}) {
     const qs = new URLSearchParams(config.params).toString();
     if (qs) url += (url.includes("?") ? "&" : "?") + qs;
   }
+
+  const headers = {
+    ...(isForm ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(config.headers || {}),
+  };
+  // Para sa FormData, ang browser dapat ang magtakda ng Content-Type (may boundary)
+  if (isForm) {
+    Object.keys(headers).forEach((k) => {
+      if (k.toLowerCase() === "content-type") delete headers[k];
+    });
+  }
+
   const res = await fetch(url, {
     method,
-    headers: {
-      ...(isForm ? {} : { "Content-Type": "application/json" }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(config.headers || {}),
-    },
+    headers,
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   });
+
   const text = await res.text();
   let data;
   try { data = text ? JSON.parse(text) : {}; } catch { data = text; }
   const response = { data, status: res.status };
+
   if (!res.ok) {
-    const err = new Error((data && data.message) || `Request failed: ${res.status}`);
+    const msg =
+      (data && typeof data === "object" && (data.error || data.message)) ||
+      `Request failed: ${res.status}`;
+    const err = new Error(msg);
     err.response = response;
     throw err;
   }

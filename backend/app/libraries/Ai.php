@@ -10,9 +10,13 @@
  *   OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL (default: Groq free tier)
  *   GEMINI_API_KEY, GEMINI_MODEL                  (default: gemini-2.5-flash)
  *   AI_SSL_VERIFY=0                               (local Laragon lang, kung may SSL error)
+ *   AI_TOTAL_TIMEOUT=45                           (max na segundo para sa lahat ng provider)
  */
 class Ai
 {
+    // Oras kung kailan dapat tumigil ang lahat ng pagsubok (unix time)
+    private $deadline = 0;
+
     private function env($key, $default = '')
     {
         $v = getenv($key);
@@ -80,11 +84,18 @@ class Ai
 
     /**
      * Susubukan muna ang piniling provider, tapos ang iba pang may API key.
+     * May total time limit para hindi mag-timeout ang Render / frontend.
      * Return: ['provider' => ..., 'answer' => ...] o null kung lahat pumalya.
      */
     public function ask_with_fallback($provider, $system, $messages, &$errors)
     {
         $errors = [];
+        $total = (int)$this->env('AI_TOTAL_TIMEOUT', '45');
+        if ($total < 10) {
+            $total = 45;
+        }
+        $this->deadline = time() + $total;
+
         $order = array_values(array_unique(array_merge([$provider], ['gemini', 'openai', 'claude'])));
 
         foreach ($order as $p) {
@@ -93,6 +104,10 @@ class Ai
                     $errors[] = $p . ': API key not set';
                 }
                 continue;
+            }
+            if ($this->time_left() < 3) {
+                $errors[] = 'Time limit reached before trying ' . $p;
+                break;
             }
             try {
                 $answer = trim((string)$this->ask($p, $system, $messages));
@@ -105,6 +120,11 @@ class Ai
             }
         }
         return null;
+    }
+
+    private function time_left()
+    {
+        return $this->deadline > 0 ? $this->deadline - time() : 30;
     }
 
     private function claude($system, $messages)
@@ -138,16 +158,25 @@ class Ai
             throw new Exception('OPENAI_API_KEY is not set');
         }
         $base = rtrim($this->env('OPENAI_BASE_URL', 'https://api.groq.com/openai/v1'), '/');
-        $data = $this->post(
-            $base . '/chat/completions',
-            ['Authorization: Bearer ' . $key],
-            [
-                'model' => $this->env('OPENAI_MODEL', 'llama-3.3-70b-versatile'),
-                'max_tokens' => 700,
-                'temperature' => 0.5,
-                'messages' => array_merge([['role' => 'system', 'content' => $system]], $messages),
-            ]
-        );
+        $model = $this->env('OPENAI_MODEL', 'llama-3.3-70b-versatile');
+
+        $payload = [
+            'model' => $model,
+            'messages' => array_merge([['role' => 'system', 'content' => $system]], $messages),
+        ];
+
+        // Bagong OpenAI models (gpt-5, o-series): max_completion_tokens, walang custom temperature
+        $new_openai = strpos($base, 'api.openai.com') !== false
+            && preg_match('/^(gpt-5|o\d)/i', $model);
+
+        if ($new_openai) {
+            $payload['max_completion_tokens'] = 700;
+        } else {
+            $payload['max_tokens'] = 700;
+            $payload['temperature'] = 0.5;
+        }
+
+        $data = $this->post($base . '/chat/completions', ['Authorization: Bearer ' . $key], $payload);
         return trim($data['choices'][0]['message']['content'] ?? '');
     }
 
@@ -197,12 +226,20 @@ class Ai
         $err = '';
 
         for ($attempt = 1; $attempt <= 2; $attempt++) {
+            // Huwag lumampas sa total time limit
+            $left = $this->time_left();
+            if ($left < 3) {
+                throw new Exception('Time limit reached');
+            }
+            $timeout = max(3, min(20, $left));
+            $connect = max(3, min(10, $timeout));
+
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_POST => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_CONNECTTIMEOUT => 8,
-                CURLOPT_TIMEOUT => 25,
+                CURLOPT_CONNECTTIMEOUT => $connect,
+                CURLOPT_TIMEOUT => $timeout,
                 CURLOPT_SSL_VERIFYPEER => $this->env('AI_SSL_VERIFY', '1') !== '0',
                 CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers),
                 CURLOPT_POSTFIELDS => json_encode($payload),
@@ -212,8 +249,9 @@ class Ai
             $err = curl_error($ch);
             curl_close($ch);
 
-            // Isang retry lang kung overloaded (429/503)
-            if ($res !== false && ($code === 429 || $code === 503) && $attempt === 1) {
+            // Isang retry lang: network error o overloaded (429/503)
+            $retry = ($res === false) || ($code === 429 || $code === 503);
+            if ($retry && $attempt === 1) {
                 sleep(1);
                 continue;
             }
@@ -224,7 +262,7 @@ class Ai
             throw new Exception('Network error: ' . $err);
         }
         if ($code >= 400) {
-            throw new Exception('AI error ' . $code . ': ' . substr($res, 0, 300));
+            throw new Exception('AI error ' . $code . ': ' . substr(preg_replace('/\s+/', ' ', (string)$res), 0, 200));
         }
         $data = json_decode($res, true);
         if (!is_array($data)) {

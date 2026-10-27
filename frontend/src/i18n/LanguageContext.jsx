@@ -90,6 +90,7 @@ export function LanguageProvider({ children }) {
       } else {
         try {
           translations = JSON.parse(raw).translations || {};
+console.info('[translate] ok', l, Object.keys(translations).length, 'of', texts.length);
         } catch {
           const msg = raw
             .replace(/<style[\s\S]*?<\/style>/gi, '')

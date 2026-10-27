@@ -1,4 +1,7 @@
-﻿import DataPage from "../../components/DataPage";
+﻿import { useState } from "react";
+import DataPage from "../../components/DataPage";
+import NotificationsView from "../../components/Notifications";
+import "../../components/portal.css";
 
 export function AdminMinistries() {
   return (
@@ -94,6 +97,37 @@ export function AdminPrayers() {
           },
         ]}
       />
+    </>
+  );
+}
+
+export function AdminNotifications() {
+  const [k, setK] = useState(0);
+  return (
+    <>
+      <h2>Notifications</h2>
+      <DataPage
+        title="Sent Notifications"
+        resource="notifications"
+        addLabel="Send"
+        canEdit={false}
+        canDelete
+        refreshKey={k}
+        lookups={{ users: { resource: "users", label: (u) => `${u.full_name} (${u.role})` } }}
+        columns={[
+          { key: "title", label: "Title" },
+          { key: "message", label: "Message" },
+          { label: "To", render: (r) => r.recipient_name || "Everyone" },
+          { key: "created_at", label: "Sent" },
+        ]}
+        fields={[
+          { key: "user_id", label: "Recipient (blank = everyone)", type: "select", lookup: "users" },
+          { key: "title", label: "Title", required: true },
+          { key: "message", label: "Message", type: "textarea", required: true },
+        ]}
+      />
+      <NotificationsView refreshKey={k} />
+      <button className="btn secondary sm" onClick={() => setK(k + 1)}>Refresh</button>
     </>
   );
 }
