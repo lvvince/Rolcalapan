@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { LogOut } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import LanguageSwitcher from "../../components/LanguageSwitcher";
 import ThemeToggle from "../../components/ThemeToggle";
 import useNotifCount from "../../hooks/useNotifCount";
+
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const links = [
   { to: "/admin", key: "nav.dashboard", end: true },
@@ -18,6 +21,39 @@ const links = [
   { to: "/admin/prayers", key: "nav.prayers" },
   { to: "/admin/notifications", key: "nav.notifications", fallback: "Notifications" },
 ];
+
+const initialsOf = (name = "") =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("") || "?";
+
+// Avatar na may fallback sa initials kapag walang larawan o hindi ma-load
+function UserAvatar({ user }) {
+  const src = user?.photo ? `${API_BASE}/avatar?f=${encodeURIComponent(user.photo)}` : "";
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  return (
+    <span className="sb-avatar" aria-hidden="true">
+      {src && !failed ? (
+        <img
+          src={src}
+          alt=""
+          onError={() => setFailed(true)}
+          style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
+        />
+      ) : (
+        initialsOf(user?.name)
+      )}
+    </span>
+  );
+}
 
 export default function AdminLayout() {
   const { t } = useTranslation();
@@ -36,6 +72,8 @@ export default function AdminLayout() {
     navigate("/login", { replace: true });
   };
 
+  const roleTitle = t("menu.title.admin", { defaultValue: "Admin Portal" });
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -43,6 +81,7 @@ export default function AdminLayout() {
           <img src="/logo.png" alt="River of Life Calapan logo" width={36} height={36} />
           <span>River of Life</span>
         </div>
+
         <nav>
           {links.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end} className={({ isActive }) => (isActive ? "active" : "")}>
@@ -53,6 +92,20 @@ export default function AdminLayout() {
             </NavLink>
           ))}
         </nav>
+
+        <div className="sb-footer">
+          <div className="sb-user">
+            <UserAvatar user={user} />
+            <div className="sb-user-text">
+              <strong title={user?.name}>{user?.name}</strong>
+              <small title={roleTitle}>{roleTitle}</small>
+            </div>
+          </div>
+          <button type="button" className="sb-logout" onClick={doLogout}>
+            <LogOut size={16} aria-hidden="true" />
+            <span>{t("common.logout")}</span>
+          </button>
+        </div>
       </aside>
 
       <div className="main">
@@ -61,14 +114,6 @@ export default function AdminLayout() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <ThemeToggle />
             <LanguageSwitcher />
-            <NavLink
-              to="/admin/profile"
-              title="My Profile"
-              style={{ fontWeight: 700, textDecoration: "none", color: "inherit" }}
-            >
-              {user?.name}
-            </NavLink>
-            <button className="ghost" onClick={doLogout}>{t("common.logout")}</button>
           </div>
         </header>
         <main className="content">

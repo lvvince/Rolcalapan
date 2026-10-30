@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Menu, X, LogOut } from "lucide-react";
+import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import { roleMenus } from "../config/roleMenus";
 import Icon from "./Icon";
@@ -60,6 +61,7 @@ const PHOTO_KEYS = [
   "avatar",
   "avatar_url",
   "avatarUrl",
+  "profile_pic",
   "profile_picture",
   "profilePicture",
   "profile_photo",
@@ -85,8 +87,9 @@ const pickPhoto = (user) => {
 };
 
 // Avatar na may fallback sa initials kapag walang larawan o hindi ma-load
-function UserAvatar({ user }) {
-  const photo = pickPhoto(user);
+// `pic` = larawan galing sa /portal/me (member.profile_pic), mas inuuna ito
+function UserAvatar({ user, pic }) {
+  const photo = pic || pickPhoto(user);
   const [failed, setFailed] = useState(false);
 
   // i-reset ang error kapag nagbago ang larawan
@@ -118,6 +121,7 @@ export default function RoleLayout({ role }) {
   const location = useLocation();
   const menu = roleMenus[role];
   const [open, setOpen] = useState(false); // mobile drawer
+  const [memberPic, setMemberPic] = useState(null);
 
   const doLogout = () => {
     logout();
@@ -125,6 +129,21 @@ export default function RoleLayout({ role }) {
   };
 
   const linkClass = ({ isActive }) => (isActive ? "active" : "");
+
+  // Kunin ang larawan galing sa /portal/me (doon naka-save ang profile_pic).
+  // Nagre-refresh kapag lumipat ng page, para makita agad ang bagong upload.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get("/portal/me")
+      .then((r) => {
+        if (!cancelled) setMemberPic(r.data?.member?.profile_pic || null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
 
   // isara ang drawer kapag lumipat ng page
   useEffect(() => {
@@ -178,7 +197,7 @@ export default function RoleLayout({ role }) {
 
         <div className="sb-footer">
           <div className="sb-user">
-            <UserAvatar user={user} />
+            <UserAvatar user={user} pic={memberPic} />
             <div className="sb-user-text">
               <strong title={user?.name}>{user?.name}</strong>
               <small title={roleTitle}>{roleTitle}</small>

@@ -6,117 +6,121 @@ import ProfilePicture from "../../components/ProfilePicture";
 import DataPage, { hm } from "../../components/DataPage";
 import NotificationsView from "../../components/Notifications";
 import { useLang } from "../../i18n/LanguageContext";
-import { eventFields, eventColumns } from "../secretary/StaffDashboard";
+import { getEventFields, getEventColumns } from "../secretary/StaffDashboard";
 import "../../components/portal.css";
 
 const mineLookup = { ministries: { resource: "ministries", params: { mine: 1 }, label: "name" } };
 const err = (e) => e.response?.data?.error || "Something went wrong";
 
 export function LeaderSchedule() {
+  const { t } = useLang();
   return (
     <>
-      <h2>Ministry Schedule</h2>
+      <h2>{t("Ministry Schedule")}</h2>
       <DataPage
-        title="Schedules"
+        title={t("Schedules")}
         resource="ministry_schedules"
-        addLabel="Schedule"
+        addLabel={t("Schedule")}
         lookups={{ ...mineLookup, members: { resource: "members", label: "full_name" } }}
         columns={[
-          { key: "ministry_name", label: "Ministry" },
-          { key: "title", label: "Title" },
-          { key: "schedule_date", label: "Date" },
-          { label: "Time", render: (r) => `${hm(r.start_time)}-${hm(r.end_time)}` },
-          { key: "location", label: "Location" },
-          { key: "volunteer_name", label: "Volunteer" },
+          { key: "ministry_name", label: t("Ministry") },
+          { key: "title", label: t("Title") },
+          { key: "schedule_date", label: t("Date") },
+          { label: t("Time"), render: (r) => `${hm(r.start_time)}-${hm(r.end_time)}` },
+          { key: "location", label: t("Location") },
+          { key: "volunteer_name", label: t("Volunteer") },
         ]}
         fields={[
-          { key: "ministry_id", label: "Ministry", type: "select", lookup: "ministries", required: true },
-          { key: "title", label: "Title", required: true },
-          { key: "schedule_date", label: "Date", type: "date", required: true },
-          { key: "start_time", label: "Start time", type: "time", required: true },
-          { key: "end_time", label: "End time", type: "time", required: true },
-          { key: "location", label: "Location" },
-          { key: "volunteer_member_id", label: "Assign volunteer (conflict is checked)", type: "select", lookup: "members" },
+          { key: "ministry_id", label: t("Ministry"), type: "select", lookup: "ministries", required: true },
+          { key: "title", label: t("Title"), required: true },
+          { key: "schedule_date", label: t("Date"), type: "date", required: true },
+          { key: "start_time", label: t("Start time"), type: "time", required: true },
+          { key: "end_time", label: t("End time"), type: "time", required: true },
+          { key: "location", label: t("Location") },
+          { key: "volunteer_member_id", label: t("Assign volunteer (conflict is checked)"), type: "select", lookup: "members" },
         ]}
       />
     </>
   );
 }
 
-const mmFields = [
-  { key: "ministry_id", label: "Ministry", type: "select", lookup: "ministries", required: true },
-  { key: "member_id", label: "Member", type: "select", lookup: "members", required: true },
-  { key: "role", label: "Role", type: "select", required: true, options: [{ value: "member", label: "Member" }, { value: "volunteer", label: "Volunteer" }] },
-];
 const mmLookups = { ...mineLookup, members: { resource: "members", label: "full_name" } };
+const getMmFields = (t) => [
+  { key: "ministry_id", label: t("Ministry"), type: "select", lookup: "ministries", required: true },
+  { key: "member_id", label: t("Member"), type: "select", lookup: "members", required: true },
+  { key: "role", label: t("Role"), type: "select", required: true, options: [{ value: "member", label: t("Member") }, { value: "volunteer", label: t("Volunteer") }] },
+];
 
 export function LeaderMembers() {
+  const { t } = useLang();
   return (
     <>
-      <h2>Ministry Members</h2>
+      <h2>{t("Ministry Members")}</h2>
       <DataPage
-        title="Members"
+        title={t("Members")}
         resource="ministry_members"
-        addLabel="Member"
+        addLabel={t("Member")}
         lookups={mmLookups}
         defaults={{ role: "member" }}
         columns={[
-          { key: "ministry_name", label: "Ministry" },
-          { key: "member_name", label: "Member" },
-          { label: "Role", render: (r) => <span className={`badge ${r.role === "volunteer" ? "ok" : ""}`}>{r.role}</span> },
+          { key: "ministry_name", label: t("Ministry") },
+          { key: "member_name", label: t("Member") },
+          { label: t("Role"), render: (r) => <span className={`badge ${r.role === "volunteer" ? "ok" : ""}`}>{t(r.role)}</span> },
         ]}
-        fields={mmFields}
+        fields={getMmFields(t)}
       />
     </>
   );
 }
 
 export function LeaderVolunteers() {
+  const { t } = useLang();
   return (
     <>
-      <h2>Volunteers</h2>
+      <h2>{t("Volunteers")}</h2>
       <DataPage
-        title="Volunteers"
+        title={t("Volunteers")}
         resource="ministry_members"
-        addLabel="Volunteer"
+        addLabel={t("Volunteer")}
         lookups={mmLookups}
         defaults={{ role: "volunteer" }}
         filter={(r) => r.role === "volunteer"}
         columns={[
-          { key: "ministry_name", label: "Ministry" },
-          { key: "member_name", label: "Volunteer" },
+          { key: "ministry_name", label: t("Ministry") },
+          { key: "member_name", label: t("Volunteer") },
         ]}
-        fields={mmFields}
+        fields={getMmFields(t)}
       />
     </>
   );
 }
 
 export function LeaderActivities() {
+  const { t } = useLang();
   return (
     <>
-      <h2>Ministry Activities</h2>
+      <h2>{t("Ministry Activities")}</h2>
       <DataPage
-        title="Activities"
+        title={t("Activities")}
         resource="activities"
-        addLabel="Activity"
+        addLabel={t("Activity")}
         lookups={mineLookup}
         defaults={{ status: "planned" }}
         columns={[
-          { key: "ministry_name", label: "Ministry" },
-          { key: "title", label: "Activity" },
-          { key: "due_date", label: "Due" },
+          { key: "ministry_name", label: t("Ministry") },
+          { key: "title", label: t("Activity") },
+          { key: "due_date", label: t("Due") },
           {
-            label: "Status",
-            render: (r) => <span className={`badge ${r.status === "done" ? "ok" : r.status === "ongoing" ? "warn" : ""}`}>{r.status}</span>,
+            label: t("Status"),
+            render: (r) => <span className={`badge ${r.status === "done" ? "ok" : r.status === "ongoing" ? "warn" : ""}`}>{t(r.status)}</span>,
           },
         ]}
         fields={[
-          { key: "ministry_id", label: "Ministry", type: "select", lookup: "ministries", required: true },
-          { key: "title", label: "Activity", required: true },
-          { key: "description", label: "Description", type: "textarea" },
-          { key: "due_date", label: "Due date", type: "date" },
-          { key: "status", label: "Status", type: "select", required: true, options: [{ value: "planned", label: "Planned" }, { value: "ongoing", label: "Ongoing" }, { value: "done", label: "Done" }] },
+          { key: "ministry_id", label: t("Ministry"), type: "select", lookup: "ministries", required: true },
+          { key: "title", label: t("Activity"), required: true },
+          { key: "description", label: t("Description"), type: "textarea" },
+          { key: "due_date", label: t("Due date"), type: "date" },
+          { key: "status", label: t("Status"), type: "select", required: true, options: [{ value: "planned", label: t("Planned") }, { value: "ongoing", label: t("Ongoing") }, { value: "done", label: t("Done") }] },
         ]}
       />
     </>
@@ -124,38 +128,40 @@ export function LeaderActivities() {
 }
 
 export function LeaderEvents() {
+  const { t } = useLang();
   return (
     <>
-      <h2>Ministry Events</h2>
+      <h2>{t("Ministry Events")}</h2>
       <DataPage
-        title="Ministry Events"
+        title={t("Ministry Events")}
         resource="events"
-        addLabel="Event"
+        addLabel={t("Event")}
         lookups={mineLookup}
         filter={(r, l) => (l.ministries || []).some((m) => String(m.id) === String(r.ministry_id))}
         defaults={{ event_type: "internal", radius_m: 100 }}
-        columns={eventColumns}
-        fields={eventFields.map((f) => (f.key === "ministry_id" ? { ...f, label: "Ministry", required: true } : f))}
+        columns={getEventColumns(t)}
+        fields={getEventFields(t).map((f) => (f.key === "ministry_id" ? { ...f, label: t("Ministry"), required: true } : f))}
       />
     </>
   );
 }
 
 export function LeaderAttendance() {
+  const { t } = useLang();
   return (
     <>
-      <h2>Ministry Attendance</h2>
+      <h2>{t("Ministry Attendance")}</h2>
       <DataPage
-        title="Attendance"
+        title={t("Attendance")}
         resource="attendance"
         canCreate={false}
         canEdit={false}
         canDelete={false}
         columns={[
-          { key: "service_date", label: "Date" },
-          { key: "member_name", label: "Member" },
-          { label: "Event", render: (r) => r.event_title || "Sunday Service" },
-          { label: "Method", render: (r) => <span className="badge">{r.method}</span> },
+          { key: "service_date", label: t("Date") },
+          { key: "member_name", label: t("Member") },
+          { label: t("Event"), render: (r) => r.event_title || t("Sunday Service") },
+          { label: t("Method"), render: (r) => <span className="badge">{t(r.method)}</span> },
         ]}
         fields={[]}
       />
@@ -164,12 +170,13 @@ export function LeaderAttendance() {
 }
 
 export function LeaderNotifications() {
+  const { t } = useLang();
   const [k, setK] = useState(0);
   return (
     <>
-      <h2>Notifications & Conflict Alerts</h2>
+      <h2>{t("Notifications & Conflict Alerts")}</h2>
       <NotificationsView refreshKey={k} />
-      <button className="btn secondary sm" onClick={() => setK(k + 1)}>Refresh</button>
+      <button className="btn secondary sm" onClick={() => setK(k + 1)}>{t("Refresh")}</button>
     </>
   );
 }
@@ -215,7 +222,7 @@ export function LeaderProfile() {
             currentPic={form.profile_pic}
             onUploaded={(pic) => setForm((f) => ({ ...f, profile_pic: pic }))}
           />
-          <h3 className="pf-name">{form.full_name || "Ministry Leader"}</h3>
+          <h3 className="pf-name">{form.full_name || t("Ministry Leader")}</h3>
           {form.family_name && <div className="pf-family">{form.family_name} {t("family")}</div>}
         </aside>
 

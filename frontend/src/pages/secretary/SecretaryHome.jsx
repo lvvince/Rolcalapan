@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
+import { useLang } from "../../i18n/LanguageContext";
 import "../admin/AdminDashboard.css"; // .dsh-* styles
 import "./StaffPages.css";
 
@@ -36,10 +37,10 @@ const greeting = () => {
     }).format(new Date())
   ) % 24;
 
-  if (h >= 5 && h < 11) return "Good morning,";    // 5:00 AM - 10:59 AM
-  if (h >= 11 && h < 13) return "Good noon,";      // 11:00 AM - 12:59 PM
-  if (h >= 13 && h < 18) return "Good afternoon,"; // 1:00 PM - 5:59 PM
-  return "Good evening,";                          // 6:00 PM - 4:59 AM
+  if (h >= 5 && h < 11) return "Good morning";    // 5:00 AM - 10:59 AM
+  if (h >= 11 && h < 13) return "Good noon";      // 11:00 AM - 12:59 PM
+  if (h >= 13 && h < 18) return "Good afternoon"; // 1:00 PM - 5:59 PM
+  return "Good evening";                          // 6:00 PM - 4:59 AM
 };
 
 // "YYYY-MM-DD" sa local time
@@ -65,6 +66,7 @@ const quick = [
 ];
 
 export default function SecretaryHome() {
+  const { t } = useLang();
   const { user } = useAuth();
   const [s, setS] = useState(null);
   const [member, setMember] = useState(null);
@@ -95,7 +97,7 @@ export default function SecretaryHome() {
           upcoming_events: events.filter((e) => String(e.event_date).slice(0, 10) >= today).length,
           giving_this_month: giving
             .filter((g) => String(g.given_at).slice(0, 7) === month)
-            .reduce((t, g) => t + (Number(g.amount) || 0), 0),
+            .reduce((tot, g) => tot + (Number(g.amount) || 0), 0),
         };
         if (!cancelled) setS(next);
       })
@@ -109,7 +111,7 @@ export default function SecretaryHome() {
     };
   }, []);
 
-  const name = member?.full_name || user?.name || "Church Staff";
+  const name = member?.full_name || user?.name || t("Church Staff");
   const pic = member?.profile_pic;
 
   const stats = [
@@ -136,17 +138,17 @@ export default function SecretaryHome() {
         )}
         <div className="dsh-hero-text">
           <span className="dsh-hero-church">River of Life Calapan</span>
-          <small>{greeting()}</small>
+          <small>{t(greeting())},</small>
           <h2>{name}</h2>
-          <span className="dsh-hero-tag">CHURCH STAFF / SECRETARY</span>
+          <span className="dsh-hero-tag">{t("CHURCH STAFF / SECRETARY")}</span>
         </div>
         <Link to="/staff/attendance" className="dsh-hero-btn">
-          Start check-in <ArrowRight size={16} aria-hidden="true" />
+          {t("Start check-in")} <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </div>
 
-      {error && <div className="dsh-err">{error}</div>}
-      {!s && !error && <p className="dsh-muted">Loading...</p>}
+      {error && <div className="dsh-err">{t(error)}</div>}
+      {!s && !error && <p className="dsh-muted">{t("Loading...")}</p>}
 
       {s && (
         <div className="dsh-stats staff-stats">
@@ -155,7 +157,7 @@ export default function SecretaryHome() {
             const body = (
               <>
                 <span className={`dsh-tile tone-${x.tone}`}><Icon size={22} aria-hidden="true" /></span>
-                <div><strong>{x.value}</strong><span>{x.label}</span></div>
+                <div><strong>{x.value}</strong><span>{t(x.label)}</span></div>
               </>
             );
             return x.to ? (
@@ -168,7 +170,7 @@ export default function SecretaryHome() {
       )}
 
       <div className="dsh-head">
-        <h3>Quick Links</h3>
+        <h3>{t("Quick Links")}</h3>
       </div>
       <div className="dsh-links">
         {quick.map((q) => {
@@ -177,8 +179,8 @@ export default function SecretaryHome() {
             <Link key={q.to} to={q.to} className="dsh-link">
               <span className={`dsh-tile tone-${q.tone}`}><Icon size={22} aria-hidden="true" /></span>
               <span className="dsh-link-text">
-                <strong>{q.title}</strong>
-                <small>{q.desc}</small>
+                <strong>{t(q.title)}</strong>
+                <small>{t(q.desc)}</small>
               </span>
               <span className="dsh-arrow" aria-hidden="true"><ArrowRight size={18} /></span>
             </Link>

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
+import { useLang } from "../../i18n/LanguageContext";
 import "./AdminDashboard.css";
 
 const LOGO_SRC = "/logo.png";
@@ -49,10 +50,10 @@ const greeting = () => {
     }).format(new Date())
   ) % 24;
 
-  if (h >= 5 && h < 11) return "Good morning,";    // 5:00 AM - 10:59 AM
-  if (h >= 11 && h < 13) return "Good noon,";      // 11:00 AM - 12:59 PM
-  if (h >= 13 && h < 18) return "Good afternoon,"; // 1:00 PM - 5:59 PM
-  return "Good evening,";                          // 6:00 PM - 4:59 AM
+  if (h >= 5 && h < 11) return "Good morning";    // 5:00 AM - 10:59 AM
+  if (h >= 11 && h < 13) return "Good noon";      // 11:00 AM - 12:59 PM
+  if (h >= 13 && h < 18) return "Good afternoon"; // 1:00 PM - 5:59 PM
+  return "Good evening";                          // 6:00 PM - 4:59 AM
 };
 
 const peso = (n) =>
@@ -79,6 +80,7 @@ const C = 2 * Math.PI * R;
 const GAP = 4;
 
 export default function AdminDashboard() {
+  const { t } = useLang();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [giving, setGiving] = useState(null); // null = hindi pa nakuha
@@ -114,7 +116,7 @@ export default function AdminDashboard() {
         const key = currentMonthKey();
         const sum = rows
           .filter((g) => givingMonthKey(g) === key)
-          .reduce((t, g) => t + (Number(g.amount) || 0), 0);
+          .reduce((tot, g) => tot + (Number(g.amount) || 0), 0);
         if (!cancelled) setGiving(sum);
       })
       .catch((e) => {
@@ -140,7 +142,7 @@ export default function AdminDashboard() {
   const roles = Object.entries(stats?.by_role || {}).map(([key, count]) => ({
     key,
     count: Number(count) || 0,
-    label: roleMeta[key]?.label || key,
+    label: t(roleMeta[key]?.label || key),
     color: roleMeta[key]?.color || "#94a3b8",
   }));
   const maxRole = Math.max(...roles.map((r) => r.count), 1);
@@ -185,45 +187,45 @@ export default function AdminDashboard() {
         )}
         <div className="dsh-hero-text">
           <span className="dsh-hero-church">River of Life Calapan</span>
-          <small>{greeting()}</small>
+          <small>{t(greeting())},</small>
           <h2>{name}</h2>
-          <span className="dsh-hero-tag">ADMIN / PASTOR</span>
+          <span className="dsh-hero-tag">{t("ADMIN / PASTOR")}</span>
         </div>
         <Link to="/admin/users" className="dsh-hero-btn">
-          Manage users <ArrowRight size={16} aria-hidden="true" />
+          {t("Manage users")} <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </div>
 
-      {error && <div className="dsh-err">{error}</div>}
-      {!stats && !error && <p className="dsh-muted">Loading...</p>}
+      {error && <div className="dsh-err">{t(error)}</div>}
+      {!stats && !error && <p className="dsh-muted">{t("Loading...")}</p>}
 
       {stats && (
         <>
           <div className="dsh-stats">
             <div className="dsh-stat">
               <span className="dsh-tile tone-cyan"><Users size={22} aria-hidden="true" /></span>
-              <div><strong>{total}</strong><span>Total Users</span></div>
+              <div><strong>{total}</strong><span>{t("Total Users")}</span></div>
             </div>
             <div className="dsh-stat">
               <span className="dsh-tile tone-green"><UserCheck size={22} aria-hidden="true" /></span>
-              <div><strong>{active}</strong><span>Active Users · {pct(active, total)}%</span></div>
+              <div><strong>{active}</strong><span>{t("Active Users")} · {pct(active, total)}%</span></div>
             </div>
             <div className="dsh-stat">
               <span className="dsh-tile tone-slate"><Moon size={22} aria-hidden="true" /></span>
-              <div><strong>{inactive}</strong><span>Inactive Users · {pct(inactive, total)}%</span></div>
+              <div><strong>{inactive}</strong><span>{t("Inactive Users")} · {pct(inactive, total)}%</span></div>
             </div>
             <Link to="/admin/giving" className="dsh-stat is-link">
               <span className="dsh-tile tone-amber"><Wallet size={22} aria-hidden="true" /></span>
               <div>
                 <strong>{peso(givingTotal)}</strong>
-                <span>Giving · This Month</span>
+                <span>{t("Giving · This Month")}</span>
               </div>
             </Link>
           </div>
 
           <div className="dsh-head">
-            <h3>People by Role</h3>
-            <span className="dsh-pill">{total} total</span>
+            <h3>{t("People by Role")}</h3>
+            <span className="dsh-pill">{total} {t("total")}</span>
           </div>
 
           <div className="dsh-panel">
@@ -233,7 +235,7 @@ export default function AdminDashboard() {
                 height="200"
                 viewBox="0 0 200 200"
                 role="img"
-                aria-label="Role distribution"
+                aria-label={t("Role distribution")}
                 style={{ transform: "rotate(-90deg)" }}
               >
                 <circle className="dsh-track" cx="100" cy="100" r={R} fill="none" stroke="#e3edef" strokeWidth="26" />
@@ -258,7 +260,7 @@ export default function AdminDashboard() {
               </svg>
               <div className="dsh-donut-center">
                 <strong>{hovered ? hovered.count : total}</strong>
-                <span>{hovered ? hovered.label : "Total people"}</span>
+                <span>{hovered ? hovered.label : t("Total people")}</span>
               </div>
             </div>
 
@@ -272,13 +274,13 @@ export default function AdminDashboard() {
                     onMouseLeave={() => setHover(null)}
                     onFocus={() => setHover(r.key)}
                     onBlur={() => setHover(null)}
-                    title={`View ${r.label}`}
+                    title={`${t("View")} ${r.label}`}
                   >
                     <span className="dsh-row-lbl">
                       <i className="dsh-dot" style={{ background: r.color }} />
                       <span>
                         {r.label}
-                        {r.count === 0 && <span className="dsh-note">No users yet</span>}
+                        {r.count === 0 && <span className="dsh-note">{t("No users yet")}</span>}
                       </span>
                     </span>
                     <div className="dsh-bar">
@@ -295,7 +297,7 @@ export default function AdminDashboard() {
       )}
 
       <div className="dsh-head">
-        <h3>Quick Links</h3>
+        <h3>{t("Quick Links")}</h3>
       </div>
       <div className="dsh-links">
         {quick.map((q) => {
@@ -306,8 +308,8 @@ export default function AdminDashboard() {
                 <Icon size={22} aria-hidden="true" />
               </span>
               <span className="dsh-link-text">
-                <strong>{q.title}</strong>
-                <small>{q.desc}</small>
+                <strong>{t(q.title)}</strong>
+                <small>{t(q.desc)}</small>
               </span>
               <span className="dsh-arrow" aria-hidden="true">
                 <ArrowRight size={18} />

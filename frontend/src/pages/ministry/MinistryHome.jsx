@@ -16,6 +16,7 @@ import {
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { hm } from "../../components/DataPage";
+import { useLang } from "../../i18n/LanguageContext";
 import "../../components/portal.css";
 
 const GROUPS = [
@@ -56,6 +57,7 @@ const greeting = () => {
 };
 
 export default function MinistryHome() {
+  const { t } = useLang();
   const { user } = useAuth();
   const [member, setMember] = useState(null);
   const [events, setEvents] = useState([]);
@@ -79,7 +81,7 @@ export default function MinistryHome() {
     member?.full_name ||
     user?.full_name ||
     user?.name ||
-    "Ministry Leader";
+    t("Ministry Leader");
   const pic = member?.profile_pic || user?.profile_pic;
 
   return (
@@ -90,24 +92,24 @@ export default function MinistryHome() {
           {pic ? <img src={pic} alt="" /> : <span>{name.charAt(0).toUpperCase()}</span>}
         </div>
         <div className="dash-hero-text">
-          <small>{greeting()},</small>
+          <small>{t(greeting())},</small>
           <h2>{name}</h2>
-          <span className="dash-code">Ministry Leader</span>
+          <span className="dash-code">{t("Ministry Leader")}</span>
         </div>
         <Link to="/ministry/attendance" className="dash-hero-btn">
-          <ClipboardCheck size={16} aria-hidden="true" /> Attendance
+          <ClipboardCheck size={16} aria-hidden="true" /> {t("Attendance")}
         </Link>
       </div>
 
       {/* Upcoming events */}
       <div className="dash-section-head">
-        <h3>Upcoming Events</h3>
+        <h3>{t("Upcoming Events")}</h3>
         <Link to="/ministry/events" className="dash-viewall">
-          View all <ArrowRight size={14} aria-hidden="true" />
+          {t("View all")} <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </div>
       {events.length === 0 ? (
-        <div className="dash-empty">No upcoming events yet.</div>
+        <div className="dash-empty">{t("No upcoming events yet.")}</div>
       ) : (
         <div className="dash-events">
           {events.map((e) => {
@@ -119,11 +121,11 @@ export default function MinistryHome() {
                   <strong>{d.getDate()}</strong>
                 </div>
                 <div className="dash-event-body">
-                  <h4>{e.title}</h4>
+                  <h4>{t(e.title)}</h4>
                   <p className="dash-event-meta">
                     <span>
                       <Clock size={13} aria-hidden="true" />{" "}
-                      {e.start_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : "All day"}
+                      {e.start_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : t("All day")}
                     </span>
                     {e.location && (
                       <span>
@@ -132,7 +134,7 @@ export default function MinistryHome() {
                     )}
                   </p>
                 </div>
-                {e.event_type === "outside" && <span className="badge warn">Off-site</span>}
+                {e.event_type === "outside" && <span className="badge warn">{t("Off-site")}</span>}
               </Link>
             );
           })}
@@ -142,7 +144,7 @@ export default function MinistryHome() {
       {/* Quick actions */}
       {GROUPS.map((g) => (
         <div key={g.title}>
-          <div className="dash-section-head"><h3>{g.title}</h3></div>
+          <div className="dash-section-head"><h3>{t(g.title)}</h3></div>
           <div className="dash-actions">
             {g.items.map((it) => {
               const Icon = it.icon;
@@ -152,8 +154,8 @@ export default function MinistryHome() {
                     <Icon size={22} aria-hidden="true" />
                   </span>
                   <div>
-                    <strong>{it.name}</strong>
-                    <p>{it.desc}</p>
+                    <strong>{t(it.name)}</strong>
+                    <p>{t(it.desc)}</p>
                   </div>
                 </Link>
               );

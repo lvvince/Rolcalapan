@@ -1,16 +1,18 @@
 ﻿import { useState } from "react";
 import DataPage from "../../components/DataPage";
 import NotificationsView from "../../components/Notifications";
+import { useLang } from "../../i18n/LanguageContext";
 import "../../components/portal.css";
 
 export function AdminMinistries() {
+  const { t } = useLang();
   return (
     <>
-      <h2>Ministries & Small Groups</h2>
+      <h2>{t("Ministries & Small Groups")}</h2>
       <DataPage
-        title="Ministries & Groups"
+        title={t("Ministries & Groups")}
         resource="ministries"
-        addLabel="Ministry"
+        addLabel={t("Ministry")}
         lookups={{
           leaders: {
             resource: "users",
@@ -19,30 +21,30 @@ export function AdminMinistries() {
           },
         }}
         columns={[
-          { key: "name", label: "Name" },
+          { key: "name", label: t("Name") },
           {
-            label: "Type",
+            label: t("Type"),
             render: (r) => (
-              <span className="badge">{r.type === "small_group" ? "Small group" : "Ministry"}</span>
+              <span className="badge">{r.type === "small_group" ? t("Small group") : t("Ministry")}</span>
             ),
           },
-          { key: "description", label: "Description" },
-          { label: "Leader", render: (r) => r.leader_name || "—" },
+          { key: "description", label: t("Description") },
+          { label: t("Leader"), render: (r) => r.leader_name || "—" },
         ]}
         fields={[
-          { key: "name", label: "Name", required: true },
+          { key: "name", label: t("Name"), required: true },
           {
             key: "type",
-            label: "Type",
+            label: t("Type"),
             type: "select",
             required: true,
             options: [
-              { value: "ministry", label: "Ministry" },
-              { value: "small_group", label: "Small group (cell group)" },
+              { value: "ministry", label: t("Ministry") },
+              { value: "small_group", label: t("Small group (cell group)") },
             ],
           },
-          { key: "description", label: "Description", type: "textarea" },
-          { key: "leader_user_id", label: "Leader (Ministry Leader account)", type: "select", lookup: "leaders" },
+          { key: "description", label: t("Description"), type: "textarea" },
+          { key: "leader_user_id", label: t("Leader (Ministry Leader account)"), type: "select", lookup: "leaders" },
         ]}
         defaults={{ type: "ministry" }}
       />
@@ -51,48 +53,49 @@ export function AdminMinistries() {
 }
 
 export function AdminPrayers() {
+  const { t } = useLang();
   return (
     <>
-      <h2>Prayer Requests</h2>
+      <h2>{t("Prayer Requests")}</h2>
       <DataPage
-        title="Prayer Requests"
+        title={t("Prayer Requests")}
         resource="prayer_requests"
         canCreate={false}
         canDelete={false}
         columns={[
-          { key: "created_at", label: "Date" },
-          { key: "member_name", label: "Member" },
-          { key: "request", label: "Request" },
+          { key: "created_at", label: t("Date") },
+          { key: "member_name", label: t("Member") },
+          { key: "request", label: t("Request") },
           {
-            label: "Priority",
+            label: t("Priority"),
             render: (r) => (
-              <span className={`badge ${r.priority === "urgent" ? "bad" : ""}`}>{r.priority}</span>
+              <span className={`badge ${r.priority === "urgent" ? "bad" : ""}`}>{t(r.priority)}</span>
             ),
           },
           {
-            label: "Status",
+            label: t("Status"),
             render: (r) => (
-              <span className={`badge ${r.status === "prayed" ? "ok" : ""}`}>{r.status}</span>
+              <span className={`badge ${r.status === "prayed" ? "ok" : ""}`}>{t(r.status)}</span>
             ),
           },
         ]}
         fields={[
           {
             key: "priority",
-            label: "Priority",
+            label: t("Priority"),
             type: "select",
             options: [
-              { value: "general", label: "General" },
-              { value: "urgent", label: "Urgent" },
+              { value: "general", label: t("General") },
+              { value: "urgent", label: t("Urgent") },
             ],
           },
           {
             key: "status",
-            label: "Follow-up status",
+            label: t("Follow-up status"),
             type: "select",
             options: [
-              { value: "open", label: "Open" },
-              { value: "prayed", label: "Prayed / followed up" },
+              { value: "open", label: t("Open") },
+              { value: "prayed", label: t("Prayed / followed up") },
             ],
           },
         ]}
@@ -102,32 +105,33 @@ export function AdminPrayers() {
 }
 
 export function AdminNotifications() {
+  const { t } = useLang();
   const [k, setK] = useState(0);
   return (
     <>
-      <h2>Notifications</h2>
+      <h2>{t("Notifications")}</h2>
       <DataPage
-        title="Sent Notifications"
+        title={t("Sent Notifications")}
         resource="notifications"
-        addLabel="Send"
+        addLabel={t("Send")}
         canEdit={false}
         canDelete
         refreshKey={k}
         lookups={{ users: { resource: "users", label: (u) => `${u.full_name} (${u.role})` } }}
         columns={[
-          { key: "title", label: "Title" },
-          { key: "message", label: "Message" },
-          { label: "To", render: (r) => r.recipient_name || "Everyone" },
-          { key: "created_at", label: "Sent" },
+          { key: "title", label: t("Title") },
+          { key: "message", label: t("Message") },
+          { label: t("To"), render: (r) => r.recipient_name || t("Everyone") },
+          { key: "created_at", label: t("Sent") },
         ]}
         fields={[
-          { key: "user_id", label: "Recipient (blank = everyone)", type: "select", lookup: "users" },
-          { key: "title", label: "Title", required: true },
-          { key: "message", label: "Message", type: "textarea", required: true },
+          { key: "user_id", label: t("Recipient (blank = everyone)"), type: "select", lookup: "users" },
+          { key: "title", label: t("Title"), required: true },
+          { key: "message", label: t("Message"), type: "textarea", required: true },
         ]}
       />
       <NotificationsView refreshKey={k} />
-      <button className="btn secondary sm" onClick={() => setK(k + 1)}>Refresh</button>
+      <button className="btn secondary sm" onClick={() => setK(k + 1)}>{t("Refresh")}</button>
     </>
   );
 }

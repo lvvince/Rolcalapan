@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
+import { useLang } from "../../i18n/LanguageContext";
 import "../../components/portal.css";
 
 const roles = [
@@ -22,6 +23,7 @@ const fmtDate = (d) => {
 };
 
 export default function AdminUsers() {
+  const { t } = useLang();
   const { user: me } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState(null);
@@ -71,7 +73,7 @@ export default function AdminUsers() {
   };
 
   const remove = async (u) => {
-    if (!confirm(`Delete ${u.full_name}? This cannot be undone.`)) return;
+    if (!confirm(t("Delete {name}? This cannot be undone.", { name: u.full_name }))) return;
     try {
       await api.post("/admin/users/delete", { id: u.id });
       load();
@@ -99,7 +101,7 @@ export default function AdminUsers() {
   return (
     <>
       <div className="toolbar" style={{ marginTop: 4 }}>
-        <h2>Users & Roles</h2>
+        <h2>{t("Users & Roles")}</h2>
         <button
           className="btn"
           onClick={() => {
@@ -107,14 +109,14 @@ export default function AdminUsers() {
             setForm({ ...empty, role: filter === "all" ? "member" : filter });
           }}
         >
-          + Add User
+          + {t("Add User")}
         </button>
       </div>
 
       <div className="min-toolbar">
         <input
           className="min-search"
-          placeholder="Search name or email..."
+          placeholder={t("Search name or email...")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -126,25 +128,33 @@ export default function AdminUsers() {
               className={`min-pill ${filter === r.value ? "active" : ""}`}
               onClick={() => setFilter(r.value)}
             >
-              {r.short} ({countFor(r.value)})
+              {t(r.short)} ({countFor(r.value)})
             </button>
           ))}
         </div>
       </div>
 
-      {error && <div className="msg err">{error}</div>}
+      {error && <div className="msg err">{t(error)}</div>}
 
       {rows === null && !error ? (
-        <p>Loading...</p>
+        <p>{t("Loading...")}</p>
       ) : shown.length === 0 ? (
-        <div className="empty">No users found.</div>
+        <div className="empty">{t("No users found.")}</div>
       ) : (
         <>
-          <div className="min-summary">Showing {shown.length} of {all.length} users</div>
+          <div className="min-summary">
+            {t("Showing {shown} of {total} users", { shown: shown.length, total: all.length })}
+          </div>
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
-                <tr><th>Name</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr>
+                <tr>
+                  <th>{t("Name")}</th>
+                  <th>{t("Role")}</th>
+                  <th>{t("Status")}</th>
+                  <th>{t("Created")}</th>
+                  <th></th>
+                </tr>
               </thead>
               <tbody>
                 {shown.map((u) => (
@@ -152,19 +162,23 @@ export default function AdminUsers() {
                     <td>
                       <div style={{ fontWeight: 600, color: "#0f172a" }}>
                         {u.full_name}
-                        {u.id === me?.id && <span className="badge" style={{ marginLeft: 8 }}>you</span>}
+                        {u.id === me?.id && <span className="badge" style={{ marginLeft: 8 }}>{t("you")}</span>}
                       </div>
                       <div style={{ fontSize: 13, color: "#64748b" }}>{u.email}</div>
                     </td>
-                    <td><span className={`badge ${roleOf(u.role)?.badge || ""}`}>{roleOf(u.role)?.short || u.role}</span></td>
-                    <td><span className={`badge ${u.status === "active" ? "ok" : "bad"}`}>{u.status}</span></td>
+                    <td>
+                      <span className={`badge ${roleOf(u.role)?.badge || ""}`}>
+                        {roleOf(u.role) ? t(roleOf(u.role).short) : u.role}
+                      </span>
+                    </td>
+                    <td><span className={`badge ${u.status === "active" ? "ok" : "bad"}`}>{t(u.status)}</span></td>
                     <td>{fmtDate(u.created_at)}</td>
                     <td className="actions">
-                      <button className="btn sm secondary" onClick={() => { setFormError(""); setForm({ ...u, password: "" }); }}>Edit</button>{" "}
+                      <button className="btn sm secondary" onClick={() => { setFormError(""); setForm({ ...u, password: "" }); }}>{t("Edit")}</button>{" "}
                       {u.id !== me?.id && (
                         <>
-                          <button className="btn sm secondary" onClick={() => toggle(u)}>{u.status === "active" ? "Deactivate" : "Activate"}</button>{" "}
-                          <button className="btn sm danger" onClick={() => remove(u)}>Delete</button>
+                          <button className="btn sm secondary" onClick={() => toggle(u)}>{u.status === "active" ? t("Deactivate") : t("Activate")}</button>{" "}
+                          <button className="btn sm danger" onClick={() => remove(u)}>{t("Delete")}</button>
                         </>
                       )}
                     </td>
@@ -179,39 +193,39 @@ export default function AdminUsers() {
       {form && (
         <div className="modal" onClick={() => setForm(null)}>
           <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
-            <h3>{form.id ? "Edit User" : "Add User"}</h3>
-            {formError && <div className="msg err">{formError}</div>}
+            <h3>{form.id ? t("Edit User") : t("Add User")}</h3>
+            {formError && <div className="msg err">{t(formError)}</div>}
 
             <div className="field">
-              <label>Full name *</label>
+              <label>{t("Full name")} *</label>
               <input autoFocus value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
             </div>
             <div className="field">
-              <label>Email *</label>
+              <label>{t("Email")} *</label>
               <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
             </div>
             <div className="field">
-              <label>Role *</label>
+              <label>{t("Role")} *</label>
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                {roles.map((r) => <option key={r.value} value={r.value}>{t(r.label)}</option>)}
               </select>
             </div>
             <div className="field">
-              <label>Status</label>
+              <label>{t("Status")}</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">{t("Active")}</option>
+                <option value="inactive">{t("Inactive")}</option>
               </select>
             </div>
             <div className="field">
-              <label>{form.id ? "New password (leave blank to keep)" : "Password * (min 6 characters)"}</label>
+              <label>{form.id ? t("New password (leave blank to keep)") : t("Password * (min 6 characters)")}</label>
               <input type="password" value={form.password} minLength={form.id && !form.password ? undefined : 6}
                 required={!form.id} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </div>
 
             <div className="modal-actions">
-              <button type="button" className="btn secondary" onClick={() => setForm(null)}>Cancel</button>
-              <button type="submit" className="btn" disabled={saving}>{saving ? "Saving..." : "Save"}</button>
+              <button type="button" className="btn secondary" onClick={() => setForm(null)}>{t("Cancel")}</button>
+              <button type="submit" className="btn" disabled={saving}>{saving ? t("Saving...") : t("Save")}</button>
             </div>
           </form>
         </div>

@@ -6,27 +6,62 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
  * Body: { "lang": "tl" | "ceb" | "ilo", "texts": ["Login", "Welcome", ...] }
  * Returns: { "translations": { "Login": "...", ... } }
  *
- * Gumagamit ng parehong Ai library at API keys ng chatbot.
+ * Gumagamit ng Google Apps Script (LanguageApp) bilang translator.
+ * Env sa Render:
+ *   TRANSLATE_GAS_URL   = https://script.google.com/macros/s/XXXX/exec
+ *   TRANSLATE_GAS_TOKEN = parehong secret ng TOKEN sa Code.gs
  */
 class TranslateController extends Controller
 {
     private $langs = ['tl' => 'Tagalog', 'ceb' => 'Cebuano', 'ilo' => 'Ilocano'];
 
-    // Gabay sa istilo at salitang gagamitin ng AI kada wika
-    private $style = [
-        'tl' => "Use natural, modern, conversational Filipino like Philippine mobile apps and church communities (light Taglish is fine). Do NOT use deep, archaic or overly literal Tagalog. Keep common English UI terms as they are: Profile, QR Code, GPS, Check-in, RSVP, Dashboard, Login, Logout, Event, Email, Password. Glossary: Prayer Requests = Mga Kahilingan sa Panalangin; Ministries = Mga Ministeryo; Sermons = Mga Sermon; Announcements = Mga Anunsyo; Events = Mga Event; Giving = Pagbibigay; Members = Mga Miyembro; Language = Wika; Save = I-save; Cancel = Kanselahin; Notifications = Mga Abiso.",
-        'ceb' => "Use natural, everyday Cebuano (Bisaya) as spoken in the Philippines: simple, respectful, not overly formal. Keep common English UI terms as they are: Profile, QR Code, GPS, Check-in, RSVP, Dashboard, Login, Logout, Email, Password. Glossary: Prayer Requests = Mga Hangyo sa Pag-ampo; Ministries = Mga Ministeryo; Sermons = Mga Sermon; Announcements = Mga Pahibalo; Events = Mga Kalihokan; Giving = Paghatag; Members = Mga Miyembro; Save = I-save.",
-        'ilo' => "Use natural, everyday Ilocano as spoken in the Philippines: simple and respectful. Keep common English UI terms as they are: Profile, QR Code, GPS, Check-in, RSVP, Dashboard, Login, Logout, Event, Email, Password. Glossary: Prayer Requests = Dagiti Dawat a Kararag; Announcements = Dagiti Pakaammo; Members = Dagiti Miembro; Language = Pagsasao. If you are not sure of the correct Ilocano word, keep the common English term instead of inventing one.",
+    // Glossary: eksaktong salin para sa mga karaniwang label (hindi na dadaan sa Google)
+    private $glossary = [
+        'tl' => [
+            'prayer requests' => 'Mga Kahilingan sa Panalangin',
+            'ministries'      => 'Mga Ministeryo',
+            'sermons'         => 'Mga Sermon',
+            'announcements'   => 'Mga Anunsyo',
+            'events'          => 'Mga Event',
+            'giving'          => 'Pagbibigay',
+            'members'         => 'Mga Miyembro',
+            'language'        => 'Wika',
+            'save'            => 'I-save',
+            'cancel'          => 'Kanselahin',
+            'notifications'   => 'Mga Abiso',
+        ],
+        'ceb' => [
+            'prayer requests' => 'Mga Hangyo sa Pag-ampo',
+            'ministries'      => 'Mga Ministeryo',
+            'sermons'         => 'Mga Sermon',
+            'announcements'   => 'Mga Pahibalo',
+            'events'          => 'Mga Kalihokan',
+            'giving'          => 'Paghatag',
+            'members'         => 'Mga Miyembro',
+            'save'            => 'I-save',
+        ],
+        'ilo' => [
+            'prayer requests' => 'Dagiti Dawat a Kararag',
+            'announcements'   => 'Dagiti Pakaammo',
+            'members'         => 'Dagiti Miembro',
+            'language'        => 'Pagsasao',
+        ],
     ];
-
-    const CHUNK = 8;
 
     public function __construct()
     {
         parent::__construct();
         ob_start(); // para hindi masira ang JSON ng PHP notices/warnings
-        require_once __DIR__ . '/../libraries/Ai.php';
         $this->call->database();
+    }
+
+    private function env($key)
+    {
+        $v = getenv($key);
+        if ($v === false || $v === '') {
+            $v = $_ENV[$key] ?? ($_SERVER[$key] ?? '');
+        }
+        return (string)$v;
     }
 
     private function json($data, $code = 200)
@@ -81,6 +116,14 @@ class TranslateController extends Controller
         $missing = [];
 
         foreach ($texts as $text) {
+            // 1) Glossary (eksaktong label)
+            $key = mb_strtolower(trim($text));
+            if (isset($this->glossary[$lang][$key])) {
+                $result[$text] = $this->glossary[$lang][$key];
+                continue;
+            }
+
+            // 2) Cache sa database
             $row = $this->db->table('translations')
                 ->where('lang', $lang)
                 ->where('hash', sha1($text))
@@ -93,22 +136,18 @@ class TranslateController extends Controller
         }
 
         if ($missing) {
-            $ai       = new Ai();
-            $lastErr  = '';
-            $gotAny   = false;
+            $res = $this->gasTranslate($missing, $lang);
 
-            foreach (array_chunk($missing, self::CHUNK) as $chunk) {
-                $res = $this->translateChunk($ai, $chunk, $lang);
-                if (!$res['ok']) {
-                    $lastErr = $res['error'];
-                    continue; // subukan ang susunod na chunk
-                }
-                foreach ($chunk as $i => $text) {
+            if (!$res['ok'] && !$result) {
+                $this->json(['error' => 'Translate failed', 'detail' => $res['error']], 502);
+            }
+
+            if ($res['ok']) {
+                foreach ($missing as $i => $text) {
                     $out = $res['data'][$i] ?? null;
                     if (!is_string($out) || trim($out) === '') {
-                        continue;
+                        continue; // pumalya ang isang ito, huwag i-cache
                     }
-                    $gotAny = true;
                     $result[$text] = $out;
                     try {
                         $this->db->table('translations')->insert([
@@ -122,122 +161,56 @@ class TranslateController extends Controller
                     }
                 }
             }
-
-            if (!$gotAny && !$result) {
-                $this->json(['error' => 'AI translate failed', 'detail' => $lastErr], 502);
-            }
         }
 
         $this->json(['translations' => $result]);
     }
 
-    // Kapag pumalya ang chunk, hatiin sa dalawa at subukan ulit (isang beses)
-    private function translateChunk($ai, array $chunk, $lang, $depth = 0)
+    // Tumatawag sa Google Apps Script web app
+    private function gasTranslate(array $items, $lang)
     {
-        $res = $this->aiTranslate($ai, $chunk, $lang);
-        if ($res['ok'] || $depth >= 1 || count($chunk) < 2) {
-            return $res;
+        $url   = $this->env('TRANSLATE_GAS_URL');
+        $token = $this->env('TRANSLATE_GAS_TOKEN');
+        if ($url === '' || $token === '') {
+            return ['ok' => false, 'error' => 'TRANSLATE_GAS_URL / TRANSLATE_GAS_TOKEN not set'];
         }
 
-        $half = (int) ceil(count($chunk) / 2);
-        $a = $this->translateChunk($ai, array_slice($chunk, 0, $half), $lang, $depth + 1);
-        $b = $this->translateChunk($ai, array_slice($chunk, $half), $lang, $depth + 1);
+        $payload = json_encode([
+            'token' => $token,
+            'lang'  => $lang,
+            'texts' => array_values($items),
+        ], JSON_UNESCAPED_UNICODE);
 
-        if (!$a['ok'] && !$b['ok']) {
-            return $a;
-        }
-        $data = [];
-        if ($a['ok']) {
-            foreach ($a['data'] as $k => $v) {
-                $data[$k] = $v;
-            }
-        }
-        if ($b['ok']) {
-            foreach ($b['data'] as $k => $v) {
-                $data[$k + $half] = $v;
-            }
-        }
-        return ['ok' => true, 'data' => $data];
-    }
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true, // Apps Script ay nagre-redirect (302)
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT        => 100,
+        ]);
+        $raw  = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
 
-    private function aiTranslate($ai, array $items, $lang)
-    {
-        $langName = $this->langs[$lang];
-        $payload = [];
-        foreach ($items as $i => $text) {
-            $payload[(string) $i] = $text;
+        if ($raw === false) {
+            return ['ok' => false, 'error' => 'GAS unreachable: ' . $cerr];
         }
 
-        $system = "You are a professional translator localizing a church management web app "
-            . "(River of Life Calapan) from English to {$langName}. The strings are UI labels, buttons, "
-            . "menus, short descriptions and announcements. Translate by meaning, not word for word, "
-            . "so it reads naturally to a native speaker. "
-            . $this->style[$lang] . " "
-            . "The user message is a JSON object: keys are ids, values are English strings. "
-            . "Return ONLY a JSON object with the SAME keys and each value translated. "
-            . "Keep placeholders like {name} and {{name}}, HTML tags, numbers, dates, times, URLs, emails "
-            . "and proper names (River of Life, Alvin Jester Culla) unchanged. Keep the same tone and length "
-            . "(short labels stay short). No explanations, no markdown, no code fences.";
-
-        $errors = [];
-        $result = $ai->ask_with_fallback(
-            $ai->default_provider(),
-            $system,
-            json_encode($payload, JSON_UNESCAPED_UNICODE),
-            $errors
-        );
-
-        if (!$result) {
-            return ['ok' => false, 'error' => 'AI failed: ' . implode(' | ', $errors)];
+        $data = json_decode($raw, true);
+        if ($code !== 200 || !is_array($data)) {
+            return ['ok' => false, 'error' => 'GAS error HTTP ' . $code . ': ' . substr((string) $raw, 0, 150)];
+        }
+        if (isset($data['error'])) {
+            return ['ok' => false, 'error' => 'GAS: ' . $data['error']];
+        }
+        if (!isset($data['translations']) || !is_array($data['translations'])) {
+            return ['ok' => false, 'error' => 'GAS bad output: ' . substr((string) $raw, 0, 150)];
         }
 
-        $content = trim((string) $result['answer']);
-        $clean   = trim(preg_replace('/^```(?:json)?|```$/m', '', $content));
-        $out     = [];
-
-        // Tanggapin ang object {"0":"..."} O array ["..."] galing sa AI
-        $decoded = json_decode($clean, true);
-        if (!is_array($decoded)) {
-            $s = strpos($clean, '{');
-            $e = strrpos($clean, '}');
-            if ($s !== false && $e !== false && $e > $s) {
-                $decoded = json_decode(substr($clean, $s, $e - $s + 1), true);
-            }
-        }
-        if (!is_array($decoded)) {
-            $s = strpos($clean, '[');
-            $e = strrpos($clean, ']');
-            if ($s !== false && $e !== false && $e > $s) {
-                $decoded = json_decode(substr($clean, $s, $e - $s + 1), true);
-            }
-        }
-
-        if (is_array($decoded)) {
-            $isList = $decoded === [] || array_keys($decoded) === range(0, count($decoded) - 1);
-            if (!$isList || count($decoded) === count($items)) {
-                foreach ($decoded as $k => $v) {
-                    if (is_string($v)) {
-                        $out[(int) $k] = $v;
-                    }
-                }
-            }
-        } elseif (preg_match_all('/"(\\d+)"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"/u', $content, $m, PREG_SET_ORDER)) {
-            // Putol ang JSON? Kunin pa rin ang kumpletong mga entry
-            foreach ($m as $row) {
-                $val = json_decode('"' . $row[2] . '"');
-                if (is_string($val)) {
-                    $out[(int) $row[1]] = $val;
-                }
-            }
-        }
-
-        if (!$out) {
-            return [
-                'ok'    => false,
-                'error' => 'Bad AI output (len ' . strlen($content) . '): '
-                    . substr($content, 0, 150) . ' ... ' . substr($content, -100),
-            ];
-        }
-        return ['ok' => true, 'data' => $out];
+        return ['ok' => true, 'data' => $data['translations']];
     }
 }

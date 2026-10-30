@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import api from "../../api";
 import { hm } from "../../components/DataPage";
+import { useLang } from "../../i18n/LanguageContext";
 import "../../components/portal.css";
 
 const GROUPS = [
@@ -68,6 +69,7 @@ const greeting = () => {
 };
 
 export default function MemberHome() {
+  const { t } = useLang();
   const [member, setMember] = useState(null);
   const [stats, setStats] = useState([]);
   const [events, setEvents] = useState([]);
@@ -91,11 +93,11 @@ export default function MemberHome() {
       .catch(() => {});
   }, []);
 
-  const name = member?.full_name || "Member";
+  const name = member?.full_name || t("Member");
 
   return (
     <>
-      {error && <div className="msg err">{error}</div>}
+      {error && <div className="msg err">{t(error)}</div>}
 
       {/* Welcome banner */}
       <div className="dash-hero">
@@ -103,12 +105,12 @@ export default function MemberHome() {
           {member?.profile_pic ? <img src={member.profile_pic} alt="" /> : <span>{name.charAt(0).toUpperCase()}</span>}
         </div>
         <div className="dash-hero-text">
-          <small>{greeting()},</small>
+          <small>{t(greeting())},</small>
           <h2>{name}</h2>
           {member?.member_code && <span className="dash-code">{member.member_code}</span>}
         </div>
         <Link to="/portal/qr" className="dash-hero-btn">
-          <QrCode size={16} aria-hidden="true" /> Show my QR
+          <QrCode size={16} aria-hidden="true" /> {t("Show my QR")}
         </Link>
       </div>
 
@@ -123,7 +125,7 @@ export default function MemberHome() {
               </div>
               <div>
                 <strong>{s.value}</strong>
-                <span>{s.label}</span>
+                <span>{t(s.label)}</span>
               </div>
             </div>
           );
@@ -132,13 +134,13 @@ export default function MemberHome() {
 
       {/* Upcoming events */}
       <div className="dash-section-head">
-        <h3>Upcoming Events</h3>
+        <h3>{t("Upcoming Events")}</h3>
         <Link to="/portal/events" className="dash-viewall">
-          View all <ArrowRight size={14} aria-hidden="true" />
+          {t("View all")} <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </div>
       {events.length === 0 ? (
-        <div className="dash-empty">No upcoming events yet.</div>
+        <div className="dash-empty">{t("No upcoming events yet.")}</div>
       ) : (
         <div className="dash-events">
           {events.map((e) => {
@@ -150,11 +152,11 @@ export default function MemberHome() {
                   <strong>{d.getDate()}</strong>
                 </div>
                 <div className="dash-event-body">
-                  <h4>{e.title}</h4>
+                  <h4>{t(e.title)}</h4>
                   <p className="dash-event-meta">
                     <span>
                       <Clock size={13} aria-hidden="true" />{" "}
-                      {e.start_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : "All day"}
+                      {e.start_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : t("All day")}
                     </span>
                     {e.location && (
                       <span>
@@ -163,7 +165,7 @@ export default function MemberHome() {
                     )}
                   </p>
                 </div>
-                {e.event_type === "outside" && <span className="badge warn">Off-site</span>}
+                {e.event_type === "outside" && <span className="badge warn">{t("Off-site")}</span>}
               </Link>
             );
           })}
@@ -173,7 +175,7 @@ export default function MemberHome() {
       {/* Quick actions */}
       {GROUPS.map((g) => (
         <div key={g.title}>
-          <div className="dash-section-head"><h3>{g.title}</h3></div>
+          <div className="dash-section-head"><h3>{t(g.title)}</h3></div>
           <div className="dash-actions">
             {g.items.map((it) => {
               const Icon = it.icon;
@@ -183,8 +185,8 @@ export default function MemberHome() {
                     <Icon size={22} aria-hidden="true" />
                   </span>
                   <div>
-                    <strong>{it.name}</strong>
-                    <p>{it.desc}</p>
+                    <strong>{t(it.name)}</strong>
+                    <p>{t(it.desc)}</p>
                   </div>
                 </Link>
               );

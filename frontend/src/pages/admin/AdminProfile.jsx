@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
+import { useLang } from "../../i18n/LanguageContext";
 import "../../components/portal.css";
 import "./AdminProfile.css";
 
@@ -110,6 +111,7 @@ function Field({ label, icon, children }) {
 }
 
 function PasswordField({ label, value, onChange, minLength, autoComplete }) {
+  const { t } = useLang();
   const [show, setShow] = useState(false);
   return (
     <Field label={label} icon={<IconLock size={16} />}>
@@ -125,7 +127,7 @@ function PasswordField({ label, value, onChange, minLength, autoComplete }) {
         type="button"
         className="prf-eye"
         onClick={() => setShow((s) => !s)}
-        aria-label={show ? "Hide password" : "Show password"}
+        aria-label={show ? t("Hide password") : t("Show password")}
       >
         {show ? <IconEyeOff size={17} /> : <IconEye size={17} />}
       </button>
@@ -144,6 +146,7 @@ function strength(pw) {
 const STRENGTH_LABEL = ["Too short", "Weak", "Fair", "Good", "Strong"];
 
 export default function AdminProfile() {
+  const { t } = useLang();
   const { user, setUser } = useAuth();
   const fileRef = useRef(null);
 
@@ -183,8 +186,8 @@ export default function AdminProfile() {
   // Auto-hide ng alerts
   useEffect(() => {
     if (!msg && !err) return;
-    const t = setTimeout(() => { setMsg(""); setErr(""); }, 4500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => { setMsg(""); setErr(""); }, 4500);
+    return () => clearTimeout(timer);
   }, [msg, err]);
 
   const run = async (fn, okMsg) => {
@@ -213,8 +216,8 @@ export default function AdminProfile() {
 
   const changePassword = (e) => {
     e.preventDefault();
-    if (pw.next !== pw.confirm) { setMsg(""); setErr("New password at confirm password hindi magkapareho"); return; }
-    if (pw.next === pw.current) { setMsg(""); setErr("Dapat iba ang new password sa current"); return; }
+    if (pw.next !== pw.confirm) { setMsg(""); setErr("New password and confirm password do not match"); return; }
+    if (pw.next === pw.current) { setMsg(""); setErr("New password must be different from the current one"); return; }
     run(async () => {
       await api.put("/auth/me/password", {
         current_password: pw.current,
@@ -228,8 +231,8 @@ export default function AdminProfile() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!TYPES.includes(file.type)) { setMsg(""); setErr("JPG, PNG, o WEBP lang."); return; }
-    if (file.size > MAX_SIZE) { setMsg(""); setErr("Max 2MB lang."); return; }
+    if (!TYPES.includes(file.type)) { setMsg(""); setErr("JPG, PNG or WEBP only."); return; }
+    if (file.size > MAX_SIZE) { setMsg(""); setErr("Max 2MB only."); return; }
 
     setPreview(URL.createObjectURL(file));
     setBusy(true);
@@ -259,15 +262,15 @@ export default function AdminProfile() {
   return (
     <div className="prf">
       <header className="prf-head">
-        <h2>My Profile</h2>
-        <p>Manage your personal information and account security.</p>
+        <h2>{t("My Profile")}</h2>
+        <p>{t("Manage your personal information and account security.")}</p>
       </header>
 
       {(msg || err) && (
         <div className={`prf-alert ${err ? "bad" : "ok"}`} role="status">
           {err ? <IconAlert size={18} /> : <IconCheck size={18} />}
-          <span>{err || msg}</span>
-          <button type="button" onClick={() => { setMsg(""); setErr(""); }} aria-label="Dismiss">
+          <span>{t(err || msg)}</span>
+          <button type="button" onClick={() => { setMsg(""); setErr(""); }} aria-label={t("Dismiss")}>
             <IconClose size={16} />
           </button>
         </div>
@@ -285,7 +288,7 @@ export default function AdminProfile() {
               className="prf-badge"
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              aria-label="Change photo"
+              aria-label={t("Change photo")}
             >
               <IconCamera size={18} />
             </button>
@@ -294,20 +297,20 @@ export default function AdminProfile() {
           <input ref={fileRef} type="file" accept={TYPES.join(",")} hidden onChange={onPickPhoto} />
 
           <h3 className="prf-name">{form.full_name || "—"}</h3>
-          <span className="prf-role"><IconShield size={14} /> {roleLabel}</span>
+          <span className="prf-role"><IconShield size={14} /> {t(roleLabel)}</span>
           <p className="prf-email">{form.email}</p>
 
           <div className="prf-actions">
             <button type="button" className="prf-outline" onClick={() => fileRef.current?.click()} disabled={busy}>
-              <IconCamera size={16} /> {busy ? "Please wait..." : "Change Photo"}
+              <IconCamera size={16} /> {busy ? t("Please wait...") : t("Change Photo")}
             </button>
             {photoSrc && !busy && (
               <button type="button" className="prf-remove" onClick={removePhoto}>
-                <IconTrash size={15} /> Remove photo
+                <IconTrash size={15} /> {t("Remove photo")}
               </button>
             )}
           </div>
-          <small className="prf-hint">JPG, PNG, o WEBP. Max 2MB.</small>
+          <small className="prf-hint">{t("JPG, PNG or WEBP. Max 2MB.")}</small>
         </aside>
 
         {/* ---------- RIGHT: forms ---------- */}
@@ -316,12 +319,12 @@ export default function AdminProfile() {
             <div className="prf-card-head">
               <span className="prf-card-icon"><IconUser size={18} /></span>
               <div>
-                <h3>Personal Information</h3>
-                <p>I-update ang iyong pangalan, email, at phone number.</p>
+                <h3>{t("Personal Information")}</h3>
+                <p>{t("Update your name, email and phone number.")}</p>
               </div>
             </div>
 
-            <Field label="Full name" icon={<IconUser size={16} />}>
+            <Field label={t("Full name")} icon={<IconUser size={16} />}>
               <input
                 value={form.full_name}
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
@@ -330,7 +333,7 @@ export default function AdminProfile() {
             </Field>
 
             <div className="prf-row">
-              <Field label="Email" icon={<IconMail size={16} />}>
+              <Field label={t("Email")} icon={<IconMail size={16} />}>
                 <input
                   type="email"
                   value={form.email}
@@ -338,7 +341,7 @@ export default function AdminProfile() {
                   required
                 />
               </Field>
-              <Field label="Phone" icon={<IconPhone size={16} />}>
+              <Field label={t("Phone")} icon={<IconPhone size={16} />}>
                 <input
                   inputMode="numeric"
                   maxLength={11}
@@ -350,7 +353,7 @@ export default function AdminProfile() {
             </div>
 
             <div className="prf-foot">
-              <button className="prf-btn" type="submit">Save changes</button>
+              <button className="prf-btn" type="submit">{t("Save changes")}</button>
             </div>
           </form>
 
@@ -358,13 +361,13 @@ export default function AdminProfile() {
             <div className="prf-card-head">
               <span className="prf-card-icon"><IconLock size={18} /></span>
               <div>
-                <h3>Change password</h3>
-                <p>Gumamit ng malakas na password na hindi mo ginagamit sa iba.</p>
+                <h3>{t("Change password")}</h3>
+                <p>{t("Use a strong password that you do not use anywhere else.")}</p>
               </div>
             </div>
 
             <PasswordField
-              label="Current password"
+              label={t("Current password")}
               autoComplete="current-password"
               value={pw.current}
               onChange={(e) => setPw({ ...pw, current: e.target.value })}
@@ -373,7 +376,7 @@ export default function AdminProfile() {
             <div className="prf-row">
               <div>
                 <PasswordField
-                  label="New password"
+                  label={t("New password")}
                   autoComplete="new-password"
                   minLength={6}
                   value={pw.next}
@@ -386,24 +389,24 @@ export default function AdminProfile() {
                         <span key={i} className={i <= score ? "on" : ""} />
                       ))}
                     </div>
-                    <small>{STRENGTH_LABEL[score]}</small>
+                    <small>{t(STRENGTH_LABEL[score])}</small>
                   </div>
                 )}
               </div>
               <div>
                 <PasswordField
-                  label="Confirm new password"
+                  label={t("Confirm new password")}
                   autoComplete="new-password"
                   minLength={6}
                   value={pw.confirm}
                   onChange={(e) => setPw({ ...pw, confirm: e.target.value })}
                 />
-                {mismatch && <small className="prf-error">Hindi magkapareho.</small>}
+                {mismatch && <small className="prf-error">{t("Passwords do not match.")}</small>}
               </div>
             </div>
 
             <div className="prf-foot">
-              <button className="prf-btn" type="submit">Update password</button>
+              <button className="prf-btn" type="submit">{t("Update password")}</button>
             </div>
           </form>
         </div>
