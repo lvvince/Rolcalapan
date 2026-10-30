@@ -93,17 +93,12 @@ $router->post('/api/resource/delete', 'ResourceController::delete');
 
 /*
 |--------------------------------------------------------------------------
-| CHATBOT
+| CHATBOT (floating widget lang)
 |--------------------------------------------------------------------------
+| Inalis na ang admin KB routes (/api/chatbot/*).
+| Naiwan ang /api/chat dahil ginagamit pa ng floating ChatWidget.
 */
-// Admin knowledge base + ask
-$router->post('/api/chatbot/ask',       'ChatbotController::ask');
-$router->get( '/api/chatbot/kb',        'ChatbotController::kb_list');
-$router->post('/api/chatbot/kb',        'ChatbotController::kb_save');
-$router->post('/api/chatbot/kb/delete', 'ChatbotController::kb_delete');
-
-// Floating chatbot widget (RAG) - ChatbotController na ang gamit (FIXED)
-$router->post('/api/chat',              'ChatbotController::ask');
+$router->post('/api/chat', 'ChatbotController::ask');
 
 /*
 |--------------------------------------------------------------------------

@@ -4,11 +4,16 @@ const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 const TIMEOUT_MS = 60000;
 const HISTORY_LIMIT = 6;
 
+// Profile picture ng assistant (frontend/public/rolav.png)
+const ASSISTANT_PIC = "/rolav.png";
+
+// label = lumalabas sa button at sa chat; query = ang totoong tanong na ipinapadala sa bot
+// (kapareho ng mga tanong sa dataset para mataas ang confidence)
 const QUICK_REPLIES = [
-  "Service times",
-  "Ministries",
-  "Saan ang location?",
-  "Paano sumali?",
+  { label: "Service times", query: "What time is the Sunday service?" },
+  { label: "Ministries", query: "What ministries do you have?" },
+  { label: "Saan ang location?", query: "Saan po ang simbahan ninyo?" },
+  { label: "Paano sumali?", query: "Paano po sumali sa ministry?" },
 ];
 
 function linkify(text) {
@@ -74,14 +79,25 @@ const STYLES = `
 .rol-row.user { align-items: flex-end; }
 .rol-row.bot { align-items: flex-start; }
 @keyframes rol-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Isang linya: avatar + bubble */
+.rol-line { display: flex; align-items: flex-end; gap: 8px; width: 100%; }
+.rol-row.user .rol-line { justify-content: flex-end; }
+.rol-pic {
+  width: 34px; height: 34px; flex-shrink: 0;
+  object-fit: contain; background: transparent;
+}
+
 .rol-bubble {
   max-width: 82%; padding: 10px 14px; font-size: 14px; line-height: 1.45;
   white-space: pre-wrap; word-break: break-word;
 }
+.rol-row.bot .rol-bubble { max-width: calc(82% - 38px); }
 .rol-bubble.bot { background: #fff; color: #0f172a; border-radius: 18px 18px 18px 4px; box-shadow: 0 1px 2px rgba(15,23,42,.08); }
 .rol-bubble.user { background: linear-gradient(135deg, #0891b2, #0e7490); color: #fff; border-radius: 18px 18px 4px 18px; }
 .rol-bubble.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 .rol-time { font-size: 11px; color: #94a3b8; margin: 4px 6px 0; }
+.rol-row.bot .rol-time { margin-left: 44px; }
 
 .rol-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 12px; animation: rol-in .3s ease-out; }
 .rol-chip {
@@ -96,7 +112,7 @@ const STYLES = `
 .rol-typing span:nth-child(2) { animation-delay: .15s; }
 .rol-typing span:nth-child(3) { animation-delay: .3s; }
 @keyframes rol-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
-.rol-slow { font-size: 12px; color: #64748b; margin: 6px 4px 0; }
+.rol-slow { font-size: 12px; color: #64748b; margin: 6px 4px 0 44px; }
 
 .rol-footer { padding: 10px 12px 12px; background: #fff; border-top: 1px solid #e2e8f0; }
 .rol-inputwrap {
@@ -202,7 +218,9 @@ export default function ChatWidget() {
   }, [open]);
 
   const send = async (override) => {
-    const q = (typeof override === "string" ? override : input).trim();
+    const chip = override && typeof override === "object" && override.query ? override : null;
+    const q = (chip ? chip.query : typeof override === "string" ? override : input).trim();
+    const shown = chip ? chip.label : q;
     if (!q || loading) return;
 
     // Huling mga messages (walang welcome at walang error) para may memory ang chatbot
@@ -211,7 +229,7 @@ export default function ChatWidget() {
       .slice(-HISTORY_LIMIT)
       .map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text }));
 
-    setMessages((m) => [...m, { from: "user", text: q, time: Date.now() }]);
+    setMessages((m) => [...m, { from: "user", text: shown, time: Date.now() }]);
     setInput("");
     setLoading(true);
     setSlow(false);
@@ -277,16 +295,19 @@ export default function ChatWidget() {
           <div className="rol-body" aria-live="polite">
             {messages.map((m, i) => (
               <div key={i} className={`rol-row ${m.from}`}>
-                <div className={`rol-bubble ${m.from}${m.error ? " error" : ""}`}>{linkify(m.text)}</div>
+                <div className="rol-line">
+                  {m.from === "bot" && <img className="rol-pic" src={ASSISTANT_PIC} alt="" />}
+                  <div className={`rol-bubble ${m.from}${m.error ? " error" : ""}`}>{linkify(m.text)}</div>
+                </div>
                 {m.time && <div className="rol-time">{formatTime(m.time)}</div>}
               </div>
             ))}
 
             {showChips && (
               <div className="rol-chips">
-                {QUICK_REPLIES.map((q) => (
-                  <button key={q} className="rol-chip" onClick={() => send(q)}>
-                    {q}
+                {QUICK_REPLIES.map((c) => (
+                  <button key={c.label} className="rol-chip" onClick={() => send(c)}>
+                    {c.label}
                   </button>
                 ))}
               </div>
@@ -294,8 +315,11 @@ export default function ChatWidget() {
 
             {loading && (
               <div className="rol-row bot">
-                <div className="rol-typing" aria-label="Typing">
-                  <span /><span /><span />
+                <div className="rol-line">
+                  <img className="rol-pic" src={ASSISTANT_PIC} alt="" />
+                  <div className="rol-typing" aria-label="Typing">
+                    <span /><span /><span />
+                  </div>
                 </div>
                 {slow && <div className="rol-slow">Ginigising pa ang server, sandali lang po...</div>}
               </div>

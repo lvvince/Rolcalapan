@@ -116,12 +116,4 @@ a.card:hover, button.card:hover, .card:hover { transform: translateY(-4px); box-
 .card span { color: var(--muted); font-size: 14px; }
 .card strong { font-size: 30px; color: var(--accent); letter-spacing: -.02em; }
 
-@media (max-width: 720px) {
-  .shell { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; position: static; }
-  .brand { padding: 14px 16px; }
-  .sidebar nav { flex-direction: row; overflow-x: auto; padding: 8px 10px; }
-  .sidebar a { white-space: nowrap; }
-  .topbar { padding: 0 16px; }
-  .content { padding: 20px 16px; }
-}
+/* Mobile layout (drawer sidebar) ay nasa portal.css, sa dulo ng file */

@@ -8,7 +8,6 @@ import {
   CalendarDays,
   HandHeart,
   Bell,
-  Bot,
   Users,
   UserCheck,
   Moon,
@@ -36,7 +35,6 @@ const quick = [
   { to: "/admin/events", icon: CalendarDays, title: "Events & Schedules", desc: "Create and manage events", tone: "blue" },
   { to: "/admin/prayers", icon: HandHeart, title: "Prayer Requests", desc: "Follow up on prayer needs", tone: "violet" },
   { to: "/admin/notifications", icon: Bell, title: "Notifications", desc: "Send and manage notifications", tone: "green" },
-  { to: "/admin/chatbot", icon: Bot, title: "Chatbot & Church Info", desc: "Update what the chatbot knows", tone: "cyan" },
 ];
 
 const pct = (n, total) => (total > 0 ? Math.round((n / total) * 100) : 0);

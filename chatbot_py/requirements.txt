@@ -3,5 +3,5 @@ flask-cors
 python-dotenv
 pandas
 openpyxl
-scikit-learn
+scikit-learn==1.9.1
 gunicorn

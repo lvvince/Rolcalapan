@@ -17,7 +17,6 @@ import { ComingSoon } from "./pages/Placeholder";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProfile from "./pages/admin/AdminProfile";
-import KnowledgeBasePage from "./pages/admin/KnowledgeBasePage";
 import AdminUsers from "./pages/admin/AdminUsers";
 import {
   AdminMinistries,
@@ -116,7 +115,6 @@ export default function App() {
             <Route path="attendance" element={<StaffAttendance canDelete />} />
             <Route path="prayers" element={<AdminPrayers />} />
             <Route path="notifications" element={<AdminNotifications />} />
-            <Route path="chatbot" element={<KnowledgeBasePage />} />
             <Route path="*" element={<ComingSoon />} />
           </Route>
 
