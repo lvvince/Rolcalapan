@@ -69,6 +69,7 @@ $router->put(   '/api/auth/me/password', 'AuthController::change_password');
 $router->post(  '/api/auth/me/photo',    'AuthController::upload_photo');
 $router->delete('/api/auth/me/photo',    'AuthController::remove_photo');
 $router->get('/api/avatar', 'AuthController::avatar');
+
 /*
 |--------------------------------------------------------------------------
 | ADMIN / PASTOR
@@ -106,6 +107,14 @@ $router->post('/api/chat', 'ChatbotController::ask');
 |--------------------------------------------------------------------------
 */
 $router->post('/api/translate', 'TranslateController::batch');
+
+/*
+|--------------------------------------------------------------------------
+| DAILY BIBLE VERSE (public, ginagamit ng lahat ng portal)
+|--------------------------------------------------------------------------
+| GET /api/verse/daily?portal=admin|secretary|leader|member|home
+*/
+$router->get('/api/verse/daily', 'VerseController::daily');
 
 /*
 |--------------------------------------------------------------------------

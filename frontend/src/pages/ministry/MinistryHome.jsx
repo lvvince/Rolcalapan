@@ -17,6 +17,8 @@ import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { hm } from "../../components/DataPage";
 import { useLang } from "../../i18n/LanguageContext";
+import DailyVerse from "../../components/DailyVerse";
+import EventCalendar from "../../components/EventCalendar";
 import "../../components/portal.css";
 
 const GROUPS = [
@@ -100,6 +102,12 @@ export default function MinistryHome() {
           <ClipboardCheck size={16} aria-hidden="true" /> {t("Attendance")}
         </Link>
       </div>
+
+      {/* Daily Bible Verse */}
+      <DailyVerse portal="ministry" />
+
+      {/* Event calendar */}
+      <EventCalendar />
 
       {/* Upcoming events */}
       <div className="dash-section-head">

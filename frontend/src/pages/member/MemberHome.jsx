@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import api from "../../api";
 import { hm } from "../../components/DataPage";
+import DailyVerse from "../../components/DailyVerse";
+import EventCalendar from "../../components/EventCalendar";
 import { useLang } from "../../i18n/LanguageContext";
 import "../../components/portal.css";
 
@@ -114,6 +116,9 @@ export default function MemberHome() {
         </Link>
       </div>
 
+      {/* Daily Bible Verse */}
+      <DailyVerse portal="member" />
+
       {/* Stats */}
       <div className="dash-stats">
         {stats.map((s, i) => {
@@ -131,6 +136,9 @@ export default function MemberHome() {
           );
         })}
       </div>
+
+      {/* Event calendar */}
+      <EventCalendar />
 
       {/* Upcoming events */}
       <div className="dash-section-head">

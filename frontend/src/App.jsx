@@ -113,6 +113,12 @@ export default function App() {
             <Route path="events" element={<EventsAnnouncements canDelete />} />
             <Route path="giving" element={<Giving canDelete />} />
             <Route path="attendance" element={<StaffAttendance canDelete />} />
+            <Route path="reports" element={<Reports />} />
+            {/* lumang link, redirect sa Reports */}
+            <Route
+              path="attendance-insights"
+              element={<Navigate to="/admin/reports" replace />}
+            />
             <Route path="prayers" element={<AdminPrayers />} />
             <Route path="notifications" element={<AdminNotifications />} />
             <Route path="*" element={<ComingSoon />} />

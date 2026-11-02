@@ -25,6 +25,7 @@ import QrCameraScanner from "../../components/QrCameraScanner";
 import MapPicker, { reverseGeocode } from "../../components/MapPicker";
 import { StaffNotifications } from "../../components/Notifications";
 import { useLang } from "../../i18n/LanguageContext";
+import SecretaryPredictiveReport from "./SecretaryPredictiveReport";
 import "../../components/portal.css";
 import "./StaffPages.css";
 import "./Geofence.css";
@@ -717,7 +718,7 @@ function Bars({ title, data, money: isMoney, translate }) {
         {data.map((d) => {
           const lbl = translate ? t(d.label) : d.label;
           return (
-            <div className="sp-bar-row" key={d.label}>
+            <div className="sp-bar-row" key={d.key || d.label}>
               <span className="sp-bar-lbl" title={lbl}>{lbl}</span>
               <div className="sp-bar-track">
                 <i style={{ width: `${(d.value / max) * 100}%` }} />
@@ -731,28 +732,134 @@ function Bars({ title, data, money: isMoney, translate }) {
   );
 }
 
+/* ---- period grouping (week / month / year) ---- */
+const PERIODS = [
+  { key: "week", label: "Week", n: 8 },
+  { key: "month", label: "Month", n: 12 },
+  { key: "year", label: "Year", n: 5 },
+];
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const parseDate = (s) => {
+  const [y, m, d] = String(s).slice(0, 10).split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+};
+
+const weekStart = (d) => {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - x.getDay()); // Sunday
+  return x;
+};
+
+function bucketOf(d, period) {
+  if (period === "week") {
+    const w = weekStart(d);
+    return { key: ymd(w), label: w.toLocaleDateString("en-US", { month: "short", day: "numeric" }) };
+  }
+  if (period === "month") {
+    return {
+      key: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`,
+      label: d.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    };
+  }
+  return { key: String(d.getFullYear()), label: String(d.getFullYear()) };
+}
+
+function groupByPeriod(rows, dateKey, valueOf, period) {
+  const n = PERIODS.find((p) => p.key === period).n;
+  const now = new Date();
+
+  // gumawa ng huling N periods (kasama ang walang data = 0)
+  const slots = [];
+  for (let i = n - 1; i >= 0; i--) {
+    let d;
+    if (period === "week") {
+      d = weekStart(now);
+      d.setDate(d.getDate() - 7 * i);
+    } else if (period === "month") {
+      d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    } else {
+      d = new Date(now.getFullYear() - i, 0, 1);
+    }
+    const b = bucketOf(d, period);
+    slots.push({ ...b, value: 0 });
+  }
+
+  const index = Object.fromEntries(slots.map((s, i) => [s.key, i]));
+  rows.forEach((r) => {
+    if (!r[dateKey]) return;
+    const b = bucketOf(parseDate(r[dateKey]), period);
+    if (b.key in index) slots[index[b.key]].value += valueOf(r);
+  });
+  return slots;
+}
+
 export function Reports() {
   const { t } = useLang();
   const [d, setD] = useState(null);
+  const [att, setAtt] = useState([]);
+  const [giv, setGiv] = useState([]);
+  const [period, setPeriod] = useState("week");
   const [error, setError] = useState("");
+
   useEffect(() => {
-    api.get("/portal/reports").then((r) => setD(r.data)).catch((e) => setError(e.response?.data?.error || "Failed to load"));
+    Promise.all([
+      api.get("/portal/reports"),
+      api.get("/resource", { params: { name: "attendance" } }),
+      api.get("/resource", { params: { name: "giving" } }),
+    ])
+      .then(([r, a, g]) => {
+        setD(r.data);
+        setAtt(a.data || []);
+        setGiv(g.data || []);
+      })
+      .catch((e) => setError(e.response?.data?.error || "Failed to load"));
   }, []);
+
   if (error) return <Notice msg={{ ok: false, text: t(error) }} />;
   if (!d) return <p className="sp-muted">{t("Loading...")}</p>;
+
+  const periodName = t(PERIODS.find((p) => p.key === period).label).toLowerCase();
+  const attData = groupByPeriod(att, "service_date", () => 1, period);
+  const givData = groupByPeriod(giv, "given_at", (r) => Number(r.amount) || 0, period);
+
   return (
     <>
+      {/* ---------- Predictive muna (nasa taas) ---------- */}
+      <SecretaryPredictiveReport embedded />
+
+      {/* ---------- Reports (nasa baba) ---------- */}
+      <div className="sp-divider" />
       <PageHeader icon={BarChart3} title={t("Reports")} subtitle={t("Attendance, giving, and ministry summaries.")} />
+
       <div className="sp-summary no-print">
         <div className="sp-pill"><strong>{d.members_total}</strong><span>{t("Total members")}</span></div>
         <div className="sp-pill"><strong>{d.members_active}</strong><span>{t("Active members")}</span></div>
+
+        <div className="sp-seg" role="group" aria-label={t("Group by")}>
+          {PERIODS.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              className={period === p.key ? "on" : ""}
+              aria-pressed={period === p.key}
+              onClick={() => setPeriod(p.key)}
+            >
+              {t(p.label)}
+            </button>
+          ))}
+        </div>
+
         <button className="sp-btn primary" type="button" onClick={() => window.print()}>
           <Printer size={16} aria-hidden="true" /> {t("Print report")}
         </button>
       </div>
+
       <div className="sp-grid">
-        <Bars title={t("Attendance per week (last 8 weeks)")} data={d.attendance_weekly} />
-        <Bars title={t("Giving per month (PHP)")} data={d.giving_monthly} money />
+        <Bars title={`${t("Attendance per")} ${periodName}`} data={attData} />
+        <Bars title={`${t("Giving per")} ${periodName} (PHP)`} data={givData} money />
         <Bars title={t("Giving by type (PHP)")} data={d.giving_by_type} money translate />
         <Bars title={t("Ministry sizes")} data={d.ministry_sizes} />
         <Bars title={t("Attendance by method")} data={d.attendance_method} translate />

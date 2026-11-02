@@ -57,7 +57,7 @@
 }
 .dsh .dsh-hero-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .2); }
 
-/* Logo in hero — puti ang logo.png, kaya translucent ang kahon (hindi puti) */
+/* Logo in hero: puti ang logo.png, kaya translucent ang kahon (hindi puti) */
 .dsh-hero-logo {
   width: 72px; height: 72px; flex: none; border-radius: 18px;
   display: grid; place-items: center; padding: 10px;
@@ -79,13 +79,10 @@
   transition: transform .18s, box-shadow .18s, border-color .18s;
 }
 .dsh-stat strong { display: block; font-size: 30px; line-height: 1.1; letter-spacing: -.02em; }
-.dsh-stat div span { font-size: 13px; color: var(--muted); }   /* dati: .dsh-stat span */
+.dsh-stat div span { font-size: 13px; color: var(--muted); }
 .dsh .dsh-stat.is-link:hover {
   transform: translateY(-3px); border-color: #67c6d8;
   box-shadow: 0 10px 26px rgba(14, 116, 144, .14);
-}
-html[data-theme="dark"] .dsh .dsh-stat.is-link:hover {
-  border-color: #22d3ee; box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
 }
 
 /* Section head */
@@ -156,202 +153,89 @@ html[data-theme="dark"] .dsh .dsh-stat.is-link:hover {
 .tone-green  { background: #e3f4e8; }
 .tone-slate  { background: #eef2f4; }
 
-/* ================= DARK MODE (sumusunod sa html[data-theme="dark"] ng theme.css) ================= */
-html[data-theme="dark"] .dsh {
-  --ink: #f1f5f9;
-  --muted: #94a3b8;
-  --line: #1e293b;
-  --card: #111c2e;
-  --track: #1e293b;
-  --accent-text: #67e8f9;
-  --accent-tint: #0f2a35;
-  --pill-border: #134e5e;
-  --row-text: #cbd5e1;
+/* ================= BAGONG CARDS ================= */
+.dsh-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;
 }
-html[data-theme="dark"] .dsh-hero {
-  background: linear-gradient(135deg, #07303d 0%, #0b5d75 60%, #0e7490 100%);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+.dsh-card {
+  display: grid; gap: 14px; align-content: start; padding: 20px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
 }
-html[data-theme="dark"] .dsh-err { background: #2a1215; color: #fca5a5; border-color: #7f1d1d; }
-html[data-theme="dark"] .dsh .dsh-link:hover { border-color: #22d3ee; box-shadow: 0 10px 26px rgba(0, 0, 0, .4); }
-html[data-theme="dark"] .dsh-arrow { color: #64748b; }
-html[data-theme="dark"] .tone-amber  { background: rgba(242, 193, 78, .16); }
-html[data-theme="dark"] .tone-rose   { background: rgba(244, 114, 128, .16); }
-html[data-theme="dark"] .tone-teal   { background: rgba(20, 184, 166, .16); }
-html[data-theme="dark"] .tone-blue   { background: rgba(96, 165, 250, .16); }
-html[data-theme="dark"] .tone-violet { background: rgba(167, 139, 250, .16); }
-html[data-theme="dark"] .tone-cyan   { background: rgba(34, 211, 238, .14); }
-html[data-theme="dark"] .tone-green  { background: rgba(74, 222, 128, .15); }
-html[data-theme="dark"] .tone-slate  { background: rgba(148, 163, 184, .16); }
+.dsh-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dsh-card-head h3 { font-size: 16px; font-weight: 700; }
+.dsh .dsh-card-more { font-size: 13px; font-weight: 600; color: var(--accent-text); }
+.dsh .dsh-card-more:hover { text-decoration: underline; }
+.dsh-empty { padding: 18px 0; text-align: center; font-size: 14px; color: var(--muted); }
 
-@media (max-width: 760px) {
-  .dsh-panel { grid-template-columns: 1fr; }
-  .dsh-hero { flex-wrap: wrap; }
-  .dsh .dsh-hero-btn { width: 100%; text-align: center; }
-  .dsh .dsh-row { grid-template-columns: 1fr 28px 44px; gap: 6px 12px; }
-  .dsh-row .dsh-bar { grid-column: 1 / -1; grid-row: 2; }
+/* Shared list item */
+.dsh-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px; margin: 0 -10px; border-radius: 10px;
+  transition: background .15s;
 }
-@media (prefers-reduced-motion: reduce) {
-  .dsh * { transition: none !important; }
-}  
+.dsh a.dsh-item:hover { background: var(--accent-tint); }
+.dsh-item-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.dsh-item-text strong {
+  font-size: 14.5px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dsh-item-text small { font-size: 12.5px; color: var(--muted); }
+.dsh-badge {
+  flex: none; padding: 2px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600;
+  background: var(--accent-tint); color: var(--accent-text); border: 1px solid var(--pill-border);
+}
+.dsh-badge.is-warn { background: #fff7e0; color: #8a6200; border-color: #f2dc9b; }
+.dsh-badge.is-alert { background: #fdebe9; color: #a3261b; border-color: #f5c6c1; }
 
-.dsh {
-  --river-dark: #0b2e3a;
-  --accent: #0e7490;
-  --accent-dark: #0b5d74;
-  --accent-text: #0e7490;
-  --accent-tint: #e0f2f6;
-  --sand: #f2c14e;
-  --ink: #10262e;
-  --muted: #5b7480;
-  --line: #dbe5e8;
-  --card: #fff;
-  --track: #e3edef;
-  --pill-border: #a5dbe6;
-  --row-text: #34515a;
-  display: grid;
-  gap: 22px;
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1.5;
-  padding-bottom: 72px; /* para hindi matakpan ng floating chat button ang huling row */
-}
-.dsh *, .dsh *::before, .dsh *::after { box-sizing: border-box; }
-.dsh a { text-decoration: none; color: inherit; }
-.dsh h2, .dsh h3, .dsh p, .dsh ul { margin: 0; padding: 0; }
-.dsh ul { list-style: none; }
-.dsh-muted { color: var(--muted); }
-.dsh-err {
-  padding: 10px 14px; border-radius: 8px; font-size: 14px;
-  background: #fdebe9; color: #a3261b; border: 1px solid #f5c6c1;
+/* Open Prayer Requests */
+.dsh-prayer-ico {
+  width: 36px; height: 36px; flex: none; border-radius: 10px;
+  display: grid; place-items: center; font-size: 17px;
 }
 
-/* Hero */
-.dsh-hero {
-  display: flex; align-items: center; gap: 16px;
-  padding: 22px 24px; border-radius: 16px; color: #fff;
-  background: linear-gradient(135deg, var(--river-dark) 0%, var(--accent-dark) 60%, var(--accent) 100%);
-  box-shadow: 0 10px 30px rgba(11, 46, 58, .22);
+/* Upcoming Events */
+.dsh-date {
+  width: 46px; flex: none; padding: 5px 0; border-radius: 10px; text-align: center;
+  background: var(--accent-tint); color: var(--accent-text); line-height: 1.1;
 }
-.dsh-hero-avatar {
-  width: 56px; height: 56px; flex: none; border-radius: 50%;
+.dsh-date b { display: block; font-size: 18px; font-weight: 700; }
+.dsh-date span { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+
+/* Attendance Trend (bar chart) */
+.dsh-trend { display: grid; gap: 10px; }
+.dsh-trend-bars {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  align-items: end; gap: 8px; height: 140px;
+  padding-bottom: 4px; border-bottom: 1px solid var(--line);
+}
+.dsh-trend-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 4px; }
+.dsh-trend-col > i {
+  display: block; width: 100%; max-width: 34px; min-height: 4px;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dark) 100%);
+  transition: height .6s ease, opacity .15s;
+}
+.dsh-trend-col:hover > i { opacity: .8; }
+.dsh-trend-col.is-latest > i { background: var(--sand); }
+.dsh-trend-col em { font-style: normal; font-size: 11.5px; font-weight: 600; color: var(--row-text); }
+.dsh-trend-labels {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  gap: 8px; text-align: center; font-size: 11.5px; color: var(--muted);
+}
+.dsh-trend-summary { display: flex; align-items: baseline; gap: 8px; }
+.dsh-trend-summary strong { font-size: 26px; letter-spacing: -.02em; }
+.dsh-trend-delta { font-size: 13px; font-weight: 600; }
+.dsh-trend-delta.is-up { color: #15803d; }
+.dsh-trend-delta.is-down { color: #b42318; }
+
+/* Members to Follow Up */
+.dsh-avatar {
+  width: 36px; height: 36px; flex: none; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--sand); color: var(--river-dark);
-  font-size: 22px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
 }
-.dsh-hero-text { flex: 1; min-width: 0; }
-.dsh-hero-text small { display: block; color: #b9d2d9; font-size: 13px; }
-.dsh-hero-text h2 { color: #fff; font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
-.dsh-hero-tag {
-  display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
-  background: rgba(255, 255, 255, .14);
-  font-size: 11.5px; font-weight: 600; letter-spacing: .06em;
-}
-.dsh .dsh-hero-btn {
-  padding: 10px 16px; border-radius: 10px; background: #fff; color: var(--river-dark);
-  font-weight: 600; font-size: 14px; white-space: nowrap;
-  transition: transform .15s, box-shadow .15s;
-}
-.dsh .dsh-hero-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .2); }
-
-/* Logo in hero — puti ang logo.png, kaya translucent ang kahon (hindi puti) */
-.dsh-hero-logo {
-  width: 72px; height: 72px; flex: none; border-radius: 18px;
-  display: grid; place-items: center; padding: 10px;
-  background: rgba(255, 255, 255, .14);
-  border: 1px solid rgba(255, 255, 255, .28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
-}
-.dsh-hero-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.dsh-hero-church {
-  display: block; margin-bottom: 2px;
-  font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sand);
-}
-
-/* Stat cards */
-.dsh-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-.dsh-stat {
-  display: flex; align-items: center; gap: 14px; padding: 18px 20px;
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  transition: transform .18s, box-shadow .18s, border-color .18s;
-}
-.dsh-stat strong { display: block; font-size: 30px; line-height: 1.1; letter-spacing: -.02em; }
-.dsh-stat div span { font-size: 13px; color: var(--muted); }   /* dati: .dsh-stat span */
-.dsh .dsh-stat.is-link:hover {
-  transform: translateY(-3px); border-color: #67c6d8;
-  box-shadow: 0 10px 26px rgba(14, 116, 144, .14);
-}
-html[data-theme="dark"] .dsh .dsh-stat.is-link:hover {
-  border-color: #22d3ee; box-shadow: 0 10px 26px rgba(0, 0, 0, .4);
-}
-
-/* Section head */
-.dsh-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: -8px; }
-.dsh-head h3 { font-size: 17px; font-weight: 700; }
-.dsh-pill {
-  padding: 4px 12px; border-radius: 999px; background: var(--accent-tint); color: var(--accent-text);
-  border: 1px solid var(--pill-border); font-size: 12.5px; font-weight: 600;
-}
-
-/* Role card + donut */
-.dsh-panel {
-  display: grid; grid-template-columns: 220px 1fr; gap: 28px; align-items: center;
-  padding: 24px; background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-}
-.dsh-donut { position: relative; width: 200px; height: 200px; margin: 0 auto; }
-.dsh-donut svg { display: block; width: 200px; height: 200px; transform: rotate(-90deg); }
-.dsh-donut circle { fill: none; stroke-width: 26; transition: opacity .2s, stroke-width .2s; }
-.dsh-donut .dsh-track { stroke: var(--track); }
-.dsh-donut .is-hover { stroke-width: 32; }
-.dsh-donut-center {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; text-align: center; pointer-events: none;
-}
-.dsh-donut-center strong { font-size: 34px; line-height: 1.1; letter-spacing: -.02em; }
-.dsh-donut-center span { max-width: 100px; font-size: 12.5px; color: var(--muted); }
-
-.dsh-rlist { display: grid; gap: 4px; }
-.dsh .dsh-row {
-  display: grid; grid-template-columns: 150px 1fr 28px 44px; align-items: center; gap: 14px;
-  padding: 10px; margin: 0 -10px; border-radius: 10px; color: var(--ink);
-  transition: background .15s;
-}
-.dsh .dsh-row:hover { background: var(--accent-tint); }
-.dsh-row.is-empty { opacity: .55; }
-.dsh-row-lbl { display: flex; align-items: center; gap: 10px; font-weight: 500; color: var(--row-text); }
-.dsh-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.dsh-note { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
-.dsh-bar { height: 10px; border-radius: 999px; background: var(--track); overflow: hidden; }
-.dsh-bar > i { display: block; height: 100%; border-radius: 999px; transition: width .6s ease; }
-.dsh-row strong { text-align: right; }
-.dsh-row em { text-align: right; font-style: normal; font-size: 12.5px; color: var(--muted); }
-
-/* Quick links */
-.dsh-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.dsh .dsh-link {
-  display: flex; align-items: center; gap: 14px; padding: 16px 18px;
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px; color: var(--ink);
-  transition: transform .18s, box-shadow .18s, border-color .18s;
-}
-.dsh .dsh-link:hover {
-  transform: translateY(-3px); border-color: #67c6d8;
-  box-shadow: 0 10px 26px rgba(14, 116, 144, .14);
-}
-.dsh-link-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
-.dsh-link-text strong { color: var(--accent-text); font-size: 15px; }
-.dsh-link-text small { color: var(--muted); font-size: 13px; }
-.dsh-arrow { color: #9db3ba; transition: transform .18s, color .18s; }
-.dsh-link:hover .dsh-arrow { transform: translateX(4px); color: var(--accent-text); }
-
-/* Tones */
-.tone-amber  { background: #fff7e0; }
-.tone-rose   { background: #fff0f1; }
-.tone-teal   { background: #e8faf6; }
-.tone-blue   { background: #eaf3ff; }
-.tone-violet { background: #f1eefe; }
-.tone-cyan   { background: #e0f2f6; }
-.tone-green  { background: #e3f4e8; }
-.tone-slate  { background: #eef2f4; }
 
 /* ================= DARK MODE (sumusunod sa html[data-theme="dark"] ng theme.css) ================= */
 html[data-theme="dark"] .dsh {
@@ -370,6 +254,7 @@ html[data-theme="dark"] .dsh-hero {
   box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
 }
 html[data-theme="dark"] .dsh-err { background: #2a1215; color: #fca5a5; border-color: #7f1d1d; }
+html[data-theme="dark"] .dsh .dsh-stat.is-link:hover { border-color: #22d3ee; box-shadow: 0 10px 26px rgba(0, 0, 0, .4); }
 html[data-theme="dark"] .dsh .dsh-link:hover { border-color: #22d3ee; box-shadow: 0 10px 26px rgba(0, 0, 0, .4); }
 html[data-theme="dark"] .dsh-arrow { color: #64748b; }
 html[data-theme="dark"] .tone-amber  { background: rgba(242, 193, 78, .16); }
@@ -381,8 +266,16 @@ html[data-theme="dark"] .tone-cyan   { background: rgba(34, 211, 238, .14); }
 html[data-theme="dark"] .tone-green  { background: rgba(74, 222, 128, .15); }
 html[data-theme="dark"] .tone-slate  { background: rgba(148, 163, 184, .16); }
 
+/* Dark mode para sa bagong cards */
+html[data-theme="dark"] .dsh-badge.is-warn { background: rgba(242, 193, 78, .16); color: #f2c14e; border-color: rgba(242, 193, 78, .35); }
+html[data-theme="dark"] .dsh-badge.is-alert { background: #2a1215; color: #fca5a5; border-color: #7f1d1d; }
+html[data-theme="dark"] .dsh-trend-delta.is-up { color: #4ade80; }
+html[data-theme="dark"] .dsh-trend-delta.is-down { color: #f87171; }
+
+/* ================= RESPONSIVE ================= */
 @media (max-width: 760px) {
   .dsh-panel { grid-template-columns: 1fr; }
+  .dsh-grid { grid-template-columns: 1fr; }
   .dsh-hero { flex-wrap: wrap; }
   .dsh .dsh-hero-btn { width: 100%; text-align: center; }
   .dsh .dsh-row { grid-template-columns: 1fr 28px 44px; gap: 6px 12px; }
@@ -390,4 +283,4 @@ html[data-theme="dark"] .tone-slate  { background: rgba(148, 163, 184, .16); }
 }
 @media (prefers-reduced-motion: reduce) {
   .dsh * { transition: none !important; }
-}  
+}

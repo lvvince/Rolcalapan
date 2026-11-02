@@ -19,6 +19,7 @@ const menuIcons = {
   qr: "qr",
   "qr-codes": "qr",
   attendance: "check",
+  predictive: "chart",
   events: "calendar",
   geofence: "pin",
   schedules: "clock",

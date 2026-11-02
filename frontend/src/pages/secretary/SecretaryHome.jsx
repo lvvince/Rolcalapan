@@ -19,6 +19,8 @@ import {
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../i18n/LanguageContext";
+import DailyVerse from "../../components/DailyVerse";
+import EventCalendar from "../../components/EventCalendar";
 import "../admin/AdminDashboard.css"; // .dsh-* styles
 import "./StaffPages.css";
 
@@ -146,6 +148,12 @@ export default function SecretaryHome() {
           {t("Start check-in")} <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </div>
+
+      {/* Daily Bible Verse */}
+      <DailyVerse portal="staff" />
+
+      {/* Event calendar */}
+      <EventCalendar />
 
       {error && <div className="dsh-err">{t(error)}</div>}
       {!s && !error && <p className="dsh-muted">{t("Loading...")}</p>}

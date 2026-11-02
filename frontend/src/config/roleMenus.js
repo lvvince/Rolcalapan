@@ -13,7 +13,7 @@ export const roleMenus = {
       { path: "geofence", label: "Geofence", desc: "Set location for off-site events" },
       { path: "schedules", label: "Ministry Schedules", desc: "Manage ministry schedules" },
       { path: "giving", label: "Giving", desc: "Record giving transactions" },
-      { path: "reports", label: "Reports", desc: "Generate reports" },
+      { path: "reports", label: "Reports", desc: "Generate reports and predictive attendance" },
       { path: "sermons", label: "Sermon Archive", desc: "Upload audio for transcript and summary" },
       { path: "notifications", label: "Notifications", desc: "Send notifications" },
       { path: "profile", label: "My Profile", desc: "Update your profile and photo" },
