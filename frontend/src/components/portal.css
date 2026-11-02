@@ -53,8 +53,11 @@ table.tbl td.actions { white-space: nowrap; }
 .bar-row .lbl { width: 130px; flex-shrink: 0; }
 .bar-row .bar { height: 14px; background: linear-gradient(90deg, #0e7490, #22d3ee); border-radius: 999px; min-width: 4px; }
 .qr-box { display: inline-block; min-width: 320px; background: #fff; padding: 0 28px 28px; border-radius: 22px; text-align: center; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 20px 40px rgba(14,116,144,.16); }
-.qr-box::before { content: "River of Life Calapan"; display: block; margin: 0 -28px 26px; padding: 22px 16px 22px 76px; text-align: left; font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: url("/logo-white.png") 18px center / 44px no-repeat, linear-gradient(135deg, #0b4f63, #0891b2 70%, #22d3ee); }
-.qr-box svg, .qr-box canvas, .qr-box img { display: block; margin: 0 auto 22px; outline: 2px solid #cffafe; outline-offset: 10px; border-radius: 4px; max-width: 100%; }
+.qr-box::before { content: "River of Life Calapan"; display: block; margin: 0 -28px 26px; padding: 22px 16px 22px 76px; text-align: left; font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff;
+  
+  background: url("/logo-white.png") 18px center / 44px no-repeat, linear-gradient(135deg, #0b4f63, #0891b2 70%, #22d3ee); }
+
+  .qr-box svg, .qr-box canvas, .qr-box img { display: block; margin: 0 auto 22px; outline: 2px solid #cffafe; outline-offset: 10px; border-radius: 4px; max-width: 100%; }
 .qr-box strong, .qr-box h3, .qr-box h4 { display: block; margin: 0; font-size: 1.25rem; color: #0f172a; }
 .qr-box small, .qr-box span, .qr-box p { display: inline-block; margin-top: 8px; padding: 4px 14px; font-size: 13px; font-weight: 600; letter-spacing: .14em; color: #0c6078; background: #ecfeff; border-radius: 999px; }
 .item { background: #fff; border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-left: 4px solid #0891b2; box-shadow: 0 1px 3px rgba(15,23,42,.06); transition: box-shadow .2s, transform .2s; }
