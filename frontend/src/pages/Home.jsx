@@ -21,9 +21,8 @@ const CONTACT = {
 
 // TODO: palitan ng totoong araw at oras
 const services = [
-  { title: "Sunday Worship", day: "Sunday", time: "9:00 AM", desc: "Join us in worship, the Word, and fellowship." },
-  { title: "Prayer Meeting", day: "Wednesday", time: "6:00 PM", desc: "Come together and pray for our church and community." },
-  { title: "Bible Study", day: "Friday", time: "7:00 PM", desc: "Grow in faith and learn the Word together." },
+  { title: "Sunday Service", day: "Sunday", time: "9:00 AM – 11:00 AM", desc: "Join us in worship, the Word, and fellowship." },
+  { title: "Fire on the Altar", day: "Friday", time: "6:00 PM – 8:00 PM", desc: "A night of prayer and worship as we seek God together." },
 ];
 
 // TODO: ilagay ang litrato sa /public/pastor.jpg
@@ -548,28 +547,68 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CONTACT / FOOTER */}
+            {/* CONTACT / FOOTER */}
       <footer id="contact" className="home-footer">
         <div className="home-container home-footer-inner">
-          <div className="home-footer-brand">
-            <img src="/logo.png" alt="River of Life Calapan logo" />
-            <div>
-              <strong>River of Life Calapan</strong>
-              <p>{CONTACT.address}</p>
+          {/* Brand + socials */}
+          <div>
+            <div className="home-footer-brand">
+              <img src="/logo.png" alt="River of Life Calapan logo" />
+              <div>
+                <strong>River of Life Calapan</strong>
+                <p>{CONTACT.address}</p>
+              </div>
+            </div>
+            <div className="home-social-row">
+              <a href={FACEBOOK_URL} target="_blank" rel="noreferrer" className="home-social" aria-label="River of Life Calapan on Facebook">
+                <FacebookIcon />
+                <span>Facebook</span>
+              </a>
+              <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="home-social" aria-label="River of Life Calapan on Instagram">
+                <InstagramIcon />
+                <span>Instagram</span>
+              </a>
             </div>
           </div>
-          <div className="home-footer-links">
-            <a href={FACEBOOK_URL} target="_blank" rel="noreferrer" className="home-social">
-              <FacebookIcon />
-              <span>Facebook</span>
-            </a>
-            <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="home-social">
-              <InstagramIcon />
-              <span>Instagram</span>
-            </a>
+
+          {/* Quick links */}
+          <nav aria-label="Footer">
+            <h4>Quick Links</h4>
+            <ul className="footer-list">
+              <li><a href="#about">About</a></li>
+              <li><a href="#services">Services</a></li>
+              <li><a href="#ministries">Ministries</a></li>
+              <li><a href="#faq">What to Expect</a></li>
+              <li><a href="#visit">Visit Us</a></li>
+              <li><Link to="/login">Login</Link></li>
+              <li><Link to="/register">Register</Link></li>
+            </ul>
+          </nav>
+
+          {/* Service times + contact */}
+          <div>
+            <h4>Service Times</h4>
+            <ul className="footer-list footer-services">
+              {services.map((s) => (
+                <li key={s.title}>
+                  <span>{s.title}</span>
+                  <b>{s.day}, {s.time}</b>
+                </li>
+              ))}
+            </ul>
+
+            <h4 className="footer-h-gap">Contact</h4>
+            <ul className="footer-list">
+              <li><a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}>{CONTACT.phone}</a></li>
+              <li><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></li>
+              <li><a href={mapLink} target="_blank" rel="noreferrer">Get directions →</a></li>
+            </ul>
           </div>
         </div>
-        <p className="home-copy">© {new Date().getFullYear()} River of Life Calapan. All rights reserved.</p>
+
+        <div className="home-container">
+          <p className="home-copy">© {new Date().getFullYear()} River of Life Calapan. All rights reserved.</p>
+        </div>
       </footer>
     </div>
   );

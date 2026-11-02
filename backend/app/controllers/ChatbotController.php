@@ -176,7 +176,7 @@ class ChatbotController extends Controller
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_CONNECTTIMEOUT => 30, // sapat para sa cold start ng Render free tier
+            CURLOPT_CONNECTTIMEOUT => 30,
             CURLOPT_TIMEOUT => 60,
         ]);
         $raw = curl_exec($ch);
