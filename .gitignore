@@ -20,3 +20,9 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 .vscode/
+
+venv/
+.venv/
+__pycache__/
+.env
+.env.bak
