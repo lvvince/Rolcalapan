@@ -17,10 +17,8 @@ MODEL_PATH = os.path.join(BASE_DIR, "nlp_model.joblib")
 # Dapat pareho ito sa NLP_THRESHOLD ng app.py
 THRESHOLD = float(os.getenv("NLP_THRESHOLD", "0.25"))
 
-# Variations ng tanong para mas tumibay ang training
 PREFIXES = ["", "hi ", "hello po ", "pwede po magtanong ", "excuse me ", "tanong ko lang po "]
 
-# Mga salitang hindi mahalaga; gagawa ng "keywords-only" na bersyon ng bawat tanong
 STOP = set(
     "po ang ng sa na ay mga ba ko mo nyo niyo namin kayo ako the a an is are of to in at do you your we i can me my it".split()
 )
@@ -31,7 +29,7 @@ OFFTOPIC = [
     "what is the capital of japan", "can you write code for me", "help me with my assignment",
     "what is the best phone", "recommend a movie", "who won the game last night", "what is 2 plus 2",
     "translate this sentence", "how do i lose weight", "what is the price of rice", "chicken adobo recipe",
-    "my computer is broken", "tips to lose weight", "presyo ng bigas ngayon", "exchange rate ng dollar",
+    "my computer is broken", "presyo ng bigas ngayon", "exchange rate ng dollar",
     "tips sa pag aaral", "i want to buy a laptop", "where can i buy shoes", "sing me a song",
     "what is love", "who is the richest man", "how are the stocks today",
     "what is the exchange rate of dollar", "write a program for me", "what is your favorite food",
@@ -105,20 +103,19 @@ PARAPHRASES = {
     ],
 }
 
-# Mga tanong na wala sa dataset, pang-test lang
+# Pang-test lang. Mga bagong pangungusap ito na WALA sa PARAPHRASES o sa training.
+# Format: (tanong, tanong sa dataset na dapat ang sagot) -- None = dapat off-topic o "wala akong info"
 TESTS = [
-    "anong oras ang service tuwing linggo",
-    "what time is church on sunday",
-    "kelan ang fire on the altar",
-    "address ng church?",
-    "pano po kayo kontakin",
-    "sino pastor nyo",
-    "can i donate via gcash",
-    "meron po ba kayong youth",
-    "paano magpabinyag",
-    "salamat",
-    "how do i make pancakes",
-    "sino si jose rizal",
+    ("ano oras ang worship service sa sunday", "Anong oras ang simba?"),
+    ("what time does the sunday worship begin", "What time is the Sunday service?"),
+    ("sino ang head pastor ng church nyo", "Sino po ang pastor ninyo?"),
+    ("pwede ba mag-offering gamit ang gcash", "Pwede po ba mag-GCash para sa offering?"),
+    ("gusto kong magpa-baptize", "Paano po magpa-baptize?"),
+    ("how can i contact the church", "Paano po kayo makokontak?"),
+    ("how do i get to your church", "Where is the church located?"),
+    ("how do i bake a cake", None),
+    ("sino si manny pacquiao", None),
+    ("what is the tallest mountain", None),
 ]
 
 
@@ -185,48 +182,53 @@ def build_examples(df):
     return X, y, W
 
 
-def build_model(cv=3):
-    # LinearSVC (SVM) walang predict_proba, kaya nilagyan ng calibration
-    # para magamit pa rin ng app.py ang THRESHOLD
-    return Pipeline([
+def main():
+    df = load_dataset()
+    X, y, W = build_examples(df)
+    print(len(df), "rows +", len(OFFTOPIC), "off-topic ->", len(X), "examples,", len(set(y)), "intents")
+
+    # Hindi pwedeng mas marami ang cv folds kaysa sa pinakakaunting example ng isang sagot
+    cv = max(2, min(3, min(Counter(y).values())))
+
+    # LinearSVC walang predict_proba, kaya nilagyan ng calibration para magamit ang THRESHOLD
+    model = Pipeline([
         ("features", FeatureUnion([
             ("word", TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True)),
             ("char", TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5), sublinear_tf=True)),
         ])),
         ("clf", CalibratedClassifierCV(LinearSVC(C=1.0), method="sigmoid", cv=cv)),
     ])
-
-
-def main():
-    df = load_dataset()
-    X, y, W = build_examples(df)
-
-    print(len(df), "rows +", len(OFFTOPIC), "off-topic ->", len(X), "examples,", len(set(y)), "intents")
-
-    # Hindi pwedeng mas marami ang cv folds kaysa sa pinakakaunting example ng isang sagot
-    cv = max(2, min(3, min(Counter(y).values())))
-    model = build_model(cv)
     model.fit(X, y, clf__sample_weight=W)
-
-    acc = (model.predict(X) == pd.Series(y)).mean()
-    print(f"Training accuracy: {acc:.1%}")
 
     joblib.dump(model, MODEL_PATH)
     print("Saved ->", MODEL_PATH)
 
-    # Sanity test (mga tanong na wala sa dataset)
-    print(f"\nSanity test (threshold = {THRESHOLD})")
-    for t in TESTS:
-        proba = model.predict_proba([normalize(t)])[0]
+    # Test sa mga bagong tanong (wala sa training)
+    ans_by_q = dict(zip(df["question"], df["answer"]))
+    print(f"\nTest sa mga bagong tanong (threshold = {THRESHOLD})")
+
+    passed = total = 0
+    for text, seed in TESTS:
+        if seed is not None and seed not in ans_by_q:
+            print(f"SKIP (wala sa dataset ang '{seed}'): {text}")
+            continue
+
+        expected = OFFTOPIC_LABEL if seed is None else ans_by_q[seed]
+        proba = model.predict_proba([normalize(text)])[0]
         i = proba.argmax()
-        label = model.classes_[i]
-        if proba[i] < THRESHOLD:
-            result = "(wala akong info: mababa ang confidence)"
-        elif label == OFFTOPIC_LABEL:
-            result = "(off-topic)"
-        else:
-            result = label[:90]
-        print(f"[{proba[i]:.2f}] {t}\n       -> {result}")
+        got = None if proba[i] < THRESHOLD else model.classes_[i]  # None = "wala akong info"
+
+        ok = got == expected or (seed is None and got is None)
+        total += 1
+        passed += ok
+
+        print(f"[{'OK' if ok else 'X '}] [{proba[i]:.2f}] {text}")
+        if not ok:
+            shown = "(wala akong info)" if got is None else ("(off-topic)" if got == OFFTOPIC_LABEL else got[:70])
+            print(f"       nakuha: {shown}")
+
+    if total:
+        print(f"\nTest accuracy: {passed}/{total} ({passed / total:.0%})")
 
 
 if __name__ == "__main__":

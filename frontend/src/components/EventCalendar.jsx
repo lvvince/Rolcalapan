@@ -24,6 +24,10 @@ const sortEvents = (a, b) =>
     String(b.event_date).slice(0, 10) + (b.start_time || "")
   );
 
+// "9:00 AM-10:30 AM", or just "9:00 AM" kapag walang end time
+const timeRange = (e) =>
+  e.end_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : hm(e.start_time);
+
 export default function EventCalendar({ viewAllTo }) {
   const { t } = useLang();
   const [events, setEvents] = useState([]);
@@ -177,7 +181,7 @@ export default function EventCalendar({ viewAllTo }) {
                     <p className="ec-meta">
                       <span>
                         <Clock size={13} aria-hidden="true" />
-                        {e.start_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : t("All day")}
+                        {e.start_time ? timeRange(e) : t("All day")}
                       </span>
                       {e.location && (
                         <span>

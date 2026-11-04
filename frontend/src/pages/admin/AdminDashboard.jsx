@@ -149,8 +149,15 @@ const isPresent = (a) => {
   return !["absent", "no", "false", "0", "missed"].includes(s);
 };
 
+// Hindi na bukas ang prayed / answered / closed, kaya hindi na ipapakita sa dashboard
 const isOpenPrayer = (p) =>
-  !["answered", "closed", "resolved", "done", "archived"].includes(String(p.status || "open").toLowerCase());
+  !["prayed", "answered", "closed", "resolved", "done", "archived"].includes(
+    String(p.status || "open").toLowerCase()
+  );
+
+// Urgent, mataas ang urgency, o kailangang i-review ng tao
+const isHotPrayer = (p) =>
+  p.priority === "urgent" || p.urgency === "high" || Number(p.needs_review) === 1;
 
 const agoLabel = (d) => {
   if (!d) return "";
@@ -260,11 +267,15 @@ export default function AdminDashboard() {
 
   const hovered = roles.find((r) => r.key === hover);
 
-  /* ---------- Open Prayer Requests ---------- */
+  /* ---------- Open Prayer Requests (urgent muna, tapos pinakabago) ---------- */
   const openPrayers = (watch.prayers || [])
     .filter(isOpenPrayer)
-    .map((p) => ({ ...p, _date: toDate(p.created_at || p.date) }))
-    .sort((a, b) => (b._date?.getTime() || 0) - (a._date?.getTime() || 0));
+    .map((p) => ({ ...p, _date: toDate(p.created_at || p.date), _hot: isHotPrayer(p) }))
+    .sort(
+      (a, b) =>
+        Number(b._hot) - Number(a._hot) ||
+        (b._date?.getTime() || 0) - (a._date?.getTime() || 0)
+    );
 
   /* ---------- Attendance Trend ---------- */
   const perDay = {};
@@ -475,7 +486,11 @@ export default function AdminDashboard() {
                         {p._date ? ` · ${t(agoLabel(p._date))}` : ""}
                       </small>
                     </div>
-                    <span className="dsh-badge is-warn">{t("Open")}</span>
+                    {p._hot ? (
+                      <span className="dsh-badge is-alert">{t("Urgent")}</span>
+                    ) : (
+                      <span className="dsh-badge is-warn">{t("Open")}</span>
+                    )}
                   </Link>
                 </li>
               ))}

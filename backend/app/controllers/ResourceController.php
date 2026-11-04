@@ -279,6 +279,14 @@ class ResourceController extends Controller
             unset($row);
         }
 
+        // Itago sa member ang AI fields ng prayer request (admin lang ang makakakita)
+        if ($role === 'member' && $name === 'prayer_requests') {
+            foreach ($rows as &$row) {
+                unset($row['category'], $row['urgency'], $row['ai_confidence'], $row['needs_review']);
+            }
+            unset($row);
+        }
+
         foreach (($c['hide'] ?? []) as $h) {
             foreach ($rows as &$row) unset($row[$h]);
             unset($row);
@@ -379,6 +387,29 @@ class ResourceController extends Controller
         }
         if (!$id && !empty($c['created_by'])) $data['created_by'] = $this->u['id'];
         if ($name === 'ministry_schedules') $this->check_conflict($data, $id);
+
+        // AI classifier para sa bagong prayer request.
+        // Hindi nito sinisira ang pag-save kapag pumalya ang service.
+        if ($name === 'prayer_requests' && !$id && !empty($data['request'])) {
+            try {
+                require_once APP_DIR . 'libraries/PrayerClassifier.php';
+                $ai = (new PrayerClassifier())->classify($data['request']);
+
+                $data['category']      = $ai['category'] ?? null;
+                $data['urgency']       = $ai['urgency'] ?? null;
+                $data['ai_confidence'] = $ai['confidence'] ?? null;
+                $data['needs_review']  = !empty($ai['needs_review']) ? 1 : 0;
+
+                // High urgency = urgent priority para lumabas agad sa pastor
+                if (($ai['urgency'] ?? null) === 'high') {
+                    $data['priority'] = 'urgent';
+                }
+            } catch (\Throwable $e) {
+                error_log('PrayerClassifier failed: ' . $e->getMessage());
+                // Down ang service: i-flag para ma-review ng tao
+                $data['needs_review'] = 1;
+            }
+        }
 
         if ($id) {
             $this->db->table($c['table'])->where('id', $id)->update($data);

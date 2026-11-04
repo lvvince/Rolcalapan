@@ -1,11 +1,22 @@
 ﻿const BASE_URL = import.meta.env.VITE_API_URL || "/api";
+const TOKEN_KEYS = ["token", "authToken", "access_token"];
 
 function getToken() {
-  return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("access_token")
-  );
+  for (const k of TOKEN_KEYS) {
+    const v = localStorage.getItem(k);
+    if (v) return v;
+  }
+  return null;
+}
+
+function handleUnauthorized(path, hadToken) {
+  // Huwag mag-redirect kung walang token (public pages, chatbot) o kung login mismo ang nag-401
+  if (!hadToken || path.startsWith("/auth/login")) return;
+  TOKEN_KEYS.forEach((k) => localStorage.removeItem(k));
+  localStorage.removeItem("user");
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.href = "/login";
+  }
 }
 
 async function request(method, path, body, config = {}) {
@@ -41,6 +52,7 @@ async function request(method, path, body, config = {}) {
   const response = { data, status: res.status };
 
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized(path, !!token);
     const msg =
       (data && typeof data === "object" && (data.error || data.message)) ||
       `Request failed: ${res.status}`;
