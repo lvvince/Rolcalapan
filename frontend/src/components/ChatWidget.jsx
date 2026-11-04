@@ -4,6 +4,9 @@ const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 const TIMEOUT_MS = 60000;
 const HISTORY_LIMIT = 6;
 
+// Phones (portrait at landscape). Kapareho ng mobile media query sa CSS sa ibaba.
+const MOBILE_Q = "(max-width: 480px), (max-height: 520px)";
+
 // Profile picture ng assistant (frontend/public/rolav.png)
 const ASSISTANT_PIC = "/rolav.png";
 
@@ -32,10 +35,17 @@ const formatTime = (ts) =>
   new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 const STYLES = `
-.rol-root { position: fixed; bottom: 20px; right: 20px; z-index: 50; font-family: inherit; }
+.rol-root {
+  position: fixed; z-index: 50; font-family: inherit;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  right: calc(20px + env(safe-area-inset-right, 0px));
+}
+/* Desktop: transparent wrapper lang; nagiging backdrop sa phones */
+.rol-overlay { display: contents; }
 .rol-window {
   width: min(380px, calc(100vw - 40px));
   height: min(560px, calc(100vh - 120px));
+  height: min(560px, calc(100dvh - 120px));
   background: #fff;
   border-radius: 20px;
   box-shadow: 0 20px 50px rgba(8, 47, 73, .25), 0 2px 8px rgba(8, 47, 73, .1);
@@ -65,15 +75,16 @@ const STYLES = `
 .rol-title { font-weight: 700; font-size: 15px; line-height: 1.2; }
 .rol-sub { font-size: 12px; opacity: .85; margin-top: 2px; }
 .rol-close {
-  margin-left: auto; width: 32px; height: 32px; border-radius: 50%;
+  margin-left: auto; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
   border: none; background: rgba(255,255,255,.15); color: #fff; cursor: pointer;
   display: grid; place-items: center; transition: background .15s;
 }
 .rol-close:hover { background: rgba(255,255,255,.3); }
 
 .rol-body {
-  flex: 1; overflow-y: auto; padding: 16px 14px 8px;
+  flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px 8px;
   background: #f1f7fa; scroll-behavior: smooth;
+  overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
 }
 .rol-row { display: flex; flex-direction: column; margin-bottom: 12px; animation: rol-in .2s ease-out; }
 .rol-row.user { align-items: flex-end; }
@@ -90,7 +101,7 @@ const STYLES = `
 
 .rol-bubble {
   max-width: 82%; padding: 10px 14px; font-size: 14px; line-height: 1.45;
-  white-space: pre-wrap; word-break: break-word;
+  white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
 }
 .rol-row.bot .rol-bubble { max-width: calc(82% - 38px); }
 .rol-bubble.bot { background: #fff; color: #0f172a; border-radius: 18px 18px 18px 4px; box-shadow: 0 1px 2px rgba(15,23,42,.08); }
@@ -145,6 +156,10 @@ const STYLES = `
 }
 @keyframes rol-pulse { from { transform: scale(1); opacity: .8; } to { transform: scale(1.6); opacity: 0; } }
 
+.rol-chip, .rol-send, .rol-close, .rol-toggle {
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+
 .rol-body::-webkit-scrollbar { width: 6px; }
 .rol-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 
@@ -173,12 +188,62 @@ html[data-theme="dark"] .rol-toggle { background: linear-gradient(135deg, #0e749
 html[data-theme="dark"] .rol-toggle { box-shadow: 0 8px 20px rgba(0,0,0,.5); }
 html[data-theme="dark"] .rol-toggle.pulse::before { border-color: #22d3ee; }
 
-@media (max-width: 480px) {
-  .rol-root { bottom: 12px; right: 12px; }
-  .rol-window { position: fixed; inset: 0; width: 100%; height: 100%; max-height: none; border-radius: 0; margin: 0; }
+/* ---------- RESPONSIVE ---------- */
+
+/* Tablet / maliit na laptop */
+@media (min-width: 481px) and (max-width: 820px) {
+  .rol-window { width: 400px; }
 }
+
+/* Phones (portrait at landscape): modal na may backdrop */
+@media (max-width: 480px), (max-height: 520px) {
+  .rol-root {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    right: calc(16px + env(safe-area-inset-right, 0px));
+  }
+  .rol-root.open .rol-toggle { display: none; } /* may close button na sa header */
+  .rol-toggle { width: 56px; height: 56px; }
+
+  /* Backdrop: sumusunod sa visible area (keyboard-aware) */
+  .rol-overlay {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; left: 0; right: 0;
+    top: var(--rol-top, 0px);
+    height: 100vh;
+    height: var(--rol-h, 100dvh);
+    padding: calc(12px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-right, 0px))
+             calc(12px + env(safe-area-inset-bottom, 0px)) calc(12px + env(safe-area-inset-left, 0px));
+    background: rgba(8, 47, 73, .5);
+    animation: rol-fade .18s ease-out;
+  }
+  @keyframes rol-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Ang modal mismo: puno ang taas ng visible area pero may max */
+  .rol-window {
+    width: 100%; max-width: 440px;
+    height: 100%; max-height: 640px;
+    margin: 0; border-radius: 20px;
+    animation: rol-open .22s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .rol-close { width: 44px; height: 44px; }
+  .rol-bubble { max-width: 88%; font-size: 15px; }
+  .rol-row.bot .rol-bubble { max-width: calc(88% - 38px); }
+  .rol-chip { padding: 10px 16px; font-size: 14px; min-height: 40px; }
+  .rol-footer { padding: 10px 12px 12px; }
+  .rol-input { font-size: 16px; } /* iwas auto-zoom sa iOS */
+  .rol-send { width: 44px; height: 44px; }
+}
+
+/* Landscape phones: mas maliit na padding */
+@media (max-height: 520px) {
+  .rol-overlay { padding: 8px calc(12px + env(safe-area-inset-right, 0px)) 8px calc(12px + env(safe-area-inset-left, 0px)); }
+  .rol-window { max-width: 520px; border-radius: 16px; }
+  .rol-header { padding: 8px 14px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .rol-window, .rol-row, .rol-chips, .rol-toggle.pulse::before, .rol-typing span { animation: none; }
+  .rol-window, .rol-overlay, .rol-row, .rol-chips, .rol-toggle.pulse::before, .rol-typing span { animation: none; }
 }
 `;
 
@@ -208,6 +273,7 @@ export default function ChatWidget() {
   ]);
   const endRef = useRef(null);
   const inputRef = useRef(null);
+  const rootRef = useRef(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -215,6 +281,32 @@ export default function ChatWidget() {
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
+  }, [open]);
+
+  // Mobile: i-lock ang scroll ng page at sundan ang totoong visible area (keyboard-aware)
+  useEffect(() => {
+    if (!open || !window.matchMedia(MOBILE_Q).matches) return;
+    const vv = window.visualViewport;
+    const root = rootRef.current;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const update = () => {
+      if (!vv || !root) return;
+      root.style.setProperty("--rol-h", `${vv.height}px`);
+      root.style.setProperty("--rol-top", `${vv.offsetTop}px`);
+    };
+    update();
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      root?.style.removeProperty("--rol-h");
+      root?.style.removeProperty("--rol-top");
+    };
   }, [open]);
 
   const send = async (override) => {
@@ -274,11 +366,16 @@ export default function ChatWidget() {
   const showChips = messages.length === 1; // welcome message pa lang
 
   return (
-    <div className="rol-root" onKeyDown={(e) => e.key === "Escape" && open && setOpen(false)}>
+    <div
+      ref={rootRef}
+      className={`rol-root${open ? " open" : ""}`}
+      onKeyDown={(e) => e.key === "Escape" && open && setOpen(false)}
+    >
       <style>{STYLES}</style>
 
       {open && (
-        <div role="dialog" aria-label="Church Assistant" className="rol-window">
+        <div className="rol-overlay" onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
+        <div role="dialog" aria-modal="true" aria-label="Church Assistant" className="rol-window">
           <div className="rol-header">
             <div className="rol-avatar">
               <img src="/logo.png" alt="River of Life Calapan logo" />
@@ -345,6 +442,7 @@ export default function ChatWidget() {
             </div>
             {input.length > 400 && <div className="rol-count">{input.length}/500</div>}
           </div>
+        </div>
         </div>
       )}
 

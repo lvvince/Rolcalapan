@@ -56,7 +56,9 @@ html[data-theme="dark"] {
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+img, svg, video { max-width: 100%; }
 h1, h2 { margin: 0 0 8px; letter-spacing: -.02em; }
 .muted { color: var(--muted); margin: 0 0 16px; }
 
@@ -87,7 +89,7 @@ input:-webkit-autofill:focus {
 }
 
 /* ---- Legacy login classes (still used by forgot/reset password pages) ---- */
-.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
+.login-wrap { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px;
   background: radial-gradient(circle at 10% 10%, rgba(8,145,178,.15) 0, transparent 40%), radial-gradient(circle at 90% 90%, rgba(34,211,238,.18) 0, transparent 45%), var(--bg); }
 .login-card { background: var(--surface); width: 100%; max-width: 400px; padding: 32px; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow-md); }
 .login-card h1 { color: var(--ink); }
@@ -103,9 +105,9 @@ input:-webkit-autofill:focus {
 html[data-theme="dark"] .alert { background: #2a1215; color: #fca5a5; border-color: #7f1d1d; }
 
 /* ---- Portal shell ---- */
-.shell { display: flex; min-height: 100vh; }
+.shell { display: flex; min-height: 100vh; min-height: 100dvh; }
 
-.sidebar { width: 264px; flex-shrink: 0; color: #fff; position: sticky; top: 0; align-self: flex-start; height: 100vh; overflow-y: auto;
+.sidebar { width: 264px; flex-shrink: 0; color: #fff; position: sticky; top: 0; align-self: flex-start; height: 100vh; height: 100dvh; overflow-y: auto;
   background: radial-gradient(circle at 0% 0%, rgba(34,211,238,.22) 0, transparent 45%), linear-gradient(180deg, var(--teal-900) 0%, var(--teal-950) 100%); }
 html[data-theme="dark"] .sidebar { background: radial-gradient(circle at 0% 0%, rgba(34,211,238,.12) 0, transparent 45%), linear-gradient(180deg, #08202b 0%, #050f16 100%); border-right: 1px solid var(--line); }
 
@@ -114,12 +116,13 @@ html[data-theme="dark"] .sidebar { background: radial-gradient(circle at 0% 0%, 
 
 .sidebar nav { display: flex; flex-direction: column; gap: 2px; padding: 14px 12px; }
 .sidebar a { position: relative; color: #bfe3ec; text-decoration: none; padding: 11px 14px; border-radius: 10px; font-size: 14.5px; font-weight: 500; transition: background .2s, color .2s, transform .2s; }
-.sidebar a:hover { background: rgba(255,255,255,.1); color: #fff; transform: translateX(2px); }
 .sidebar a.active { background: var(--active-bg); color: var(--active-text); font-weight: 700; box-shadow: 0 6px 16px rgba(0,0,0,.18); transform: none; }
 .sidebar a:focus-visible { outline: 2px solid var(--teal-400); outline-offset: 2px; }
 
 .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.topbar { position: sticky; top: 0; z-index: 20; height: 66px; background: var(--surface-glass); backdrop-filter: saturate(180%) blur(12px); padding: 0 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); font-weight: 600; color: var(--ink); }
+.topbar { position: sticky; top: 0; z-index: 20; height: 66px; background: var(--surface-glass); backdrop-filter: saturate(180%) blur(12px); -webkit-backdrop-filter: saturate(180%) blur(12px);
+  padding: 0 28px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px));
+  display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); font-weight: 600; color: var(--ink); }
 .topbar div { display: flex; align-items: center; gap: 12px; }
 .topbar select { height: 36px; padding: 0 10px; font: inherit; font-size: 14px; font-weight: 500; color: var(--label); background: var(--surface); border: 1.5px solid var(--field-border); border-radius: 10px; outline: none; cursor: pointer; }
 .topbar select:focus { border-color: var(--teal-600); box-shadow: 0 0 0 3px rgba(8,145,178,.15); }
@@ -135,11 +138,33 @@ html[data-theme="dark"] .sidebar { background: radial-gradient(circle at 0% 0%, 
 .card { position: relative; overflow: hidden; background: var(--surface); padding: 22px; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 6px; color: inherit; text-decoration: none; transition: transform .25s, box-shadow .25s, border-color .25s; }
 .card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--teal-700), var(--teal-400)); transform: scaleX(0); transform-origin: left; transition: transform .3s; }
 a.card, button.card, .card[role="link"] { cursor: pointer; }
-a.card:hover, button.card:hover, .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--teal-100); }
-.card:hover::before { transform: scaleX(1); }
 .card h3, .card h4 { margin: 0; color: var(--heading); font-size: 1.05rem; letter-spacing: -.01em; }
 .card p { margin: 0; color: var(--text); font-size: .9rem; line-height: 1.55; }
 .card span { color: var(--muted); font-size: 14px; }
 .card strong { font-size: 30px; color: var(--accent); letter-spacing: -.02em; }
+
+/* Hover effects: sa mouse lang, para hindi dumikit sa touch devices */
+@media (hover: hover) {
+  .sidebar a:hover { background: rgba(255,255,255,.1); color: #fff; transform: translateX(2px); }
+  .sidebar a.active:hover { background: var(--active-bg); color: var(--active-text); transform: none; }
+  .card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--teal-100); }
+  .card:hover::before { transform: scaleX(1); }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .topbar { height: 60px; padding: 0 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .content { padding: 20px 16px; }
+  .content > h1, .content > h2:first-child { font-size: 1.5rem; }
+  .cards { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .card { padding: 16px; }
+  .card strong { font-size: 26px; }
+}
+
+@media (max-width: 480px) {
+  .login-card { padding: 24px 20px; border-radius: 16px; }
+  .login-card input { font-size: 16px; } /* iwas auto-zoom sa iOS */
+  .topbar select { font-size: 16px; }
+}
 
 /* Mobile layout (drawer sidebar) ay nasa portal.css, sa dulo ng file */
