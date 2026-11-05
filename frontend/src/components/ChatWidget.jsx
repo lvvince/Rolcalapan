@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 // Local dev: iwanang walang VITE_API_URL para gumamit ng Vite proxy (/api)
 const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 const TIMEOUT_MS = 60000;
+const SLOW_AFTER_MS = 5000; // ilang segundo bago lumabas ang "Gumigising ang assistant..."
 const HISTORY_LIMIT = 6;
 
 // Phones (portrait at landscape). Kapareho ng mobile media query sa CSS sa ibaba.
@@ -277,7 +278,7 @@ export default function ChatWidget() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, open, loading]);
+  }, [messages, open, loading, slow]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -328,7 +329,7 @@ export default function ChatWidget() {
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    const slowTimer = setTimeout(() => setSlow(true), 8000);
+    const slowTimer = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
 
     try {
       const res = await fetch(`${API_URL}/api/chat`, {
@@ -418,7 +419,11 @@ export default function ChatWidget() {
                     <span /><span /><span />
                   </div>
                 </div>
-                {slow && <div className="rol-slow">Ginigising pa ang server, sandali lang po...</div>}
+                {slow && (
+                  <div className="rol-slow">
+                    Gumigising ang assistant, maghintay po ng ilang segundo...
+                  </div>
+                )}
               </div>
             )}
             <div ref={endRef} />

@@ -115,8 +115,13 @@ function FieldInput({ f, value, onChange, t, options }) {
  *  rowActions(row, helpers)    helpers = { reload, patch(changes) }
  *                              (puwede ring tawagin ang helpers bilang function = reload,
  *                               kaya gumagana pa rin ang lumang rowActions(row, reload))
- *  lookups   { name: { resource, label(row), filter?(row), value?(row) } }
+ *  lookups   { name: { resource, label(row), filter?(row), value?(row), prepend?: [{value,label}] } }
  *            gamitin sa field: { type: "select", lookup: "name" }
+ *            prepend = dagdag na options na ilalagay sa unahan ng dropdown
+ *  onSave    async (values, { lookups }) => undefined | { ok, text }
+ *            tinatawag sa Add lang. Kapag may ibinalik na { ok, text }, ito na ang
+ *            gagamitin (hindi na tatawag ng default /resource/save).
+ *            Kapag undefined ang ibinalik, tuloy ang normal na save.
  *  defaults  { key: defaultValue } para sa Add modal
  *  reloadKey | refreshKey   palitan para mag-refetch
  *  emptyText, onLoaded, hideTitle, searchable, rowClassName, className
@@ -141,6 +146,7 @@ export default function DataPage({
   refreshKey,
   onLoaded,
   lookups,
+  onSave,
   defaults,
   hideTitle = false,
   searchable = false,
@@ -209,7 +215,10 @@ export default function DataPage({
             ? cfg.label(r)
             : String(r[cfg.label || "name"] ?? r.full_name ?? r.name ?? r.id);
         const valueOf = (r) => (typeof cfg.value === "function" ? cfg.value(r) : r[cfg.value || "id"]);
-        const opts = list.map((r) => ({ value: valueOf(r), label: labelOf(r) }));
+        const opts = [
+          ...(cfg.prepend || []),
+          ...list.map((r) => ({ value: valueOf(r), label: labelOf(r) })),
+        ];
         if (!cancelled) {
           setLookupOpts((s) => ({ ...s, [name]: opts }));
           setLookupRaw((s) => ({ ...s, [name]: list }));
@@ -217,7 +226,7 @@ export default function DataPage({
       } catch (e) {
         console.error(`LOOKUP ${name} failed:`, e.response?.status, e.response?.data || e.message);
         if (!cancelled) {
-          setLookupOpts((s) => ({ ...s, [name]: [] }));
+          setLookupOpts((s) => ({ ...s, [name]: [...(cfg.prepend || [])] }));
           setLookupRaw((s) => ({ ...s, [name]: [] }));
         }
       }
@@ -266,6 +275,18 @@ export default function DataPage({
     e.preventDefault();
     setSaving(true);
     try {
+      // Custom save (hal. pagpapadala sa buong group). Kapag undefined ang
+      // ibinalik, tuloy ang normal na save sa ibaba.
+      if (modal.mode === "add" && onSave) {
+        const res = await onSave(values, { lookups: lookupRaw });
+        if (res) {
+          if (res.ok) setModal(null);
+          setMsg({ ok: res.ok, text: res.text });
+          await load();
+          return;
+        }
+      }
+
       const payload = { name: resource, ...values };
       if (modal.mode === "edit") payload.id = modal.row.id;
       await api.post("/resource/save", payload);
