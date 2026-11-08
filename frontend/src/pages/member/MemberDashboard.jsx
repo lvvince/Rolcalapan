@@ -1,4 +1,4 @@
-// frontend/src/pages/member/MemberPages.jsx
+// frontend/src/pages/member/MemberDashboard.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -26,6 +26,7 @@ import DataPage, { hm } from "../../components/DataPage";
 import { useLang } from "../../i18n/LanguageContext";
 import QrView from "../../components/QrView";
 import NotificationsView from "../../components/Notifications";
+import InterestsCard from "../../components/InterestsCard";
 import "../../components/portal.css";
 
 const err = (e) => e.response?.data?.error || "Something went wrong";
@@ -95,7 +96,7 @@ export function Profile() {
           </Link>
         </aside>
 
-        {/* RIGHT: form + ministries */}
+        {/* RIGHT: form + ministries + interests */}
         <div className="pf-main">
           <form className="panel" onSubmit={save}>
             <h4>{t("Personal Information")}</h4>
@@ -159,6 +160,9 @@ export function Profile() {
               </div>
             )}
           </div>
+
+          {/* Interests (ginagamit ng Recommended) */}
+          <InterestsCard />
         </div>
       </div>
     </>
@@ -690,7 +694,7 @@ export function Recommended() {
     <>
       <h2>{t("Recommended for You")}</h2>
       <p className="min-summary">
-        {t("Ministries and groups that fit you, based on the ones you joined and the events you attended.")}
+        {t("Ministries and groups that fit you, based on your interests, your age, and the ones you joined.")}
       </p>
 
       {msg && <div className="msg err">{t(msg.text)}</div>}
@@ -701,7 +705,7 @@ export function Recommended() {
         <div className="min-grid">
           {list.map((m, i) => {
             const isGroup = m.type === "small_group";
-            const similar = m.reason.startsWith("Similar");
+            const similar = !String(m.reason || "").startsWith("Popular");
             const pct = Math.max(5, Math.round((m.score / maxScore) * 100));
             return (
               <div className="min-card" key={m.id}>
@@ -732,7 +736,7 @@ export function Recommended() {
                 </div>
 
                 {similar && (
-                  <div className="min-match" title={t("Match score {score}", { score: m.score })}>
+                  <div className="min-match" title={t("Match score {score}", { score: m.match ?? m.score })}>
                     <span style={{ width: `${pct}%` }} />
                   </div>
                 )}
