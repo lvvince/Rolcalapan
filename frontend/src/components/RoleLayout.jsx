@@ -12,6 +12,9 @@ import ChatWidget from "./ChatWidget";
 import LanguageSwitcher from "./LanguageSwitcher";
 import ThemeToggle from "./ThemeToggle";
 
+// Mga role na walang icons sa sidebar (Secretary at Member ay may icons pa rin)
+const NO_ICON_ROLES = ["ministry", "ministry_leader", "leader"];
+
 // path ng menu item -> pangalan ng icon sa components/Icon.jsx
 const menuIcons = {
   // Secretary / Staff
@@ -121,6 +124,7 @@ export default function RoleLayout({ role }) {
   const navigate = useNavigate();
   const location = useLocation();
   const menu = roleMenus[role];
+  const showIcons = !NO_ICON_ROLES.includes(role);
   const [open, setOpen] = useState(false); // mobile drawer
   const [memberPic, setMemberPic] = useState(null);
 
@@ -184,13 +188,13 @@ export default function RoleLayout({ role }) {
 
         <nav>
           <NavLink to={menu.base} end className={linkClass}>
-            <Icon name="dashboard" />
+            {showIcons && <Icon name="dashboard" />}
             <span>{t("common.dashboard")}</span>
           </NavLink>
 
           {menu.items.map((i) => (
             <NavLink key={i.path} to={`${menu.base}/${i.path}`} className={linkClass}>
-              <Icon name={getMenuIcon(i)} />
+              {showIcons && <Icon name={getMenuIcon(i)} />}
               <span>{t(`menu.label.${role}.${i.path}`, { defaultValue: i.label })}</span>
             </NavLink>
           ))}

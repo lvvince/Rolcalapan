@@ -40,6 +40,7 @@ import {
 } from "./pages/secretary/StaffDashboard";
 
 import MinistryHome from "./pages/ministry/MinistryHome";
+import AddMinistryPage from "./pages/ministry/AddMinistryPage";
 import {
   LeaderSchedule,
   LeaderMembers,
@@ -151,6 +152,7 @@ export default function App() {
             <>
               <Route path="schedule" element={<LeaderSchedule />} />
               <Route path="members" element={<LeaderMembers />} />
+              <Route path="add-ministry" element={<AddMinistryPage />} />
               <Route path="volunteers" element={<LeaderVolunteers />} />
               <Route path="activities" element={<LeaderActivities />} />
               <Route path="events" element={<LeaderEvents />} />

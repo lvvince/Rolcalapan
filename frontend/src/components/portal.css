@@ -519,3 +519,82 @@ table.tbl td.actions { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .sb-overlay { transition: none; animation: none; }
 }
+/* ===== Ministry dashboard additions (idagdag sa dulo ng portal.css) ===== */
+
+/* Hero: dalawang buttons */
+.dash-hero-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.dash-hero-actions .dash-hero-btn {
+  margin-left: 0;
+}
+
+/* Stat cards */
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+.dash-stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 118, 145, 0.18);
+  background: rgba(15, 118, 145, 0.06);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dash-stat:hover,
+.dash-stat:focus-visible {
+  border-color: #0f7691;
+  background: rgba(15, 118, 145, 0.12);
+}
+.dash-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #0f7691;
+  color: #fff;
+  flex-shrink: 0;
+}
+.dash-stat strong {
+  display: block;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+.dash-stat p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+/* Empty state ng Upcoming Events */
+.dash-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.dash-empty p {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .dash-hero-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Clock,
   MapPin,
+  Plus,
 } from "lucide-react";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
@@ -58,25 +59,53 @@ const greeting = () => {
   return "Good evening";
 };
 
+const getList = (name, extra = {}) =>
+  api
+    .get("/resource", { params: { name, ...extra } })
+    .then((r) => (Array.isArray(r.data) ? r.data : []))
+    .catch(() => []);
+
 export default function MinistryHome() {
   const { t } = useLang();
   const { user } = useAuth();
   const [member, setMember] = useState(null);
   const [events, setEvents] = useState([]);
+  const [stats, setStats] = useState(null);
+
+  const loadStats = () =>
+    Promise.all([
+      getList("ministries", { mine: 1 }),
+      getList("ministry_members"),
+      getList("events"),
+      getList("attendance"),
+    ]).then(([mins, mm, ev, att]) => {
+      const ids = new Set(mins.map((m) => String(m.id)));
+      const scoped = (r) => ids.size === 0 || ids.has(String(r.ministry_id));
+      // Events na walang ministry (para sa buong simbahan) ay kasama rin
+      const scopedEvent = (e) => !e.ministry_id || scoped(e);
+
+      const today = new Date().toLocaleDateString("en-CA");
+      const month = today.slice(0, 7);
+
+      const myMembers = mm.filter(scoped);
+      const upcoming = ev
+        .filter(scopedEvent)
+        .filter((e) => e.event_date >= today)
+        .sort((a, b) => (a.event_date + (a.start_time || "")).localeCompare(b.event_date + (b.start_time || "")));
+
+      setEvents(upcoming.slice(0, 3));
+      setStats({
+        ministries: mins.length,
+        members: myMembers.filter((r) => r.role !== "volunteer").length,
+        volunteers: myMembers.filter((r) => r.role === "volunteer").length,
+        events: upcoming.length,
+        attendance: att.filter((a) => String(a.service_date || "").startsWith(month)).length,
+      });
+    });
 
   useEffect(() => {
     api.get("/portal/me").then((r) => setMember(r.data.member)).catch(() => {});
-    api.get("/resource", { params: { name: "events" } })
-      .then((r) => {
-        const today = new Date().toLocaleDateString("en-CA");
-        setEvents(
-          r.data
-            .filter((e) => e.event_date >= today)
-            .sort((a, b) => (a.event_date + (a.start_time || "")).localeCompare(b.event_date + (b.start_time || "")))
-            .slice(0, 3)
-        );
-      })
-      .catch(() => {});
+    loadStats();
   }, []);
 
   const name =
@@ -85,6 +114,14 @@ export default function MinistryHome() {
     user?.name ||
     t("Ministry Leader");
   const pic = member?.profile_pic || user?.profile_pic;
+
+  const STAT_CARDS = [
+    { to: "/ministry/members", icon: ClipboardList, label: "My Ministries", value: stats?.ministries },
+    { to: "/ministry/members", icon: Users, label: "Members", value: stats?.members },
+    { to: "/ministry/volunteers", icon: HandHelping, label: "Volunteers", value: stats?.volunteers },
+    { to: "/ministry/events", icon: CalendarDays, label: "Upcoming Events", value: stats?.events },
+    { to: "/ministry/attendance", icon: ClipboardCheck, label: "Attendance This Month", value: stats?.attendance },
+  ];
 
   return (
     <>
@@ -98,9 +135,35 @@ export default function MinistryHome() {
           <h2>{name}</h2>
           <span className="dash-code">{t("Ministry Leader")}</span>
         </div>
-        <Link to="/ministry/attendance" className="dash-hero-btn">
-          <ClipboardCheck size={16} aria-hidden="true" /> {t("Attendance")}
-        </Link>
+        <div className="dash-hero-actions">
+          <Link to="/ministry/add-ministry" className="dash-hero-btn">
+            <Plus size={16} aria-hidden="true" /> {t("Add Ministry")}
+          </Link>
+          <Link to="/ministry/events" className="dash-hero-btn">
+            <Plus size={16} aria-hidden="true" /> {t("Add Event")}
+          </Link>
+          <Link to="/ministry/attendance" className="dash-hero-btn">
+            <ClipboardCheck size={16} aria-hidden="true" /> {t("Attendance")}
+          </Link>
+        </div>
+      </div>
+
+      {/* Overview stats */}
+      <div className="dash-stats">
+        {STAT_CARDS.map((s) => {
+          const Icon = s.icon;
+          return (
+            <Link to={s.to} className="dash-stat" key={s.label}>
+              <span className="dash-stat-icon">
+                <Icon size={20} aria-hidden="true" />
+              </span>
+              <div>
+                <strong>{s.value ?? "-"}</strong>
+                <p>{t(s.label)}</p>
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Daily Bible Verse */}
@@ -117,7 +180,12 @@ export default function MinistryHome() {
         </Link>
       </div>
       {events.length === 0 ? (
-        <div className="dash-empty">{t("No upcoming events yet.")}</div>
+        <div className="dash-empty">
+          <p>{t("No upcoming events yet.")}</p>
+          <Link to="/ministry/events" className="btn sm">
+            <Plus size={14} aria-hidden="true" /> {t("Add Event")}
+          </Link>
+        </div>
       ) : (
         <div className="dash-events">
           {events.map((e) => {

@@ -135,6 +135,17 @@ $router->post('/api/portal/join',         'PortalController::join');
 $router->post('/api/portal/leave',        'PortalController::leave');
 $router->get( '/api/portal/recommended',  'PortalController::recommended');
 
+// Interests ng member (para sa Recommended)
+$router->get( '/api/portal/interests', 'PortalController::interests');
+$router->post('/api/portal/interests', 'PortalController::interests_save');
+
+// Tags at age range ng ministry (Admin at Ministry Leader)
+$router->get( '/api/portal/ministry-details', 'PortalController::ministry_details');
+$router->post('/api/portal/ministry-details', 'PortalController::ministry_details_save');
+
+// Magdagdag ng ministry / small group (Ministry Leader at Admin)
+$router->post('/api/portal/ministry-save', 'PortalController::ministry_save');
+
 // Attendance (QR / code check-in, ginagamit din ng camera scanner)
 $router->post('/api/portal/checkin', 'PortalController::checkin');
 

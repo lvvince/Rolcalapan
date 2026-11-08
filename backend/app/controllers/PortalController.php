@@ -4,10 +4,37 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 /**
  * backend/app/controllers/PortalController.php
  * Custom endpoints: profile, profile picture, overview, join/leave, recommender, check-in, reports, notifications.
+ * Recommender: interests + age + history (walang location).
  */
 class PortalController extends Controller
 {
     private $u;
+
+    // Mga pwedeng piliin ng member na interests (dapat kapareho ng components/InterestsCard.jsx)
+    private $interest_options = [
+        'music', 'worship', 'singing', 'instruments', 'sports', 'tech', 'media', 'arts',
+        'teaching', 'bible study', 'prayer', 'hospitality', 'outreach', 'youth', 'kids', 'fellowship',
+    ];
+
+    // Kasingkahulugan para mas madaling mag-match sa description/tags ng ministry
+    private $interest_syn = [
+        'music'       => ['music', 'musical', 'band'],
+        'worship'     => ['worship', 'praise'],
+        'singing'     => ['singing', 'choir', 'vocal', 'sing'],
+        'instruments' => ['instrument', 'instruments', 'band', 'guitar', 'drums', 'piano', 'keyboard'],
+        'sports'      => ['sports', 'sport', 'athletic', 'basketball', 'volleyball'],
+        'tech'        => ['tech', 'technology', 'media', 'sound', 'video', 'livestream', 'projection'],
+        'media'       => ['media', 'video', 'photography', 'livestream', 'social'],
+        'arts'        => ['art', 'arts', 'creative', 'drama', 'dance', 'design'],
+        'teaching'    => ['teaching', 'teach', 'discipleship', 'class', 'sunday school'],
+        'bible study' => ['bible', 'study', 'discipleship', 'scripture'],
+        'prayer'      => ['prayer', 'intercession', 'pray'],
+        'hospitality' => ['hospitality', 'welcome', 'guests', 'usher', 'ushering', 'greeter'],
+        'outreach'    => ['outreach', 'mission', 'missions', 'evangelism', 'community'],
+        'youth'       => ['youth', 'young', 'teens', 'teen'],
+        'kids'        => ['kids', 'children', 'child', 'sunday school'],
+        'fellowship'  => ['fellowship', 'family', 'families', 'cell', 'group'],
+    ];
 
     public function __construct()
     {
@@ -62,6 +89,55 @@ class PortalController extends Controller
         $w = preg_split('/[^a-z0-9]+/i', strtolower($text), -1, PREG_SPLIT_NO_EMPTY);
         $w = array_filter($w, function ($x) use ($stop) { return strlen($x) >= 3 && !in_array($x, $stop, true); });
         return array_values(array_unique($w));
+    }
+
+    // Gagawa ng 2 bagong tables kung wala pa (ligtas patakbuhin ulit-ulit)
+    private function ensure_tables()
+    {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $this->db->raw("CREATE TABLE IF NOT EXISTS ministry_details (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                ministry_id INT UNSIGNED NOT NULL UNIQUE,
+                tags VARCHAR(255) NULL,
+                min_age TINYINT UNSIGNED NULL,
+                max_age TINYINT UNSIGNED NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )");
+            $this->db->raw("CREATE TABLE IF NOT EXISTS member_interests (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                member_id INT UNSIGNED NOT NULL UNIQUE,
+                interests VARCHAR(255) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )");
+        } catch (\Throwable $e) {
+            // kung nagawa mo na sa phpMyAdmin / TiDB, walang problema
+        }
+    }
+
+    private function age_of($birthdate)
+    {
+        if (!$birthdate) return null;
+        $b = date_create($birthdate);
+        if (!$b) return null;
+        $age = (int)date_diff($b, date_create('today'))->y;
+        return ($age >= 0 && $age <= 120) ? $age : null;
+    }
+
+    private function clean_tags($text)
+    {
+        $parts = preg_split('/[,;\n]+/', strtolower((string)$text), -1, PREG_SPLIT_NO_EMPTY);
+        $parts = array_values(array_unique(array_filter(array_map('trim', $parts), function ($x) { return $x !== ''; })));
+        return substr(implode(', ', $parts), 0, 255);
+    }
+
+    private function age_param($v, $label)
+    {
+        if ($v === null || $v === '') return null;
+        if (!is_numeric($v) || (int)$v < 0 || (int)$v > 120) $this->out(['error' => $label . ' must be between 0 and 120'], 422);
+        return (int)$v;
     }
 
     // ------------------------------------------------------------ PROFILE
@@ -218,13 +294,159 @@ class PortalController extends Controller
         $this->out(['success' => true]);
     }
 
-    // --------------------------------------- RECOMMENDER (content-based)
+    // ------------------------------------------- INTERESTS (member)
+    public function interests()
+    {
+        $this->ensure_tables();
+        $m   = $this->member_row();
+        $row = $this->db->table('member_interests')->where('member_id', $m['id'])->get();
+        $list = [];
+        if ($row && !empty($row['interests'])) {
+            $list = array_values(array_filter(array_map('trim', explode(',', strtolower($row['interests'])))));
+        }
+        $this->out(['interests' => $list, 'options' => $this->interest_options]);
+    }
+
+    public function interests_save()
+    {
+        $this->ensure_tables();
+        $m  = $this->member_row();
+        $in = $this->input();
+        $given = is_array($in['interests'] ?? null) ? $in['interests'] : [];
+        $clean = [];
+        foreach ($given as $i) {
+            $i = strtolower(trim((string)$i));
+            if (in_array($i, $this->interest_options, true) && !in_array($i, $clean, true)) $clean[] = $i;
+        }
+        $value = $clean ? implode(', ', $clean) : null;
+
+        $row = $this->db->table('member_interests')->where('member_id', $m['id'])->get();
+        if ($row) {
+            $this->db->table('member_interests')->where('member_id', $m['id'])->update(['interests' => $value]);
+        } else {
+            $this->db->table('member_interests')->insert(['member_id' => $m['id'], 'interests' => $value]);
+        }
+        $this->out(['success' => true, 'interests' => $clean]);
+    }
+
+    // ------------------------------------ MINISTRY DETAILS (admin / leader)
+    public function ministry_details()
+    {
+        $this->ensure_tables();
+        $role = $this->u['role'];
+        if (!in_array($role, ['admin', 'ministry_leader'], true)) $this->out(['error' => 'Forbidden'], 403);
+
+        $details = [];
+        foreach ($this->all('ministry_details') as $d) $details[(int)$d['ministry_id']] = $d;
+        $mine = $role === 'ministry_leader' ? $this->mine() : null;
+
+        $out = [];
+        foreach ($this->all('ministries') as $min) {
+            $id = (int)$min['id'];
+            if ($mine !== null && !in_array($id, $mine, true)) continue;
+            $d = $details[$id] ?? null;
+            $out[] = [
+                'ministry_id' => $id,
+                'name'        => $min['name'],
+                'type'        => $min['type'],
+                'tags'        => $d['tags'] ?? '',
+                'min_age'     => isset($d['min_age']) ? $d['min_age'] : null,
+                'max_age'     => isset($d['max_age']) ? $d['max_age'] : null,
+            ];
+        }
+        $this->out($out);
+    }
+
+    public function ministry_details_save()
+    {
+        $this->ensure_tables();
+        $role = $this->u['role'];
+        if (!in_array($role, ['admin', 'ministry_leader'], true)) $this->out(['error' => 'Forbidden'], 403);
+
+        $in  = $this->input();
+        $mid = (int)($in['ministry_id'] ?? 0);
+        if (!$this->db->table('ministries')->where('id', $mid)->get()) $this->out(['error' => 'Ministry not found'], 404);
+        if ($role === 'ministry_leader' && !in_array($mid, $this->mine(), true)) $this->out(['error' => 'Forbidden'], 403);
+
+        $tags = $this->clean_tags($in['tags'] ?? '');
+        $min  = $this->age_param($in['min_age'] ?? null, 'Minimum age');
+        $max  = $this->age_param($in['max_age'] ?? null, 'Maximum age');
+        if ($min !== null && $max !== null && $min > $max) $this->out(['error' => 'Minimum age cannot be higher than maximum age'], 422);
+
+        $data = ['tags' => $tags !== '' ? $tags : null, 'min_age' => $min, 'max_age' => $max];
+        $row  = $this->db->table('ministry_details')->where('ministry_id', $mid)->get();
+        if ($row) {
+            $this->db->table('ministry_details')->where('ministry_id', $mid)->update($data);
+        } else {
+            $this->db->table('ministry_details')->insert(array_merge(['ministry_id' => $mid], $data));
+        }
+        $this->out(['success' => true]);
+    }
+
+    // ------------------------- ADD MINISTRY (Ministry Leader / Admin)
+    public function ministry_save()
+    {
+        $this->ensure_tables();
+        $role = $this->u['role'];
+        if (!in_array($role, ['admin', 'ministry_leader'], true)) $this->out(['error' => 'Forbidden'], 403);
+
+        $in   = $this->input();
+        $name = trim((string)($in['name'] ?? ''));
+        $desc = trim((string)($in['description'] ?? ''));
+        $type = (($in['type'] ?? '') === 'small_group') ? 'small_group' : 'ministry';
+
+        if ($name === '') $this->out(['error' => 'Name is required'], 422);
+        if (strlen($name) > 100) $this->out(['error' => 'Name is too long'], 422);
+        if ($this->db->table('ministries')->where('name', $name)->get()) {
+            $this->out(['error' => 'A ministry or group with this name already exists'], 409);
+        }
+
+        $tags = $this->clean_tags($in['tags'] ?? '');
+        $min  = $this->age_param($in['min_age'] ?? null, 'Minimum age');
+        $max  = $this->age_param($in['max_age'] ?? null, 'Maximum age');
+        if ($min !== null && $max !== null && $min > $max) $this->out(['error' => 'Minimum age cannot be higher than maximum age'], 422);
+
+        // Ang gumawang Ministry Leader ay awtomatikong leader nito
+        $leader = $role === 'ministry_leader' ? (int)$this->u['id'] : null;
+
+        $this->db->table('ministries')->insert([
+            'name'           => $name,
+            'type'           => $type,
+            'description'    => $desc,
+            'leader_user_id' => $leader,
+        ]);
+        $row = $this->db->table('ministries')->where('name', $name)->get();
+        $mid = $row ? (int)$row['id'] : 0;
+
+        if ($mid) {
+            $this->db->table('ministry_details')->insert([
+                'ministry_id' => $mid,
+                'tags'        => $tags !== '' ? $tags : null,
+                'min_age'     => $min,
+                'max_age'     => $max,
+            ]);
+        }
+        $this->out(['success' => true, 'ministry_id' => $mid]);
+    }
+
+    // --------------------------- RECOMMENDER (interests + age + history)
     public function recommended()
     {
+        $this->ensure_tables();
         $m   = $this->member_row();
         $mid = (int)$m['id'];
         $ministries = $this->all('ministries');
         $mm = $this->all('ministry_members');
+
+        $details = [];
+        foreach ($this->all('ministry_details') as $d) $details[(int)$d['ministry_id']] = $d;
+
+        $irow = $this->db->table('member_interests')->where('member_id', $mid)->get();
+        $interests = [];
+        if ($irow && !empty($irow['interests'])) {
+            $interests = array_values(array_filter(array_map('trim', explode(',', strtolower($irow['interests'])))));
+        }
+        $age = $this->age_of($m['birthdate'] ?? null);
 
         $joined = []; $counts = [];
         foreach ($mm as $x) {
@@ -232,6 +454,7 @@ class PortalController extends Controller
             if ((int)$x['member_id'] === $mid) $joined[] = (int)$x['ministry_id'];
         }
 
+        // History profile (ministries na sinalihan + events na dinaluhan)
         $profile = [];
         foreach ($ministries as $min) {
             if (in_array((int)$min['id'], $joined, true)) {
@@ -249,15 +472,58 @@ class PortalController extends Controller
 
         $out = [];
         foreach ($ministries as $min) {
-            if (in_array((int)$min['id'], $joined, true)) continue;
+            $id = (int)$min['id'];
+            if (in_array($id, $joined, true)) continue;
+
+            $d    = $details[$id] ?? null;
+            $tags = $d['tags'] ?? '';
+            $minA = isset($d['min_age']) && $d['min_age'] !== null ? (int)$d['min_age'] : null;
+            $maxA = isset($d['max_age']) && $d['max_age'] !== null ? (int)$d['max_age'] : null;
+
+            $sum = 0.0; $wsum = 0.0; $reasons = [];
+
+            // 1) Interests (50%)
+            if ($interests) {
+                $hay = array_merge($this->tokens($tags), $this->tokens($min['name'] . ' ' . $min['description']));
+                $hit = [];
+                foreach ($interests as $i) {
+                    $words = array_merge($this->tokens($i), $this->interest_syn[$i] ?? []);
+                    if (array_intersect($words, $hay)) $hit[] = $i;
+                }
+                $is = min(1, count($hit) / max(1, min(3, count($interests))));
+                $sum += 0.5 * $is; $wsum += 0.5;
+                if ($hit) $reasons[] = 'Interests match: ' . implode(', ', array_slice($hit, 0, 3));
+            }
+
+            // 2) Age (30%): kung may age ang member at may age range ang ministry
+            if ($age !== null && ($minA !== null || $maxA !== null)) {
+                $gap = 0;
+                if ($minA !== null && $age < $minA) $gap = $minA - $age;
+                if ($maxA !== null && $age > $maxA) $gap = $age - $maxA;
+                $as = max(0, 1 - $gap / 5);
+                $sum += 0.3 * $as; $wsum += 0.3;
+                if ($gap === 0) {
+                    $range = ($minA !== null && $maxA !== null) ? "$minA-$maxA" : ($minA !== null ? "$minA+" : "up to $maxA");
+                    $reasons[] = 'Age fits (' . $range . ')';
+                }
+            }
+
+            // 3) History (20%)
             $toks  = $this->tokens($min['name'] . ' ' . $min['description'] . ' ' . $min['type']);
             $match = count(array_intersect($profile, $toks));
-            $score = ($match / max(1, count($toks))) + (($counts[$min['id']] ?? 0) * 0.01);
+            $h     = $match / max(1, count($toks));
+            $sum  += 0.2 * $h; $wsum += 0.2;
+            if ($match > 0) $reasons[] = 'Similar to the ministries and events you joined';
+
+            $final = $wsum > 0 ? $sum / $wsum : 0;
+            $score = $final + (($counts[$id] ?? 0) * 0.01);
+
             $out[] = [
-                'id' => (int)$min['id'], 'name' => $min['name'], 'type' => $min['type'],
-                'description' => $min['description'], 'member_count' => $counts[$min['id']] ?? 0,
+                'id' => $id, 'name' => $min['name'], 'type' => $min['type'],
+                'description' => $min['description'], 'member_count' => $counts[$id] ?? 0,
                 'score' => round($score, 2),
-                'reason' => $match > 0 ? 'Similar to the ministries and events you joined' : 'Popular in our church',
+                'match' => (int)round(min(1, $final) * 100),
+                'reason' => $reasons ? implode(' · ', $reasons) : 'Popular in our church',
             ];
         }
         usort($out, function ($a, $b) { return $b['score'] <=> $a['score']; });

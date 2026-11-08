@@ -25,6 +25,7 @@ export const roleMenus = {
     items: [
       { path: "schedule", label: "Ministry Schedule", desc: "View the ministry schedule" },
       { path: "members", label: "Ministry Members", desc: "Manage ministry members" },
+      { path: "add-ministry", label: "Add Ministry", desc: "Add a ministry or small group" },
       { path: "volunteers", label: "Volunteers", desc: "Assign volunteers" },
       { path: "activities", label: "Activities", desc: "Manage and update activity status" },
       { path: "events", label: "Ministry Events", desc: "Manage ministry events" },
