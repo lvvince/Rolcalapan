@@ -59,7 +59,11 @@ $router->get('/', 'Welcome::index');
 $router->post('/api/auth/login',        'AuthController::login');
 $router->get( '/api/auth/me',           'AuthController::me');
 $router->post('/api/auth/register',     'AuthController::register');
-$router->get( '/api/auth/verify-email', 'AuthController::verify_email');
+
+// Email verification gamit ang 6-digit code (walang link)
+$router->post('/api/auth/verify-code',  'AuthController::verify_code');
+$router->post('/api/auth/resend-code',  'AuthController::resend_code');
+
 $router->post('/api/auth/forgot',       'AuthController::forgot');
 $router->post('/api/auth/reset',        'AuthController::reset');
 

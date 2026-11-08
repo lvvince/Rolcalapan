@@ -3,7 +3,7 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
 /**
  * backend/app/controllers/AuthController.php
- * Login, Register (member lang), Verify email, Forgot/Reset password,
+ * Login, Register (member lang), Verify email (6-digit code), Forgot/Reset password,
  * My profile (update, change password, photo upload/remove).
  */
 class AuthController extends Controller
@@ -227,7 +227,7 @@ class AuthController extends Controller
     }
 
     // Public: nagse-serve ng image para gumana sa <img> at sa Vite proxy (/api)
-        public function avatar()
+    public function avatar()
     {
         $file = basename($_GET['f'] ?? '');
         $path = $this->avatar_dir() . $file;
@@ -242,6 +242,40 @@ class AuthController extends Controller
         header('Cache-Control: public, max-age=86400');
         readfile($path);
         exit;
+    }
+
+    // ------------------------------------------- VERIFICATION CODE (helper)
+    // Gumagawa ng 6-digit code, sine-save ang hash, at ine-email.
+    // Returns [sent(bool), error(string|null), code(string)]
+    private function issue_verification_code($userId, $email, $name)
+    {
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $this->db->table('users')->where('id', $userId)->update([
+            'email_verification_token_hash' => hash('sha256', $code),
+            'email_verification_expires_at' => date('Y-m-d H:i:s', time() + 900), // 15 minutes
+            'email_verification_attempts'   => 0,
+        ]);
+
+        $this->call->helper('rolmail');
+
+        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+
+        $html = '<h2>Welcome to River of Life Calapan!</h2>'
+              . '<p>Hello ' . $safeName . ',</p>'
+              . '<p>Your verification code is:</p>'
+              . '<p style="font-size:32px;font-weight:bold;letter-spacing:8px;margin:16px 0;">' . $code . '</p>'
+              . '<p>Enter this code on the registration page. It expires in 15 minutes.</p>'
+              . '<p>If you did not create this account, you can ignore this email.</p>';
+
+        list($sent, $err) = rol_send_mail(
+            $email,
+            $name,
+            'Your River of Life verification code',
+            $html
+        );
+
+        return [$sent, $err, $code];
     }
 
     // ---------------------------------------------------------- REGISTER
@@ -274,19 +308,14 @@ class AuthController extends Controller
             $this->out(['error' => 'This email is already registered'], 409);
         }
 
-        // Gumawa ng secure verification token.
-        $token = bin2hex(random_bytes(32));
-
         $this->db->table('users')->insert([
-            'full_name'                     => $name,
-            'email'                         => $email,
-            'phone'                         => $phone,
-            'password'                      => password_hash($pass, PASSWORD_BCRYPT),
-            'role'                          => 'member',
-            'status'                        => 'active',
-            'email_verified'                => 0,
-            'email_verification_token_hash' => hash('sha256', $token),
-            'email_verification_expires_at' => date('Y-m-d H:i:s', time() + 3600),
+            'full_name'      => $name,
+            'email'          => $email,
+            'phone'          => $phone,
+            'password'       => password_hash($pass, PASSWORD_BCRYPT),
+            'role'           => 'member',
+            'status'         => 'active',
+            'email_verified' => 0,
         ]);
 
         $user = $this->db->table('users')->where('email', $email)->get();
@@ -323,27 +352,8 @@ class AuthController extends Controller
             'message' => 'Please verify your email address to activate login access.',
         ]);
 
-        // Magpadala ng verification email gamit ang PHPMailer helper.
-        $this->call->helper('rolmail');
-
-        $link = rtrim(APP_URL, '/') . '/verify-email?token=' . urlencode($token);
-
-        $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
-        $safeLink = htmlspecialchars($link, ENT_QUOTES, 'UTF-8');
-
-        $html = '<h2>Welcome to River of Life Calapan!</h2>'
-              . '<p>Hello ' . $safeName . ',</p>'
-              . '<p>Thank you for registering. Please verify your email address by clicking the link below:</p>'
-              . '<p><a href="' . $safeLink . '">Verify My Email</a></p>'
-              . '<p>This verification link expires in 1 hour.</p>'
-              . '<p>If you did not create this account, you can ignore this email.</p>';
-
-        list($sent, $mailError) = rol_send_mail(
-            $email,
-            $name,
-            'Verify your River of Life Calapan account',
-            $html
-        );
+        // Magpadala ng 6-digit verification code.
+        list($sent, $mailError, $code) = $this->issue_verification_code($user['id'], $email, $name);
 
         if (!$sent) {
             error_log('Registration verification email failed: ' . $mailError);
@@ -351,12 +361,13 @@ class AuthController extends Controller
             $response = [
                 'success'    => true,
                 'email_sent' => false,
-                'message'    => 'Your account was created, but the verification email could not be sent. Please contact the administrator for assistance.',
+                'email'      => $email,
+                'message'    => 'Your account was created, but the verification email could not be sent. Please request a new code.',
             ];
 
-            // Local development only. Never expose tokens in production.
+            // Local development only. Never expose codes in production.
             if ($this->is_local()) {
-                $response['debug_link'] = $link;
+                $response['debug_code'] = $code;
                 $response['debug_note'] = $mailError;
             }
 
@@ -366,43 +377,98 @@ class AuthController extends Controller
         $this->out([
             'success'    => true,
             'email_sent' => true,
-            'message'    => 'Registration successful! Please check your email and click the verification link before logging in.',
+            'email'      => $email,
+            'message'    => 'Registration successful! Enter the 6-digit code we sent to your email.',
         ], 201);
     }
 
-    // ------------------------------------------------------- VERIFY EMAIL
-    public function verify_email()
+    // ------------------------------------------------- VERIFY CODE (6-digit)
+    // POST /api/auth/verify-code   { email, code }
+    public function verify_code()
     {
-        $token = trim($_GET['token'] ?? '');
+        $in    = $this->input();
+        $email = strtolower(trim($in['email'] ?? ''));
+        $code  = trim($in['code'] ?? '');
 
-        if ($token === '' || !preg_match('/^[a-f0-9]{64}$/', $token)) {
-            $this->out(['success' => false, 'error' => 'Invalid verification link.'], 400);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{6}$/', $code)) {
+            $this->out(['success' => false, 'error' => 'Enter the 6-digit code sent to your email.'], 422);
         }
 
-        $user = $this->db->table('users')
-            ->where('email_verification_token_hash', hash('sha256', $token))
-            ->get();
+        $user = $this->db->table('users')->where('email', $email)->get();
 
         if (!$user) {
-            $this->out(['success' => false, 'error' => 'Invalid verification link or token not found.'], 400);
+            $this->out(['success' => false, 'error' => 'Invalid code or email.'], 400);
         }
 
         if ((int) $user['email_verified'] === 1) {
             $this->out(['success' => true, 'message' => 'Email already verified. You can log in.']);
         }
 
-        $expires = $user['email_verification_expires_at'] ?? null;
-
-        if (!$expires || strtotime($expires) < time()) {
-            $this->out(['success' => false, 'error' => 'Verification link expired.'], 400);
+        $attempts = (int) ($user['email_verification_attempts'] ?? 0);
+        if ($attempts >= 5) {
+            $this->out(['success' => false, 'error' => 'Too many wrong attempts. Please request a new code.'], 429);
         }
 
-        // Huwag burahin ang token hash, para safe ang paulit-ulit na click.
-        $this->db->table('users')
-            ->where('id', $user['id'])
-            ->update(['email_verified' => 1]);
+        $expires = $user['email_verification_expires_at'] ?? null;
+        if (empty($user['email_verification_token_hash']) || !$expires || strtotime($expires) < time()) {
+            $this->out(['success' => false, 'error' => 'This code has expired. Please request a new one.'], 400);
+        }
+
+        if (!hash_equals($user['email_verification_token_hash'], hash('sha256', $code))) {
+            $this->db->table('users')->where('id', $user['id'])->update([
+                'email_verification_attempts' => $attempts + 1,
+            ]);
+            $left = max(0, 4 - $attempts);
+            $this->out(['success' => false, 'error' => 'Incorrect code. ' . $left . ' attempt(s) left.'], 400);
+        }
+
+        $this->db->table('users')->where('id', $user['id'])->update([
+            'email_verified'                => 1,
+            'email_verification_token_hash' => null,
+            'email_verification_expires_at' => null,
+            'email_verification_attempts'   => 0,
+        ]);
 
         $this->out(['success' => true, 'message' => 'Email verified successfully! You can now log in.']);
+    }
+
+    // POST /api/auth/resend-code   { email }
+    public function resend_code()
+    {
+        $in    = $this->input();
+        $email = strtolower(trim($in['email'] ?? ''));
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->out(['success' => false, 'error' => 'A valid email is required'], 422);
+        }
+
+        $resp = ['success' => true, 'message' => 'A new code has been sent.'];
+
+        $user = $this->db->table('users')->where('email', $email)->get();
+
+        // Parehong sagot kahit wala o verified na (hindi nagle-leak ng account info)
+        if (!$user || (int) $user['email_verified'] === 1) {
+            $this->out($resp);
+        }
+
+        // 60-second cooldown. Ang huling send = expires_at - 900.
+        $expires = $user['email_verification_expires_at'] ?? null;
+        if ($expires) {
+            $sentAt = strtotime($expires) - 900;
+            $wait   = 60 - (time() - $sentAt);
+            if ($wait > 0) {
+                $this->out(['success' => false, 'error' => 'Please wait ' . $wait . ' seconds before requesting a new code.'], 429);
+            }
+        }
+
+        list($sent, $err) = $this->issue_verification_code($user['id'], $user['email'], $user['full_name']);
+
+        if (!$sent) {
+            error_log('Resend verification code failed: ' . $err);
+            $this->out(['success' => false, 'error' => 'Could not send the email. Please try again later.'], 500);
+        }
+
+        $this->out($resp);
     }
 
     // ------------------------------------------------------ FORGOT PASSWORD
