@@ -21,10 +21,10 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const u = await login(email, password);
+      const u = await login(email.trim(), password);
       navigate(homeForRole(u.role), { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || "Hindi makakonekta sa server ngayon.");
+      setError(err.response?.data?.error || "Can't reach the server right now. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,8 @@
 // frontend/src/components/LoginLayout.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./login.css";
+import "./auth-extras.css";
 
 function Logo({ className = "" }) {
   const onLight = className.includes("on-light");
@@ -43,6 +44,15 @@ function Waves() {
 }
 
 export function LoginLayout({ title, subtitle, children }) {
+  // Tamang tab title sa bawat hakbang (Login, Register, Verify...)
+  useEffect(() => {
+    const prev = document.title;
+    document.title = `${title} · River of Life Calapan`;
+    return () => {
+      document.title = prev;
+    };
+  }, [title]);
+
   return (
     <div className="auth-page">
       <aside className="auth-brand">
@@ -55,9 +65,8 @@ export function LoginLayout({ title, subtitle, children }) {
 
         <figure className="auth-verse">
           <blockquote>
-            "He has made everything beautiful in its time. 
-             He has also set eternity in the human heart;
-             yet no one can fathom what God has done from beginning to end." (NIV)
+            “He has made everything beautiful in its time. He has also set eternity in the human heart; yet no one can
+            fathom what God has done from beginning to end.” (NIV)
           </blockquote>
           <figcaption>Ecclesiastes 3:11</figcaption>
         </figure>
@@ -94,19 +103,38 @@ function EyeIcon({ off }) {
 
 export function PasswordInput({ id, value, onChange, ...rest }) {
   const [show, setShow] = useState(false);
+  const [caps, setCaps] = useState(false);
+  const detectCaps = (e) => setCaps(!!e.getModifierState?.("CapsLock"));
+
   return (
-    <div className="auth-pw">
-      <input id={id} type={show ? "text" : "password"} value={value} onChange={onChange} {...rest} />
-      <button
-        type="button"
-        className="auth-pw-toggle"
-        onClick={() => setShow((s) => !s)}
-        aria-label={show ? "Hide password" : "Show password"}
-        aria-pressed={show}
-      >
-        <EyeIcon off={show} />
-      </button>
-    </div>
+    <>
+      <div className="auth-pw">
+        <input
+          id={id}
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={onChange}
+          {...rest}
+          onKeyDown={detectCaps}
+          onKeyUp={detectCaps}
+          onBlur={() => setCaps(false)}
+        />
+        <button
+          type="button"
+          className="auth-pw-toggle"
+          onClick={() => setShow((s) => !s)}
+          aria-label={show ? "Hide password" : "Show password"}
+          aria-pressed={show}
+        >
+          <EyeIcon off={show} />
+        </button>
+      </div>
+      {caps && (
+        <p className="auth-caps" role="status">
+          Caps Lock is on
+        </p>
+      )}
+    </>
   );
 }
 

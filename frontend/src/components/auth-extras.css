@@ -1,0 +1,68 @@
+/* frontend/src/components/auth-extras.css
+   Dagdag lang ito sa login.css / portal.css mo. Bago ang mga class dito.
+   Para baguhin ang kulay, i-set ang --auth-accent sa .auth-page (default: teal). */
+
+/* ---------- Progress steps ---------- */
+.auth-steps {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0 0 22px; padding: 0; list-style: none;
+  font-size: .8rem; color: #64748b;
+}
+.auth-steps li { display: flex; align-items: center; gap: 8px; }
+.auth-steps li + li::before { content: ""; width: 22px; height: 2px; border-radius: 2px; background: #cbd5e1; }
+.auth-steps .num {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: .75rem; font-weight: 700; background: #e2e8f0; color: #475569;
+}
+.auth-steps li.active { color: #0f172a; font-weight: 600; }
+.auth-steps li.active .num { background: var(--auth-accent, #0891b2); color: #fff; }
+.auth-steps li.done .num { background: #16a34a; color: #fff; }
+.auth-steps li.done + li::before { background: #16a34a; }
+
+/* ---------- Password strength / match ---------- */
+.pw-meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
+.pw-meter span { height: 4px; border-radius: 2px; background: #e2e8f0; transition: background .2s; }
+.pw-meter[data-level="1"] span:nth-child(-n+1) { background: #ef4444; }
+.pw-meter[data-level="2"] span:nth-child(-n+2) { background: #f59e0b; }
+.pw-meter[data-level="3"] span:nth-child(-n+3) { background: #65a30d; }
+.pw-meter[data-level="4"] span:nth-child(-n+4) { background: #16a34a; }
+.pw-hint { margin: 6px 0 0; font-size: .8rem; color: #64748b; }
+.pw-hint.ok { color: #15803d; }
+.pw-hint.bad { color: #b91c1c; }
+.auth-caps { margin: 6px 0 0; font-size: .8rem; color: #b45309; }
+
+/* ---------- 6-box verification code ---------- */
+.otp { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.otp input {
+  width: 100%; min-width: 0; padding: 0; text-align: center;
+  height: 56px; font-size: 1.5rem; font-weight: 700; color: inherit;
+  background: #fff; border: 1.5px solid #cbd5e1; border-radius: 12px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.otp input.filled { border-color: var(--auth-accent, #0891b2); }
+.otp input:focus {
+  outline: none; border-color: var(--auth-accent, #0891b2);
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, .2);
+}
+.otp.invalid input { border-color: #ef4444; }
+@media (max-width: 380px) { .otp { gap: 6px; } .otp input { height: 50px; font-size: 1.3rem; } }
+
+/* ---------- Small link-style buttons ---------- */
+.auth-linkbtn {
+  background: none; border: none; padding: 0; font: inherit; color: inherit;
+  text-decoration: underline; cursor: pointer;
+}
+.auth-linkbtn:disabled { opacity: .6; cursor: not-allowed; }
+.auth-linkbtn:focus-visible { outline: 2px solid var(--auth-accent, #0891b2); outline-offset: 2px; border-radius: 3px; }
+
+/* ---------- Success ---------- */
+.auth-success { text-align: center; padding: 8px 0 4px; }
+.auth-success p { margin: 12px 0; }
+.auth-check circle { fill: none; stroke: #16a34a; stroke-width: 3; stroke-dasharray: 151; stroke-dashoffset: 151; animation: auth-draw .6s ease forwards; }
+.auth-check path { fill: none; stroke: #16a34a; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: auth-draw .4s .45s ease forwards; }
+@keyframes auth-draw { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-check circle, .auth-check path { animation: none; stroke-dashoffset: 0; }
+  .pw-meter span, .otp input { transition: none; }
+}
