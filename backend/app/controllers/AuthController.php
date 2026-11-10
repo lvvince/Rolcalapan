@@ -328,6 +328,8 @@ class AuthController extends Controller
 
     // ---------------------------------------------------------- REGISTER
     // Member lang ang pwedeng mag-register. Ang ibang role ay si Admin ang gagawa.
+    // FIX: kapag existing ang email pero HINDI pa verified, hindi na mag-e-error.
+    // I-uupdate ang data at magpapadala ng bagong code.
     public function register()
     {
         $in    = $this->input();
@@ -352,19 +354,32 @@ class AuthController extends Controller
             $this->out(['error' => 'Password must be at least 6 characters'], 422);
         }
 
-        if ($this->db->table('users')->where('email', $email)->get()) {
-            $this->out(['error' => 'This email is already registered'], 409);
-        }
+        $existing = $this->db->table('users')->where('email', $email)->get();
+        $isNew    = !$existing;
 
-        $this->db->table('users')->insert([
-            'full_name'      => $name,
-            'email'          => $email,
-            'phone'          => $phone,
-            'password'       => password_hash($pass, PASSWORD_BCRYPT),
-            'role'           => 'member',
-            'status'         => 'active',
-            'email_verified' => 0,
-        ]);
+        if ($existing) {
+            // Verified na talaga: block
+            if ((int) $existing['email_verified'] === 1) {
+                $this->out(['error' => 'This email is already registered'], 409);
+            }
+
+            // Hindi pa verified: i-update ang data (bagong code ang ipapadala sa baba)
+            $this->db->table('users')->where('id', $existing['id'])->update([
+                'full_name' => $name,
+                'phone'     => $phone,
+                'password'  => password_hash($pass, PASSWORD_BCRYPT),
+            ]);
+        } else {
+            $this->db->table('users')->insert([
+                'full_name'      => $name,
+                'email'          => $email,
+                'phone'          => $phone,
+                'password'       => password_hash($pass, PASSWORD_BCRYPT),
+                'role'           => 'member',
+                'status'         => 'active',
+                'email_verified' => 0,
+            ]);
+        }
 
         $user = $this->db->table('users')->where('email', $email)->get();
 
@@ -394,13 +409,16 @@ class AuthController extends Controller
             ]);
         }
 
-        $this->db->table('notifications')->insert([
-            'user_id' => $user['id'],
-            'title'   => 'Welcome to River of Life',
-            'message' => 'Please verify your email address to activate login access.',
-        ]);
+        // Welcome notification: bagong account lang (iwas duplicate)
+        if ($isNew) {
+            $this->db->table('notifications')->insert([
+                'user_id' => $user['id'],
+                'title'   => 'Welcome to River of Life',
+                'message' => 'Please verify your email address to activate login access.',
+            ]);
+        }
 
-        // Magpadala ng 6-digit verification code.
+        // Magpadala ng 6-digit verification code (nire-reset din ang attempts).
         list($sent, $mailError, $code) = $this->issue_verification_code($user['id'], $email, $name);
 
         if (!$sent) {

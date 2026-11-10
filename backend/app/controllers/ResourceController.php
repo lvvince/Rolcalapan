@@ -11,6 +11,9 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
  * FIX: ang resource name ay galing na sa "resource" (body) o sa query string
  * (?resource= / ?name=), hindi na sa body "name", para hindi mag-collide
  * sa "name" field ng ministries.
+ *
+ * NEW: kapag may bagong notification (website), nag-e-email din sa Gmail
+ * ng recipient gamit ang rol_email_notification() sa rolmail.
  */
 class ResourceController extends Controller
 {
@@ -23,6 +26,7 @@ class ResourceController extends Controller
         date_default_timezone_set('Asia/Manila');
         $this->call->database();
         $this->call->helper('jwt');
+        $this->call->helper('rolmail'); // rol_email_notification(), rol_notify()
         header('Content-Type: application/json');
         $this->u = require_auth();
         $this->R = $this->config();
@@ -416,7 +420,25 @@ class ResourceController extends Controller
         } else {
             $this->db->table($c['table'])->insert($data);
         }
-        $this->out(['success' => true]);
+
+        // Bagong notification -> mag-email din (Everyone kapag walang user_id).
+        // Hindi nito sinisira ang save kapag pumalya ang email.
+        $email = null;
+        if ($name === 'notifications' && !$id) {
+            @set_time_limit(120);
+            try {
+                $email = rol_email_notification(
+                    $this->db,
+                    $data['user_id'] ?? null,
+                    $data['title'] ?? '',
+                    $data['message'] ?? ''
+                );
+            } catch (\Throwable $e) {
+                error_log('Notif email failed: ' . $e->getMessage());
+            }
+        }
+
+        $this->out(['success' => true, 'email' => $email]);
     }
 
     private function check_conflict($data, $id)
@@ -434,14 +456,12 @@ class ResourceController extends Controller
                 $msg = 'Schedule conflict: volunteer is already assigned to "' . $r['title'] . '" ('
                      . substr($r['start_time'], 0, 5) . '-' . substr($r['end_time'], 0, 5) . ') on ' . $r['schedule_date'] . '.';
 
-                $this->db->table('notifications')->insert([
-                    'user_id' => $this->u['id'], 'title' => 'Schedule conflict alert', 'message' => $msg,
-                ]);
+                // Website notif + email
+                rol_notify($this->db, $this->u['id'], 'Schedule conflict alert', $msg);
+
                 $min = $this->db->table('ministries')->where('id', $data['ministry_id'] ?? 0)->get();
                 if ($min && !empty($min['leader_user_id']) && (int)$min['leader_user_id'] !== (int)$this->u['id']) {
-                    $this->db->table('notifications')->insert([
-                        'user_id' => $min['leader_user_id'], 'title' => 'Schedule conflict alert', 'message' => $msg,
-                    ]);
+                    rol_notify($this->db, $min['leader_user_id'], 'Schedule conflict alert', $msg);
                 }
                 $this->out(['error' => $msg], 409);
             }
