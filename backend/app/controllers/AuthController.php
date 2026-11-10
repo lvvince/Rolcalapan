@@ -3,7 +3,8 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
 /**
  * backend/app/controllers/AuthController.php
- * Login, Register (member lang), Verify email (6-digit code), Forgot/Reset password,
+ * Login (with Keep me logged in), Refresh, Logout, Register (member lang),
+ * Verify email (6-digit code), Forgot/Reset password,
  * My profile (update, change password, photo upload/remove).
  */
 class AuthController extends Controller
@@ -14,6 +15,7 @@ class AuthController extends Controller
         date_default_timezone_set('Asia/Manila');
         $this->call->database();
         $this->call->helper('jwt');
+        $this->call->helper('remember');
         // Huwag i-force ang JSON header dito, kasi image ang sagot ng avatar().
         // Ang out() na ang nagse-set ng JSON header.
     }
@@ -50,7 +52,19 @@ class AuthController extends Controller
         ];
     }
 
+    // Gumawa ng JWT para sa isang user row
+    private function make_jwt($user)
+    {
+        return jwt_encode([
+            'id'    => (int) $user['id'],
+            'name'  => $user['full_name'],
+            'email' => $user['email'],
+            'role'  => $user['role'],
+        ]);
+    }
+
     // ------------------------------------------------------------- LOGIN
+    // POST /api/auth/login   { email, password, remember? }
     public function login()
     {
         $in    = $this->input();
@@ -73,17 +87,47 @@ class AuthController extends Controller
             $this->out(['error' => 'Please verify your email before logging in.'], 403);
         }
 
-        $token = jwt_encode([
-            'id'    => (int) $user['id'],
-            'name'  => $user['full_name'],
-            'email' => $user['email'],
-            'role'  => $user['role'],
-        ]);
+        // "Keep me logged in": gumawa ng remember-me token + cookie (30 days)
+        if (!empty($in['remember'])) {
+            rol_remember_issue($this->db, $user['id']);
+        }
 
         $this->out([
-            'token' => $token,
+            'token' => $this->make_jwt($user),
             'user'  => $this->user_payload($user),
         ]);
+    }
+
+    // ----------------------------------------------------------- REFRESH
+    // POST /api/auth/refresh   (gamit ang remember-me cookie)
+    public function refresh()
+    {
+        $uid = rol_remember_consume($this->db);
+        if (!$uid) {
+            $this->out(['error' => 'Not remembered'], 401);
+        }
+
+        $user = $this->db->table('users')->where('id', $uid)->get();
+        if (!$user || $user['status'] !== 'active' || (int) $user['email_verified'] !== 1) {
+            rol_remember_clear($this->db);
+            $this->out(['error' => 'Not remembered'], 401);
+        }
+
+        // Rotation: bagong token sa bawat refresh
+        rol_remember_issue($this->db, $user['id']);
+
+        $this->out([
+            'token' => $this->make_jwt($user),
+            'user'  => $this->user_payload($user),
+        ]);
+    }
+
+    // ------------------------------------------------------------ LOGOUT
+    // POST /api/auth/logout
+    public function logout()
+    {
+        rol_remember_clear($this->db);
+        $this->out(['success' => true]);
     }
 
     // ---------------------------------------------------------------- ME
@@ -161,6 +205,10 @@ class AuthController extends Controller
         $this->db->table('users')->where('id', $u['id'])->update([
             'password' => password_hash($next, PASSWORD_BCRYPT),
         ]);
+
+        // Mag-logout ang lahat ng "remembered" devices pagkapalit ng password
+        $this->db->table('remember_tokens')->where('user_id', $u['id'])->delete();
+        rol_remember_clear($this->db);
 
         $this->out(['success' => true, 'message' => 'Password changed']);
     }
@@ -533,6 +581,9 @@ class AuthController extends Controller
             'password' => password_hash($pass, PASSWORD_BCRYPT),
         ]);
         $this->db->table('password_resets')->where('user_id', $row['user_id'])->delete();
+
+        // Mag-logout ang lahat ng "remembered" devices pagkatapos ng reset
+        $this->db->table('remember_tokens')->where('user_id', $row['user_id'])->delete();
 
         $this->out(['success' => true, 'message' => 'Password updated. You can now log in.']);
     }

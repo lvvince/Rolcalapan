@@ -9,17 +9,45 @@ function getToken() {
   return null;
 }
 
-function handleUnauthorized(path, hadToken) {
-  // Huwag mag-redirect kung walang token (public pages, chatbot) o kung login mismo ang nag-401
-  if (!hadToken || path.startsWith("/auth/login")) return;
+function clearSession() {
   TOKEN_KEYS.forEach((k) => localStorage.removeItem(k));
   localStorage.removeItem("user");
+}
+
+function handleUnauthorized() {
+  clearSession();
   if (!window.location.pathname.startsWith("/login")) {
     window.location.href = "/login";
   }
 }
 
-async function request(method, path, body, config = {}) {
+// Isang refresh request lang sa isang pagkakataon.
+// Ginagamit ang remember-me cookie para makakuha ng bagong JWT.
+let refreshing = null;
+export function refreshSession() {
+  if (!refreshing) {
+    refreshing = (async () => {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch { /* ignore */ }
+      if (!res.ok || !data.token) {
+        throw new Error(data.error || "Not remembered");
+      }
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      return data;
+    })().finally(() => {
+      refreshing = null;
+    });
+  }
+  return refreshing;
+}
+
+async function request(method, path, body, config = {}, retried = false) {
   const token = getToken();
   const isForm = body instanceof FormData;
   let url = `${BASE_URL}${path}`;
@@ -43,6 +71,8 @@ async function request(method, path, body, config = {}) {
   const res = await fetch(url, {
     method,
     headers,
+    // Kailangan ng cookie sa login / refresh / logout (remember-me)
+    credentials: path.startsWith("/auth/") ? "include" : "same-origin",
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   });
 
@@ -52,7 +82,18 @@ async function request(method, path, body, config = {}) {
   const response = { data, status: res.status };
 
   if (!res.ok) {
-    if (res.status === 401) handleUnauthorized(path, !!token);
+    // Expired ang JWT: subukang i-refresh gamit ang remember-me cookie, tapos ulitin ang request
+    if (res.status === 401 && token && !retried && !path.startsWith("/auth/")) {
+      try {
+        await refreshSession();
+        return request(method, path, body, config, true);
+      } catch {
+        handleUnauthorized();
+      }
+    } else if (res.status === 401 && token && !path.startsWith("/auth/")) {
+      handleUnauthorized();
+    }
+
     const msg =
       (data && typeof data === "object" && (data.error || data.message)) ||
       `Request failed: ${res.status}`;

@@ -5,12 +5,44 @@ import { useAuth, homeForRole } from "../context/AuthContext";
 import { LoginLayout, PasswordInput, SubmitButton } from "../components/LoginLayout.jsx";
 import "../components/portal.css";
 
+const rowStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+  margin: "4px 0 18px",
+};
+
+const rememberStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  fontSize: "0.9rem",
+  fontWeight: 500,
+  color: "inherit",
+  cursor: "pointer",
+  userSelect: "none",
+  margin: 0,
+};
+
+const checkboxStyle = {
+  width: 16,
+  height: 16,
+  margin: 0,
+  padding: 0,
+  flexShrink: 0,
+  cursor: "pointer",
+  accentColor: "#0b6b8a",
+};
+
 export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +53,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const u = await login(email.trim(), password);
+      const u = await login(email.trim(), password, remember);
       navigate(homeForRole(u.role), { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || "Can't reach the server right now. Please try again.");
@@ -66,8 +98,20 @@ export default function Login() {
           />
         </div>
 
-        <div className="auth-row">
-          <Link to="/forgot-password">Forgot password?</Link>
+        <div style={rowStyle}>
+          <label htmlFor="remember" style={rememberStyle}>
+            <input
+              id="remember"
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              style={checkboxStyle}
+            />
+            <span>Keep me logged in</span>
+          </label>
+          <Link to="/forgot-password" style={{ whiteSpace: "nowrap" }}>
+            Forgot password?
+          </Link>
         </div>
 
         <SubmitButton loading={loading}>Login</SubmitButton>

@@ -57,6 +57,8 @@ $router->get('/', 'Welcome::index');
 |--------------------------------------------------------------------------
 */
 $router->post('/api/auth/login',        'AuthController::login');
+$router->post('/api/auth/refresh',      'AuthController::refresh');   // remember-me cookie -> bagong JWT
+$router->post('/api/auth/logout',       'AuthController::logout');    // burahin ang remember-me token + cookie
 $router->get( '/api/auth/me',           'AuthController::me');
 $router->post('/api/auth/register',     'AuthController::register');
 
