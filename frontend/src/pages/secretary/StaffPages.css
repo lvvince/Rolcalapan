@@ -194,7 +194,7 @@
   margin: 28px 0 20px;
 }
 
-/* PALITAN ang lumang .ma-* rules sa StaffPages.css nito (burahin ang luma, idagdag ito) */
+/* ---------- Manual attendance (search + selected list) ---------- */
 .ma-search { position: relative; margin-top: 4px; }
 
 .ma-suggest {
@@ -206,7 +206,7 @@
   margin: 4px 0 0;
   padding: 4px;
   list-style: none;
-  background: #fff;
+  background: var(--card, #fff);
   border: 1px solid #cfe0e4;
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(11, 46, 58, 0.12);
@@ -280,9 +280,11 @@
   border: 0;
   border-radius: 50%;
   background: #eef3f4;
+  color: inherit;
   cursor: pointer;
 }
-.ma-x:hover { background: #fde2e2; }
+.ma-x:hover:not(:disabled) { background: #fde2e2; }
+.ma-x:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .ma-foot {
   display: flex;
@@ -292,17 +294,23 @@
   margin-top: 12px;
 }
 
-/* Are you sure? */
+/* "Are you sure?" panel bago mag-save */
 .ma-confirm {
   margin-top: 12px;
   padding: 12px 14px;
-  border: 1px solid #f2c14e;
-  background: #fff8e6;
   border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
 }
-.ma-confirm p { margin: 0; flex: 1; min-width: 220px; }
+.ma-confirm p { margin: 0 0 10px; font-size: 0.9rem; }
+.ma-confirm .sp-actions { margin-top: 0; }
+
+/* ---------- Print (isa lang) ---------- */
+@media print {
+  .print-only { display: block; }
+  .no-print { display: none !important; }
+  .sp-card { box-shadow: none; break-inside: avoid; }
+  .rp-members { break-inside: auto; }  /* para puwedeng maputol sa pagitan ng pages */
+  .rp-table thead { display: table-header-group; }
+  .rp-table tr { break-inside: avoid; }
+}

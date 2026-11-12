@@ -9,6 +9,7 @@ import {
   Wallet,
   BarChart3,
   Mic,
+  Megaphone,
   Save,
   Printer,
   CheckCircle2,
@@ -58,87 +59,18 @@ function Notice({ msg }) {
 /* ---------------------------------------------------------- Members */
 export function StaffMembers() {
   const { t } = useLang();
-  const [families, setFamilies] = useState([]);
-  const [family, setFamily] = useState("all"); // all | __none | <family name>
-  const [q, setQ] = useState("");
-
-  // Listahan ng family names para sa dropdown
-  useEffect(() => {
-    api.get("/resource", { params: { name: "members" } }).then((r) => {
-      const names = [
-        ...new Set((r.data || []).map((m) => String(m.family_name || "").trim()).filter(Boolean)),
-      ];
-      setFamilies(names.sort((a, b) => a.localeCompare(b)));
-    });
-  }, []);
-
-  const needle = q.trim().toLowerCase();
-
-  const filter = (m) => {
-    const fam = String(m.family_name || "").trim();
-    if (family === "__none" && fam !== "") return false;
-    if (family !== "all" && family !== "__none" && fam !== family) return false;
-    if (!needle) return true;
-    return [m.member_code, m.full_name, m.family_name, m.phone, m.email].some((v) =>
-      String(v ?? "").toLowerCase().includes(needle)
-    );
-  };
-
-  const hasFilter = family !== "all" || needle !== "";
-  const clearAll = () => {
-    setFamily("all");
-    setQ("");
-  };
-
   return (
     <>
       <PageHeader icon={UsersRound} title={t("Members & Family Records")} subtitle={t("Add and update member records.")} />
-
-      <div className="sp-card">
-        <div className="sp-row">
-          <div className="sp-field grow">
-            <label htmlFor="mem-search">{t("Search")}</label>
-            <input
-              id="mem-search"
-              type="search"
-              autoComplete="off"
-              value={q}
-              placeholder={t("Name, code, family, phone, or email")}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-          <div className="sp-field" style={{ minWidth: 220 }}>
-            <label htmlFor="mem-family">{t("Filter by family")}</label>
-            <select id="mem-family" value={family} onChange={(e) => setFamily(e.target.value)}>
-              <option value="all">{t("All families")}</option>
-              <option value="__none">{t("No family")}</option>
-              {families.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
-          </div>
-          {hasFilter && (
-            <div className="sp-actions">
-              <button className="sp-btn" type="button" onClick={clearAll}>
-                {t("Clear")}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
       <DataPage
         title={t("Members")}
         resource="members"
         addLabel={t("Member")}
         canDelete={false}
-        filter={filter}
-        emptyText={hasFilter ? t("No members match your search or filter.") : t("No records yet.")}
         columns={[
           { key: "member_code", label: t("Code") },
           { key: "full_name", label: t("Name") },
           { key: "family_name", label: t("Family") },
-          { label: t("Sex"), render: (r) => (r.sex === "male" ? t("Male") : r.sex === "female" ? t("Female") : "—") },
           { key: "phone", label: t("Phone") },
           { key: "email", label: t("Email") },
           { label: t("Status"), render: (r) => statusBadge(r.status, t) },
@@ -150,7 +82,6 @@ export function StaffMembers() {
           { key: "email", label: t("Email"), type: "email" },
           { key: "address", label: t("Address") },
           { key: "birthdate", label: t("Birthdate"), type: "date" },
-          { key: "sex", label: t("Sex"), type: "select", options: [{ value: "male", label: t("Male") }, { value: "female", label: t("Female") }] },
           { key: "status", label: t("Status"), type: "select", options: [{ value: "active", label: t("Active") }, { value: "inactive", label: t("Inactive") }] },
         ]}
       />
@@ -207,21 +138,31 @@ export const getEventColumns = (t) => [
   { key: "ministry_name", label: t("Ministry") },
 ];
 
-export function EventsAnnouncements() {
+export function EventsAnnouncements({ canDelete = false }) {
   const { t } = useLang();
   return (
     <>
-      <PageHeader icon={CalendarDays} title={t("Events & Announcements")} subtitle={t("Manage church events and post announcements.")} />
+      <PageHeader icon={CalendarDays} title={t("Events & Schedules")} subtitle={t("Manage church events.")} />
       <DataPage
         title={t("Events")}
         resource="events"
         addLabel={t("Event")}
-        canDelete={false}
+        canDelete={canDelete}
         lookups={{ ministries: { resource: "ministries", label: "name" } }}
         columns={getEventColumns(t)}
         fields={getEventFields(t)}
         defaults={{ event_type: "internal", radius_m: 100 }}
       />
+    </>
+  );
+}
+
+/* ------------------------------------------------------ Announcements */
+export function StaffAnnouncements() {
+  const { t } = useLang();
+  return (
+    <>
+      <PageHeader icon={Megaphone} title={t("Announcements")} subtitle={t("Post and manage church announcements.")} />
       <DataPage
         title={t("Announcements")}
         resource="announcements"
@@ -635,7 +576,7 @@ export function StaffSchedules() {
 }
 
 /* ------------------------------------------------------------- Giving */
-export function Giving() {
+export function Giving({ canDelete = false }) {
   const { t } = useLang();
   return (
     <>
@@ -644,7 +585,7 @@ export function Giving() {
         title={t("Giving")}
         resource="giving"
         addLabel={t("Record")}
-        canDelete={false}
+        canDelete={canDelete}
         lookups={{ members: { resource: "members", label: "full_name" } }}
         columns={[
           { key: "given_at", label: t("Date") },

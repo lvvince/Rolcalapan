@@ -49,6 +49,28 @@ const menuIcons = {
 
 const getMenuIcon = (item) => item.icon || menuIcons[item.path] || "dashboard";
 
+// Staff menu: hiwalay na "Events & Schedules" at "Announcements".
+// Gumagana kahit hindi pa napapalitan ang config/roleMenus.js:
+// - kung wala pang Announcements, idinadagdag sa ilalim ng Events
+// - ang Events ay may bagong translation key (events_schedules) para hindi
+//   lumabas ang lumang "Events & Announcements" galing sa translation file
+const buildItems = (role, items) => {
+  if (role !== "staff") return items;
+
+  const next = items.map((i) =>
+    i.path === "events" ? { ...i, label: "Events & Schedules", key: "events_schedules" } : i
+  );
+
+  if (!next.some((i) => i.path === "announcements")) {
+    const at = next.findIndex((i) => i.path === "events");
+    next.splice(at >= 0 ? at + 1 : next.length, 0, {
+      path: "announcements",
+      label: "Announcements",
+    });
+  }
+  return next;
+};
+
 const initialsOf = (name = "") =>
   name
     .split(" ")
@@ -124,6 +146,7 @@ export default function RoleLayout({ role }) {
   const navigate = useNavigate();
   const location = useLocation();
   const menu = roleMenus[role];
+  const items = buildItems(role, menu.items);
   const showIcons = !NO_ICON_ROLES.includes(role);
   const [open, setOpen] = useState(false); // mobile drawer
   const [memberPic, setMemberPic] = useState(null);
@@ -208,10 +231,10 @@ export default function RoleLayout({ role }) {
             <span>{t("common.dashboard")}</span>
           </NavLink>
 
-          {menu.items.map((i) => (
+          {items.map((i) => (
             <NavLink key={i.path} to={`${menu.base}/${i.path}`} className={linkClass}>
               {showIcons && <Icon name={getMenuIcon(i)} />}
-              <span>{t(`menu.label.${role}.${i.path}`, { defaultValue: i.label })}</span>
+              <span>{t(`menu.label.${role}.${i.key || i.path}`, { defaultValue: i.label })}</span>
             </NavLink>
           ))}
         </nav>

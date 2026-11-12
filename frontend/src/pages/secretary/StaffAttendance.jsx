@@ -16,6 +16,7 @@ import QrCameraScanner from "../../components/QrCameraScanner";
 import { useLang } from "../../i18n/LanguageContext";
 import "../../components/portal.css";
 import "./StaffPages.css";
+import "./Geofence.css"; // para sa .gf-link
 
 function PageHeader({ icon: Icon, title, subtitle }) {
   return (
@@ -41,6 +42,15 @@ function Notice({ msg }) {
   );
 }
 
+// Toast-like: success nawawala agad, error mas matagal
+function useAutoDismiss(msg, setMsg) {
+  useEffect(() => {
+    if (!msg) return;
+    const timer = setTimeout(() => setMsg(null), msg.ok ? 4000 : 8000);
+    return () => clearTimeout(timer);
+  }, [msg, setMsg]);
+}
+
 const todayStr = () => {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
@@ -52,6 +62,8 @@ function CodeCheckin({ eventId, onDone }) {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState(null);
   const [camera, setCamera] = useState(false);
+
+  useAutoDismiss(msg, setMsg);
 
   const checkin = async (value) => {
     try {
@@ -126,13 +138,17 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
   const [confirming, setConfirming] = useState(false);
   const [msg, setMsg] = useState(null);
 
+  useAutoDismiss(msg, setMsg);
+
   useEffect(() => {
     api.get("/resource", { params: { name: "members" } }).then((r) => setMembers(r.data || []));
   }, []);
 
-  // Sino ang naka-record na sa napiling event + date
+  // Sino ang naka-record na sa napiling event + date (nagre-reload din after save)
   useEffect(() => {
+    let cancelled = false;
     api.get("/resource", { params: { name: "attendance" } }).then((r) => {
+      if (cancelled) return;
       const ids = (r.data || [])
         .filter(
           (a) =>
@@ -142,9 +158,19 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
         .map((a) => String(a.member_id));
       setRecorded(new Set(ids));
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, date, refreshKey]);
+
+  // Reset LANG kapag nagpalit ng event o date (hindi kapag nag-refresh pagkatapos mag-save,
+  // para manatili ang mga nag-fail at ma-retry)
+  useEffect(() => {
     setPicked([]);
     setConfirming(false);
-  }, [eventId, date, refreshKey]);
+    setMsg(null);
+    setQ("");
+  }, [eventId, date]);
 
   const pickedIds = new Set(picked.map((m) => String(m.id)));
   const needle = q.trim().toLowerCase();
@@ -155,7 +181,9 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
     .filter(
       (m) =>
         !needle ||
-        [m.full_name, m.family_name, m.member_code].some((v) => String(v ?? "").toLowerCase().includes(needle))
+        [m.full_name, m.family_name, m.member_code].some((v) =>
+          String(v ?? "").toLowerCase().includes(needle)
+        )
     )
     .slice(0, 8);
 
@@ -185,11 +213,14 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
   };
 
   const save = async () => {
-    if (picked.length === 0) return;
+    if (picked.length === 0 || busy) return;
     setConfirming(false);
     setBusy(true);
+    setMsg(null);
+
+    const batch = picked; // snapshot, para tugma ang index ng results
     const results = await Promise.allSettled(
-      picked.map((m) =>
+      batch.map((m) =>
         api.post("/resource/save", {
           name: "attendance",
           member_id: Number(m.id),
@@ -198,14 +229,25 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
         })
       )
     );
-    const ok = results.filter((r) => r.status === "fulfilled").length;
-    const fail = results.length - ok;
-    setMsg({
-      ok: fail === 0,
-      text: fail === 0 ? `${ok} ${t("attendance saved")}` : `${ok} ${t("saved")}, ${fail} ${t("failed")}`,
-    });
+
+    // Mga nag-fail lang ang matitira sa "Selected" para ma-retry
+    const failed = batch.filter((_, i) => results[i].status === "rejected");
+    const ok = batch.length - failed.length;
+    setPicked(failed);
+
+    if (failed.length === 0) {
+      setMsg({ ok: true, text: `${ok} ${t("attendance saved")}` });
+    } else {
+      const firstErr = results.find((r) => r.status === "rejected")?.reason;
+      const reason = firstErr?.response?.data?.error;
+      setMsg({
+        ok: false,
+        text: `${ok} ${t("saved")}, ${failed.length} ${t("failed")}${reason ? ` (${t(reason)})` : ""}`,
+      });
+    }
+
     setBusy(false);
-    onDone();
+    onDone(); // nire-reload ang "recorded"; hindi na nito binubura ang picked
   };
 
   return (
@@ -266,7 +308,12 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
       <div className="ma-selected">
         <div className="ma-selected-head">
           <strong>{t("Selected")} ({picked.length})</strong>
-          <button type="button" className="gf-link" disabled={picked.length === 0} onClick={clearAll}>
+          <button
+            type="button"
+            className="gf-link"
+            disabled={picked.length === 0 || busy}
+            onClick={clearAll}
+          >
             {t("Clear")}
           </button>
         </div>
@@ -285,6 +332,7 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
                 <button
                   type="button"
                   className="ma-x"
+                  disabled={busy}
                   aria-label={`${t("Remove")} ${m.full_name}`}
                   onClick={() => remove(m.id)}
                 >
@@ -301,8 +349,11 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
         <div className="ma-confirm" role="alertdialog" aria-live="polite">
           <p>
             <strong>{t("Are you sure?")}</strong>{" "}
-            {t("Mark")} {picked.length} {t("member(s) as present for")} <b>{eventLabel}</b> ({date})?{" "}
-            {t("This cannot be edited after saving.")}
+            {t("Mark {count} member(s) as present for {event} ({date})? This cannot be edited after saving.", {
+              count: picked.length,
+              event: eventLabel || t("this event"),
+              date,
+            })}
           </p>
           <div className="sp-actions">
             <button className="sp-btn" type="button" onClick={() => setConfirming(false)}>
@@ -334,7 +385,7 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
 }
 
 /* ------------------------------------------------------------ Page */
-export function StaffAttendance() {
+export function StaffAttendance({ canDelete = false }) {
   const { t } = useLang();
   const [k, setK] = useState(0);
   const [events, setEvents] = useState([]);
@@ -405,7 +456,7 @@ export function StaffAttendance() {
         resource="attendance"
         canCreate={false}
         canEdit={false}
-        canDelete={false}
+        canDelete={canDelete}
         refreshKey={k}
         filter={(r) => r.event_id === undefined || Number(r.event_id || 0) === Number(eventId)}
         columns={[

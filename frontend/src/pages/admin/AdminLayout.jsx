@@ -16,6 +16,7 @@ const links = [
   { to: "/admin/members", key: "nav.members" },
   { to: "/admin/ministries", key: "nav.ministries" },
   { to: "/admin/events", key: "nav.events" },
+  { to: "/admin/announcements", key: "nav.announcements", fallback: "Announcements" },
   { to: "/admin/giving", key: "nav.giving" },
   { to: "/admin/attendance", key: "nav.attendance" },
   { to: "/admin/reports", key: "nav.reports", fallback: "Reports" },

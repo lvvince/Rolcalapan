@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminMembers from "./pages/admin/AdminMembers";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
 import {
   AdminMinistries,
   AdminPrayers,
@@ -32,6 +33,7 @@ import {
   QrCodes,
   StaffAttendance,
   EventsAnnouncements,
+  StaffAnnouncements,
   Geofence,
   StaffSchedules,
   Giving,
@@ -113,6 +115,7 @@ export default function App() {
             <Route path="members" element={<AdminMembers />} />
             <Route path="ministries" element={<AdminMinistries />} />
             <Route path="events" element={<EventsAnnouncements canDelete />} />
+            <Route path="announcements" element={<AdminAnnouncements />} />
             <Route path="giving" element={<Giving canDelete />} />
             <Route path="attendance" element={<StaffAttendance canDelete />} />
             <Route path="reports" element={<Reports />} />
@@ -135,6 +138,7 @@ export default function App() {
               <Route path="qr" element={<QrCodes />} />
               <Route path="attendance" element={<StaffAttendance />} />
               <Route path="events" element={<EventsAnnouncements />} />
+              <Route path="announcements" element={<StaffAnnouncements />} />
               <Route path="geofence" element={<Geofence />} />
               <Route path="schedules" element={<StaffSchedules />} />
               <Route path="giving" element={<Giving />} />
