@@ -127,10 +127,18 @@ export default function RoleLayout({ role }) {
   const showIcons = !NO_ICON_ROLES.includes(role);
   const [open, setOpen] = useState(false); // mobile drawer
   const [memberPic, setMemberPic] = useState(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const doLogout = () => {
+    setConfirmLogout(false);
     logout();
     navigate("/login", { replace: true });
+  };
+
+  // Click sa Logout: isara ang drawer (mobile) at itanong muna
+  const askLogout = () => {
+    setOpen(false);
+    setConfirmLogout(true);
   };
 
   const linkClass = ({ isActive }) => (isActive ? "active" : "");
@@ -167,6 +175,14 @@ export default function RoleLayout({ role }) {
       document.body.style.overflow = prev;
     };
   }, [open]);
+
+  // Escape para isara ang logout confirmation
+  useEffect(() => {
+    if (!confirmLogout) return;
+    const onKey = (e) => e.key === "Escape" && setConfirmLogout(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [confirmLogout]);
 
   const roleTitle = t(`menu.title.${role}`, { defaultValue: menu.title });
 
@@ -208,7 +224,7 @@ export default function RoleLayout({ role }) {
               <small title={roleTitle}>{roleTitle}</small>
             </div>
           </div>
-          <button type="button" className="sb-logout" onClick={doLogout}>
+          <button type="button" className="sb-logout" onClick={askLogout}>
             <LogOut size={16} aria-hidden="true" />
             <span>{t("common.logout")}</span>
           </button>
@@ -243,6 +259,31 @@ export default function RoleLayout({ role }) {
       </div>
 
       {role === "member" && <ChatWidget userId={user?.id} />}
+
+      {/* Are you sure to logout? */}
+      {confirmLogout && (
+        <div className="modal" onClick={() => setConfirmLogout(false)}>
+          <div
+            className="modal-card"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="logout-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 380 }}
+          >
+            <h3 id="logout-title">{t("logout.title", "Log out?")}</h3>
+            <p>{t("logout.message", "Are you sure you want to log out?")}</p>
+            <div className="modal-actions">
+              <button type="button" className="btn secondary" autoFocus onClick={() => setConfirmLogout(false)}>
+                {t("logout.cancel", "Cancel")}
+              </button>
+              <button type="button" className="btn" onClick={doLogout}>
+                {t("logout.confirm", "Yes, log out")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

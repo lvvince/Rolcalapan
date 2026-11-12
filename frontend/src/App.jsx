@@ -18,6 +18,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminMembers from "./pages/admin/AdminMembers";
 import {
   AdminMinistries,
   AdminPrayers,
@@ -109,7 +110,7 @@ export default function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="profile" element={<AdminProfile />} />
             <Route path="users" element={<AdminUsers />} />
-            <Route path="members" element={<StaffMembers canDelete />} />
+            <Route path="members" element={<AdminMembers />} />
             <Route path="ministries" element={<AdminMinistries />} />
             <Route path="events" element={<EventsAnnouncements canDelete />} />
             <Route path="giving" element={<Giving canDelete />} />

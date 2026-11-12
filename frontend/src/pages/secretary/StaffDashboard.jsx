@@ -1,18 +1,14 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   UsersRound,
   QrCode,
-  ClipboardCheck,
   CalendarDays,
   MapPin,
   Clock,
   Wallet,
   BarChart3,
   Mic,
-  ScanLine,
-  X,
-  LogIn,
   Save,
   Printer,
   CheckCircle2,
@@ -21,7 +17,6 @@ import {
 import api from "../../api";
 import DataPage, { hm } from "../../components/DataPage";
 import QrView from "../../components/QrView";
-import QrCameraScanner from "../../components/QrCameraScanner";
 import MapPicker, { reverseGeocode } from "../../components/MapPicker";
 import { StaffNotifications } from "../../components/Notifications";
 import { useLang } from "../../i18n/LanguageContext";
@@ -31,6 +26,7 @@ import "./StaffPages.css";
 import "./Geofence.css";
 
 export { StaffNotifications };
+export { StaffAttendance } from "./StaffAttendance";
 
 const money = (n) => Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2 });
 const statusBadge = (s, t) => <span className={`badge ${s === "active" ? "ok" : "warn"}`}>{t(s)}</span>;
@@ -62,18 +58,87 @@ function Notice({ msg }) {
 /* ---------------------------------------------------------- Members */
 export function StaffMembers() {
   const { t } = useLang();
+  const [families, setFamilies] = useState([]);
+  const [family, setFamily] = useState("all"); // all | __none | <family name>
+  const [q, setQ] = useState("");
+
+  // Listahan ng family names para sa dropdown
+  useEffect(() => {
+    api.get("/resource", { params: { name: "members" } }).then((r) => {
+      const names = [
+        ...new Set((r.data || []).map((m) => String(m.family_name || "").trim()).filter(Boolean)),
+      ];
+      setFamilies(names.sort((a, b) => a.localeCompare(b)));
+    });
+  }, []);
+
+  const needle = q.trim().toLowerCase();
+
+  const filter = (m) => {
+    const fam = String(m.family_name || "").trim();
+    if (family === "__none" && fam !== "") return false;
+    if (family !== "all" && family !== "__none" && fam !== family) return false;
+    if (!needle) return true;
+    return [m.member_code, m.full_name, m.family_name, m.phone, m.email].some((v) =>
+      String(v ?? "").toLowerCase().includes(needle)
+    );
+  };
+
+  const hasFilter = family !== "all" || needle !== "";
+  const clearAll = () => {
+    setFamily("all");
+    setQ("");
+  };
+
   return (
     <>
       <PageHeader icon={UsersRound} title={t("Members & Family Records")} subtitle={t("Add and update member records.")} />
+
+      <div className="sp-card">
+        <div className="sp-row">
+          <div className="sp-field grow">
+            <label htmlFor="mem-search">{t("Search")}</label>
+            <input
+              id="mem-search"
+              type="search"
+              autoComplete="off"
+              value={q}
+              placeholder={t("Name, code, family, phone, or email")}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <div className="sp-field" style={{ minWidth: 220 }}>
+            <label htmlFor="mem-family">{t("Filter by family")}</label>
+            <select id="mem-family" value={family} onChange={(e) => setFamily(e.target.value)}>
+              <option value="all">{t("All families")}</option>
+              <option value="__none">{t("No family")}</option>
+              {families.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </div>
+          {hasFilter && (
+            <div className="sp-actions">
+              <button className="sp-btn" type="button" onClick={clearAll}>
+                {t("Clear")}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <DataPage
         title={t("Members")}
         resource="members"
         addLabel={t("Member")}
         canDelete={false}
+        filter={filter}
+        emptyText={hasFilter ? t("No members match your search or filter.") : t("No records yet.")}
         columns={[
           { key: "member_code", label: t("Code") },
           { key: "full_name", label: t("Name") },
           { key: "family_name", label: t("Family") },
+          { label: t("Sex"), render: (r) => (r.sex === "male" ? t("Male") : r.sex === "female" ? t("Female") : "—") },
           { key: "phone", label: t("Phone") },
           { key: "email", label: t("Email") },
           { label: t("Status"), render: (r) => statusBadge(r.status, t) },
@@ -85,6 +150,7 @@ export function StaffMembers() {
           { key: "email", label: t("Email"), type: "email" },
           { key: "address", label: t("Address") },
           { key: "birthdate", label: t("Birthdate"), type: "date" },
+          { key: "sex", label: t("Sex"), type: "select", options: [{ value: "male", label: t("Male") }, { value: "female", label: t("Female") }] },
           { key: "status", label: t("Status"), type: "select", options: [{ value: "active", label: t("Active") }, { value: "inactive", label: t("Inactive") }] },
         ]}
       />
@@ -112,112 +178,6 @@ export function QrCodes() {
         </div>
       </div>
       {m && <QrView code={m.member_code} name={m.full_name} />}
-    </>
-  );
-}
-
-/* -------------------------------------------------------- Attendance */
-function CodeCheckin({ onDone }) {
-  const { t } = useLang();
-  const [code, setCode] = useState("");
-  const [eventId, setEventId] = useState(0);
-  const [events, setEvents] = useState([]);
-  const [msg, setMsg] = useState(null);
-  const [camera, setCamera] = useState(false);
-
-  useEffect(() => { api.get("/resource", { params: { name: "events" } }).then((r) => setEvents(r.data)); }, []);
-
-  const checkin = async (value) => {
-    try {
-      const { data } = await api.post("/portal/checkin", { code: value, event_id: Number(eventId) });
-      setMsg({ ok: true, text: t(data.message) });
-      setCode("");
-      onDone();
-    } catch (err) {
-      setMsg({ ok: false, text: t(err.response?.data?.error || "Error") });
-    }
-  };
-
-  const submit = (e) => {
-    e.preventDefault();
-    checkin(code);
-  };
-
-  return (
-    <form className="sp-card" onSubmit={submit}>
-      <div className="sp-card-head">
-        <span className="sp-tile"><ScanLine size={20} aria-hidden="true" /></span>
-        <div>
-          <h4>{t("QR / Code Check-in")}</h4>
-          <p>{t("Scan the member's QR (camera or USB scanner) or type the member code.")}</p>
-        </div>
-      </div>
-
-      <div className="sp-row">
-        <div className="sp-field grow">
-          <label htmlFor="ci-code">{t("Member code")}</label>
-          <input id="ci-code" autoFocus placeholder="ROL-XXXXXX" value={code}
-            onChange={(e) => setCode(e.target.value)} required />
-        </div>
-        <div className="sp-field grow">
-          <label htmlFor="ci-event">{t("Event")}</label>
-          <select id="ci-event" value={eventId} onChange={(e) => setEventId(e.target.value)}>
-            <option value={0}>{t("Sunday Service")}</option>
-            {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date})</option>)}
-          </select>
-        </div>
-        <div className="sp-actions">
-          <button className="sp-btn primary" type="submit">
-            <LogIn size={16} aria-hidden="true" /> {t("Check in")}
-          </button>
-          <button className="sp-btn" type="button" onClick={() => setCamera((c) => !c)}>
-            {camera ? <X size={16} aria-hidden="true" /> : <ScanLine size={16} aria-hidden="true" />}
-            {camera ? t("Close camera") : t("Scan with camera")}
-          </button>
-        </div>
-      </div>
-
-      {camera && (
-        <div className="sp-camera">
-          <QrCameraScanner onScan={(text) => checkin(text)} onClose={() => setCamera(false)} />
-        </div>
-      )}
-
-      <Notice msg={msg} />
-    </form>
-  );
-}
-
-export function StaffAttendance() {
-  const { t } = useLang();
-  const [k, setK] = useState(0);
-  return (
-    <>
-      <PageHeader icon={ClipboardCheck} title={t("Attendance")} subtitle={t("Check in members and review attendance records.")} />
-      <CodeCheckin onDone={() => setK(k + 1)} />
-      <DataPage
-        title={t("Attendance Records")}
-        resource="attendance"
-        addLabel={t("Manual entry")}
-        canEdit={false}
-        canDelete={false}
-        refreshKey={k}
-        lookups={{
-          members: { resource: "members", label: "full_name" },
-          events: { resource: "events", label: "title" },
-        }}
-        columns={[
-          { key: "service_date", label: t("Date") },
-          { key: "member_name", label: t("Member") },
-          { label: t("Event"), render: (r) => r.event_title || t("Sunday Service") },
-          { label: t("Method"), render: (r) => <span className="badge">{t(r.method)}</span> },
-        ]}
-        fields={[
-          { key: "member_id", label: t("Member"), type: "select", lookup: "members", required: true },
-          { key: "service_date", label: t("Date"), type: "date" },
-          { key: "event_id", label: t("Event"), type: "select", lookup: "events", extra: [{ value: 0, label: t("Sunday Service") }] },
-        ]}
-      />
     </>
   );
 }
@@ -767,33 +727,235 @@ function bucketOf(d, period) {
   return { key: String(d.getFullYear()), label: String(d.getFullYear()) };
 }
 
-function groupByPeriod(rows, dateKey, valueOf, period) {
-  const n = PERIODS.find((p) => p.key === period).n;
-  const now = new Date();
+// true kung nasa loob ng from/to (YYYY-MM-DD; walang laman = walang limit)
+const inRange = (s, from, to) => {
+  const v = String(s).slice(0, 10);
+  return (!from || v >= from) && (!to || v <= to);
+};
 
-  // gumawa ng huling N periods (kasama ang walang data = 0)
+const nextSlot = (d, period) => {
+  if (period === "week") return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7);
+  if (period === "month") return new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  return new Date(d.getFullYear() + 1, 0, 1);
+};
+
+const MAX_SLOTS = 60;
+
+function groupByPeriod(rows, dateKey, valueOf, period, from = "", to = "") {
   const slots = [];
-  for (let i = n - 1; i >= 0; i--) {
-    let d;
-    if (period === "week") {
-      d = weekStart(now);
-      d.setDate(d.getDate() - 7 * i);
-    } else if (period === "month") {
-      d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    } else {
-      d = new Date(now.getFullYear() - i, 0, 1);
+
+  if (from || to) {
+    // may date range: gumawa ng periods mula from hanggang to
+    const dates = rows
+      .filter((r) => r[dateKey])
+      .map((r) => String(r[dateKey]).slice(0, 10))
+      .sort();
+    const startStr = from || dates[0] || ymd(new Date());
+    const endStr = to || ymd(new Date());
+    const end = parseDate(endStr);
+    let cur = parseDate(startStr);
+    if (period === "week") cur = weekStart(cur);
+    else if (period === "month") cur = new Date(cur.getFullYear(), cur.getMonth(), 1);
+    else cur = new Date(cur.getFullYear(), 0, 1);
+
+    let guard = 0;
+    while (cur <= end && guard++ < 1000) {
+      slots.push({ ...bucketOf(cur, period), value: 0 });
+      cur = nextSlot(cur, period);
     }
-    const b = bucketOf(d, period);
-    slots.push({ ...b, value: 0 });
+    // huling MAX_SLOTS lang para hindi sumobra ang bars
+    if (slots.length > MAX_SLOTS) slots.splice(0, slots.length - MAX_SLOTS);
+  } else {
+    // default: huling N periods (kasama ang walang data = 0)
+    const n = PERIODS.find((p) => p.key === period).n;
+    const now = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+      let d;
+      if (period === "week") {
+        d = weekStart(now);
+        d.setDate(d.getDate() - 7 * i);
+      } else if (period === "month") {
+        d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      } else {
+        d = new Date(now.getFullYear() - i, 0, 1);
+      }
+      slots.push({ ...bucketOf(d, period), value: 0 });
+    }
   }
 
   const index = Object.fromEntries(slots.map((s, i) => [s.key, i]));
   rows.forEach((r) => {
-    if (!r[dateKey]) return;
+    if (!r[dateKey] || !inRange(r[dateKey], from, to)) return;
     const b = bucketOf(parseDate(r[dateKey]), period);
     if (b.key in index) slots[index[b.key]].value += valueOf(r);
   });
   return slots;
+}
+
+/* ---- Reports: tabs ---- */
+const TABS = [
+  { key: "summary", label: "Summary" },
+  { key: "att", label: "Attendance" },
+  { key: "giv", label: "Giving" },
+  { key: "members", label: "Members" },
+  { key: "pred", label: "Predictive" },
+];
+
+// Mga seksyon na puwedeng piliin sa Summary tab
+const SUMMARY_SECTIONS = [
+  { key: "att", label: "Attendance" },
+  { key: "giv", label: "Giving" },
+  { key: "type", label: "Giving by type" },
+  { key: "method", label: "Attendance by method" },
+  { key: "min", label: "Ministry sizes" },
+];
+const SUMMARY_DEFAULT = ["att", "giv", "min"];
+
+const GIVING_TYPES = ["tithe", "offering", "mission", "building fund", "other"];
+
+// Mabilis na date range: [from, to]
+const RANGES = [
+  {
+    key: "month",
+    label: "This month",
+    get: () => {
+      const n = new Date();
+      return [ymd(new Date(n.getFullYear(), n.getMonth(), 1)), ymd(n)];
+    },
+  },
+  {
+    key: "30",
+    label: "Last 30 days",
+    get: () => {
+      const n = new Date();
+      return [ymd(new Date(n.getFullYear(), n.getMonth(), n.getDate() - 29)), ymd(n)];
+    },
+  },
+  {
+    key: "year",
+    label: "This year",
+    get: () => {
+      const n = new Date();
+      return [ymd(new Date(n.getFullYear(), 0, 1)), ymd(n)];
+    },
+  },
+];
+
+// Pag-total ayon sa category (loob lang ng date range)
+function tally(rows, dateKey, keyOf, valueOf, from, to) {
+  const m = {};
+  rows.forEach((r) => {
+    if (!r[dateKey] || !inRange(r[dateKey], from, to)) return;
+    const k = keyOf(r) || "other";
+    m[k] = (m[k] || 0) + valueOf(r);
+  });
+  return Object.entries(m)
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+// Period (week/month/year) + From/To + quick range
+function DateFilters({ t, period, setPeriod, from, setFrom, to, setTo }) {
+  const activeRange = RANGES.find((r) => {
+    const [a, b] = r.get();
+    return a === from && b === to;
+  })?.key;
+
+  return (
+    <>
+      <div className="sp-seg" role="group" aria-label={t("Group by")}>
+        {PERIODS.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            className={period === p.key ? "on" : ""}
+            aria-pressed={period === p.key}
+            onClick={() => setPeriod(p.key)}
+          >
+            {t(p.label)}
+          </button>
+        ))}
+      </div>
+
+      <div className="rp-dates">
+        <div className="sp-field">
+          <label htmlFor="rp-from">{t("From")}</label>
+          <input id="rp-from" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+        </div>
+        <div className="sp-field">
+          <label htmlFor="rp-to">{t("To")}</label>
+          <input id="rp-to" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="rp-quick" role="group" aria-label={t("Quick date range")}>
+        {RANGES.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            className={`rp-quick-btn${activeRange === r.key ? " on" : ""}`}
+            aria-pressed={activeRange === r.key}
+            onClick={() => {
+              const [a, b] = r.get();
+              setFrom(a);
+              setTo(b);
+            }}
+          >
+            {t(r.label)}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="rp-quick-btn"
+          disabled={!from && !to}
+          onClick={() => {
+            setFrom("");
+            setTo("");
+          }}
+        >
+          {t("Clear dates")}
+        </button>
+      </div>
+    </>
+  );
+}
+
+function PrintButton({ t, disabled }) {
+  return (
+    <button className="sp-btn primary rp-print" type="button" disabled={disabled} onClick={() => window.print()}>
+      <Printer size={16} aria-hidden="true" /> {t("Print report")}
+    </button>
+  );
+}
+
+function Stat({ value, label }) {
+  return (
+    <div className="sp-pill">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+// State na naaalala kahit mag-refresh (localStorage)
+function usePersisted(key, initial) {
+  const [v, setV] = useState(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw != null) return JSON.parse(raw);
+    } catch {
+      /* ignore */
+    }
+    return initial;
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(v));
+    } catch {
+      /* ignore */
+    }
+  }, [key, v]);
+  return [v, setV];
 }
 
 export function Reports() {
@@ -801,19 +963,47 @@ export function Reports() {
   const [d, setD] = useState(null);
   const [att, setAtt] = useState([]);
   const [giv, setGiv] = useState([]);
-  const [period, setPeriod] = useState("week");
+  const [members, setMembers] = useState([]);
   const [error, setError] = useState("");
+
+  // Tab: nasa URL (?tab=giv) para hindi mawala sa refresh at puwedeng i-bookmark
+  const [params, setParams] = useSearchParams();
+  const tabParam = params.get("tab");
+  const tab = TABS.some((x) => x.key === tabParam) ? tabParam : "summary";
+  const setTab = (k) => setParams({ tab: k }, { replace: true });
+
+  // Mga napili: naaalala kahit mag-refresh
+  const [periodRaw, setPeriod] = usePersisted("rp-period", "week");
+  const period = PERIODS.some((p) => p.key === periodRaw) ? periodRaw : "week";
+  const [gTypeRaw, setGType] = usePersisted("rp-gtype", "all"); // Giving tab
+  const gType = ["all", ...GIVING_TYPES].includes(gTypeRaw) ? gTypeRaw : "all";
+  const [mStatusRaw, setMStatus] = usePersisted("rp-mstatus", "all"); // Members tab
+  const mStatus = ["all", "active", "inactive"].includes(mStatusRaw) ? mStatusRaw : "all";
+  const [sumRaw, setSumSel] = usePersisted("rp-summary", {}); // Summary checkboxes
+  const sumSel = Object.fromEntries(
+    SUMMARY_SECTIONS.map((x) => [
+      x.key,
+      typeof sumRaw?.[x.key] === "boolean" ? sumRaw[x.key] : SUMMARY_DEFAULT.includes(x.key),
+    ])
+  );
+
+  // Hindi sinasave: dates at search (para hindi luma ang range sa susunod na bukas)
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [mQuery, setMQuery] = useState("");
 
   useEffect(() => {
     Promise.all([
       api.get("/portal/reports"),
       api.get("/resource", { params: { name: "attendance" } }),
       api.get("/resource", { params: { name: "giving" } }),
+      api.get("/resource", { params: { name: "members" } }),
     ])
-      .then(([r, a, g]) => {
+      .then(([r, a, g, m]) => {
         setD(r.data);
         setAtt(a.data || []);
         setGiv(g.data || []);
+        setMembers(m.data || []);
       })
       .catch((e) => setError(e.response?.data?.error || "Failed to load"));
   }, []);
@@ -822,47 +1012,252 @@ export function Reports() {
   if (!d) return <p className="sp-muted">{t("Loading...")}</p>;
 
   const periodName = t(PERIODS.find((p) => p.key === period).label).toLowerCase();
-  const attData = groupByPeriod(att, "service_date", () => 1, period);
-  const givData = groupByPeriod(giv, "given_at", (r) => Number(r.amount) || 0, period);
+
+  // ---- date range ----
+  const badRange = Boolean(from && to && from > to);
+  const rf = badRange ? "" : from;
+  const rt = badRange ? "" : to;
+  const rangeText = rf || rt ? `${rf || "…"} – ${rt || t("today")}` : t("Latest periods (default)");
+
+  // ---- attendance ----
+  const attData = groupByPeriod(att, "service_date", () => 1, period, rf, rt);
+  const attByMethod = tally(att, "service_date", (r) => r.method, () => 1, rf, rt);
+  const attCount = att.filter((r) => r.service_date && inRange(r.service_date, rf, rt)).length;
+
+  // ---- giving ----
+  const givAll = groupByPeriod(giv, "given_at", (r) => Number(r.amount) || 0, period, rf, rt);
+  const givRowsTyped = gType === "all" ? giv : giv.filter((r) => r.type === gType);
+  const givTyped = gType === "all" ? givAll : groupByPeriod(givRowsTyped, "given_at", (r) => Number(r.amount) || 0, period, rf, rt);
+  const givByType = tally(giv, "given_at", (r) => r.type, (r) => Number(r.amount) || 0, rf, rt);
+  const givInRange = givRowsTyped.filter((r) => r.given_at && inRange(r.given_at, rf, rt));
+  const givTotal = givInRange.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
+  // ---- members ----
+  const q = mQuery.trim().toLowerCase();
+  const shownMembers = members.filter(
+    (m) =>
+      (mStatus === "all" || m.status === mStatus) &&
+      (!q ||
+        [m.full_name, m.family_name, m.member_code].some((v) => String(v ?? "").toLowerCase().includes(q)))
+  );
+
+  // ---- summary ----
+  const sumCount = SUMMARY_SECTIONS.filter((s) => sumSel[s.key]).length;
+  const toggleSum = (k) => setSumSel({ ...sumSel, [k]: !sumSel[k] });
+  const setSumPreset = (keys) =>
+    setSumSel(Object.fromEntries(SUMMARY_SECTIONS.map((s) => [s.key, keys.includes(s.key)])));
+
+  const tabLabel = t(TABS.find((x) => x.key === tab).label);
+  const usesDates = tab === "summary" || tab === "att" || tab === "giv";
+  const dateProps = { t, period, setPeriod, from, setFrom, to, setTo };
 
   return (
     <>
-      {/* ---------- Predictive muna (nasa taas) ---------- */}
-      <SecretaryPredictiveReport embedded />
+      <PageHeader icon={BarChart3} title={t("Reports")} subtitle={t("Choose a report, set the filters, then print.")} />
 
-      {/* ---------- Reports (nasa baba) ---------- */}
-      <div className="sp-divider" />
-      <PageHeader icon={BarChart3} title={t("Reports")} subtitle={t("Attendance, giving, and ministry summaries.")} />
-
-      <div className="sp-summary no-print">
-        <div className="sp-pill"><strong>{d.members_total}</strong><span>{t("Total members")}</span></div>
-        <div className="sp-pill"><strong>{d.members_active}</strong><span>{t("Active members")}</span></div>
-
-        <div className="sp-seg" role="group" aria-label={t("Group by")}>
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              className={period === p.key ? "on" : ""}
-              aria-pressed={period === p.key}
-              onClick={() => setPeriod(p.key)}
-            >
-              {t(p.label)}
-            </button>
-          ))}
-        </div>
-
-        <button className="sp-btn primary" type="button" onClick={() => window.print()}>
-          <Printer size={16} aria-hidden="true" /> {t("Print report")}
-        </button>
+      {/* ================= Tabs ================= */}
+      <div className="rp-tabs no-print" role="tablist" aria-label={t("Reports")}>
+        {TABS.map((tb) => (
+          <button
+            key={tb.key}
+            type="button"
+            role="tab"
+            id={`rp-tab-${tb.key}`}
+            aria-selected={tab === tb.key}
+            aria-controls="rp-panel"
+            className={`rp-tab${tab === tb.key ? " on" : ""}`}
+            onClick={() => setTab(tb.key)}
+          >
+            {t(tb.label)}
+          </button>
+        ))}
       </div>
 
-      <div className="sp-grid">
-        <Bars title={`${t("Attendance per")} ${periodName}`} data={attData} />
-        <Bars title={`${t("Giving per")} ${periodName} (PHP)`} data={givData} money />
-        <Bars title={t("Giving by type (PHP)")} data={d.giving_by_type} money translate />
-        <Bars title={t("Ministry sizes")} data={d.ministry_sizes} />
-        <Bars title={t("Attendance by method")} data={d.attendance_method} translate />
+      {/* Lumalabas lang sa print: anong report at anong filter ang ginamit */}
+      <div className="rp-print-head print-only">
+        <h3>{t("Church Report")} – {tabLabel}</h3>
+        <p>
+          {t("Printed on")} {new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}
+        </p>
+        {usesDates && (
+          <p>
+            {t("Period")}: {rangeText} · {t("Group by")}: {periodName}
+            {tab === "giv" && gType !== "all" ? ` · ${t("Type")}: ${t(gType)}` : ""}
+          </p>
+        )}
+      </div>
+
+      <div id="rp-panel" role="tabpanel" aria-labelledby={`rp-tab-${tab}`}>
+        {usesDates && badRange && <Notice msg={{ ok: false, text: t("The start date must be before the end date.") }} />}
+
+        {/* ================= SUMMARY ================= */}
+        {tab === "summary" && (
+          <>
+            <div className="rp-bar no-print">
+              <DateFilters {...dateProps} />
+              <div className="rp-chips">
+                {SUMMARY_SECTIONS.map((s) => (
+                  <label key={s.key} className={`rp-chip${sumSel[s.key] ? " on" : ""}`}>
+                    <input type="checkbox" checked={sumSel[s.key]} onChange={() => toggleSum(s.key)} />
+                    <span>{t(s.label)}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="rp-quick" role="group" aria-label={t("Quick selection")}>
+                <button type="button" className="rp-quick-btn" onClick={() => setSumPreset(SUMMARY_SECTIONS.map((s) => s.key))}>
+                  {t("Select all")}
+                </button>
+                <button type="button" className="rp-quick-btn" disabled={sumCount === 0} onClick={() => setSumPreset([])}>
+                  {t("Clear")}
+                </button>
+              </div>
+              <PrintButton t={t} disabled={sumCount === 0} />
+            </div>
+
+            {sumCount === 0 ? (
+              <div className="sp-empty">
+                <BarChart3 size={28} aria-hidden="true" />
+                <strong>{t("Nothing selected")}</strong>
+                <span>{t("Choose at least one section above.")}</span>
+              </div>
+            ) : (
+              <>
+                <div className="rp-stats">
+                  <Stat value={d.members_total} label={t("Total members")} />
+                  <Stat value={d.members_active} label={t("Active members")} />
+                </div>
+                <div className="sp-grid">
+                  {sumSel.att && <Bars title={`${t("Attendance per")} ${periodName}`} data={attData} />}
+                  {sumSel.giv && <Bars title={`${t("Giving per")} ${periodName} (PHP)`} data={givAll} money />}
+                  {sumSel.type && <Bars title={t("Giving by type (PHP)")} data={givByType} money translate />}
+                  {sumSel.method && <Bars title={t("Attendance by method")} data={attByMethod} translate />}
+                  {sumSel.min && <Bars title={t("Ministry sizes")} data={d.ministry_sizes} />}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ================= ATTENDANCE ================= */}
+        {tab === "att" && (
+          <>
+            <div className="rp-bar no-print">
+              <DateFilters {...dateProps} />
+              <PrintButton t={t} />
+            </div>
+            <div className="rp-stats">
+              <Stat value={attCount} label={t("Attendance records")} />
+              <Stat value={d.members_active} label={t("Active members")} />
+            </div>
+            <div className="sp-grid">
+              <Bars title={`${t("Attendance per")} ${periodName}`} data={attData} />
+              <Bars title={t("Attendance by method")} data={attByMethod} translate />
+            </div>
+          </>
+        )}
+
+        {/* ================= GIVING ================= */}
+        {tab === "giv" && (
+          <>
+            <div className="rp-bar no-print">
+              <DateFilters {...dateProps} />
+              <div className="sp-field">
+                <label htmlFor="rp-gtype">{t("Type")}</label>
+                <select id="rp-gtype" value={gType} onChange={(e) => setGType(e.target.value)}>
+                  <option value="all">{t("All")}</option>
+                  {GIVING_TYPES.map((x) => (
+                    <option key={x} value={x}>{t(x)}</option>
+                  ))}
+                </select>
+              </div>
+              <PrintButton t={t} />
+            </div>
+            <div className="rp-stats">
+              <Stat value={money(givTotal)} label={`${t("Total given")} (PHP)`} />
+              <Stat value={givInRange.length} label={t("Records")} />
+            </div>
+            <div className="sp-grid">
+              <Bars title={`${t("Giving per")} ${periodName} (PHP)`} data={givTyped} money />
+              {gType === "all" && <Bars title={t("Giving by type (PHP)")} data={givByType} money translate />}
+            </div>
+          </>
+        )}
+
+        {/* ================= MEMBERS ================= */}
+        {tab === "members" && (
+          <>
+            <div className="rp-bar no-print">
+              <div className="sp-field">
+                <label htmlFor="rp-mstatus">{t("Status")}</label>
+                <select id="rp-mstatus" value={mStatus} onChange={(e) => setMStatus(e.target.value)}>
+                  <option value="all">{t("All")}</option>
+                  <option value="active">{t("Active")}</option>
+                  <option value="inactive">{t("Inactive")}</option>
+                </select>
+              </div>
+              <div className="sp-field grow">
+                <label htmlFor="rp-mq">{t("Search")}</label>
+                <input id="rp-mq" value={mQuery} placeholder={t("Name, family, or code")} onChange={(e) => setMQuery(e.target.value)} />
+              </div>
+              <PrintButton t={t} disabled={shownMembers.length === 0} />
+            </div>
+
+            <div className="rp-stats">
+              <Stat value={shownMembers.length} label={t("Shown")} />
+              <Stat value={d.members_total} label={t("Total members")} />
+              <Stat value={d.members_active} label={t("Active members")} />
+            </div>
+
+            <div className="sp-card rp-members">
+              <h4 className="sp-card-title">{t("Members list")} ({shownMembers.length})</h4>
+              <p className="rp-print-only-note print-only">
+                {t("Status")}: {mStatus === "all" ? t("All") : t(mStatus)}
+                {q ? ` · ${t("Search")}: "${mQuery.trim()}"` : ""}
+              </p>
+
+              {shownMembers.length === 0 ? (
+                <span className="sp-muted">{t("No data")}</span>
+              ) : (
+                <table className="rp-table">
+                  <thead>
+                    <tr>
+                      <th>{t("Code")}</th>
+                      <th>{t("Name")}</th>
+                      <th>{t("Family")}</th>
+                      <th>{t("Phone")}</th>
+                      <th>{t("Status")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shownMembers.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.member_code}</td>
+                        <td>{m.full_name}</td>
+                        <td>{m.family_name}</td>
+                        <td>{m.phone}</td>
+                        <td>{statusBadge(m.status, t)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="sp-grid">
+              <Bars title={t("Ministry sizes")} data={d.ministry_sizes} />
+            </div>
+          </>
+        )}
+
+        {/* ================= PREDICTIVE ================= */}
+        {tab === "pred" && (
+          <>
+            <div className="rp-bar no-print">
+              <PrintButton t={t} />
+            </div>
+            <SecretaryPredictiveReport embedded />
+          </>
+        )}
       </div>
     </>
   );

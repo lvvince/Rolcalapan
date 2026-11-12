@@ -62,13 +62,23 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { unread, toast, dismiss, markSeen } = useNotifCount(user?.id);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   // Kapag nasa Notifications page, ituring na nabasa na
   useEffect(() => {
     if (location.pathname === "/admin/notifications" && unread > 0) markSeen();
   }, [location.pathname, unread, markSeen]);
 
+  // Esc para isara ang confirmation
+  useEffect(() => {
+    if (!confirmLogout) return;
+    const onKey = (e) => e.key === "Escape" && setConfirmLogout(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmLogout]);
+
   const doLogout = () => {
+    setConfirmLogout(false);
     logout();
     navigate("/login", { replace: true });
   };
@@ -102,7 +112,7 @@ export default function AdminLayout() {
               <small title={roleTitle}>{roleTitle}</small>
             </div>
           </div>
-          <button type="button" className="sb-logout" onClick={doLogout}>
+          <button type="button" className="sb-logout" onClick={() => setConfirmLogout(true)}>
             <LogOut size={16} aria-hidden="true" />
             <span>{t("common.logout")}</span>
           </button>
@@ -134,6 +144,31 @@ export default function AdminLayout() {
           </div>
         )}
       </div>
+
+      {/* Are you sure to logout? */}
+      {confirmLogout && (
+        <div className="modal" onClick={() => setConfirmLogout(false)}>
+          <div
+            className="modal-card"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="logout-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 380 }}
+          >
+            <h3 id="logout-title">{t("logout.title", "Log out?")}</h3>
+            <p>{t("logout.message", "Are you sure you want to log out?")}</p>
+            <div className="modal-actions">
+              <button type="button" className="btn secondary" autoFocus onClick={() => setConfirmLogout(false)}>
+                {t("logout.cancel", "Cancel")}
+              </button>
+              <button type="button" className="btn" onClick={doLogout}>
+                {t("logout.confirm", "Yes, log out")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

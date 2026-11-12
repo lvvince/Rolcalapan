@@ -276,3 +276,27 @@
   .pr-table-wrap { overflow: visible; }
   .pr-table { min-width: 0; }
 }
+/* ---------- Print options ---------- */
+.pr-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid #e3edef;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.9rem;
+}
+.pr-options-lbl { font-weight: 600; }
+.pr-options label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.pr-check { width: 36px; text-align: center; }
+.pr-check input { width: 16px; height: 16px; cursor: pointer; }
+.pr-print-only { display: none; }
+
+@media print {
+  .no-print,
+  .pr-hide-print { display: none !important; }
+  .pr-print-only { display: block; margin: 0 0 10px; font-size: 0.85rem; color: #444; }
+}

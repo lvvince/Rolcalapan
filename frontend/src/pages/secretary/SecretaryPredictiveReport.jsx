@@ -22,6 +22,8 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("follow"); // follow = high + medium
+  const [picked, setPicked] = useState(() => new Set()); // piniling member ids
+  const [show, setShow] = useState({ stats: true, charts: true, list: true });
 
   useEffect(() => {
     Promise.all([
@@ -43,6 +45,11 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
     filter === "follow" ? m.risk !== "low" : filter === "all" ? true : m.risk === filter
   );
 
+  const shownPicked = shown.filter((m) => picked.has(m.id));
+  const hasPick = shownPicked.length > 0;
+  const allPicked = shown.length > 0 && shownPicked.length === shown.length;
+  const printCount = hasPick ? shownPicked.length : shown.length;
+
   const max = Math.max(1, ...data.trend.map((d) => d.value));
   const riskTotal = Math.max(1, data.counts.high + data.counts.medium + data.counts.low);
 
@@ -56,8 +63,30 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
   const chips = [
     { key: "follow", label: t("Needs follow-up"), count: followCount },
     { key: "high", label: t("High risk only"), count: data.counts.high },
+    { key: "medium", label: t("Medium risk only"), count: data.counts.medium },
+    { key: "low", label: t("Low risk only"), count: data.counts.low },
     { key: "all", label: t("All active members"), count: total },
   ];
+
+  const filterLabel = chips.find((c) => c.key === filter)?.label || "";
+
+  const changeFilter = (key) => {
+    setFilter(key);
+    setPicked(new Set()); // reset ang pinili kapag nagpalit ng filter
+  };
+
+  const toggleOne = (id) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const toggleAll = () => setPicked(allPicked ? new Set() : new Set(shown.map((m) => m.id)));
+
+  const toggleSection = (k) => setShow((s) => ({ ...s, [k]: !s[k] }));
+
+  const hide = (on) => (on ? "" : " pr-hide-print");
 
   return (
     <section className={`pr${embedded ? " pr-embedded" : ""}`}>
@@ -74,20 +103,38 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
         </div>
         {!embedded && (
           <button className="sp-btn primary no-print" type="button" onClick={() => window.print()}>
-            <Printer size={16} aria-hidden="true" /> {t("Print list")}
+            <Printer size={16} aria-hidden="true" />{" "}
+            {hasPick ? `${t("Print selected")} (${printCount})` : `${t("Print list")} (${printCount})`}
           </button>
         )}
       </header>
 
+      {/* Lalabas lang sa papel */}
+      <p className="pr-print-only">
+        {t("Filter")}: {filterLabel}
+        {hasPick ? ` · ${t("Selected")}: ${printCount}` : ""} · {t("Printed")}:{" "}
+        {new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}
+      </p>
+
+      {/* ---------- print options ---------- */}
+      {!embedded && (
+        <div className="pr-options no-print" role="group" aria-label={t("Print options")}>
+          <span className="pr-options-lbl">{t("Include in print")}:</span>
+          <label><input type="checkbox" checked={show.stats} onChange={() => toggleSection("stats")} /> {t("Summary cards")}</label>
+          <label><input type="checkbox" checked={show.charts} onChange={() => toggleSection("charts")} /> {t("Charts")}</label>
+          <label><input type="checkbox" checked={show.list} onChange={() => toggleSection("list")} /> {t("Member list")}</label>
+        </div>
+      )}
+
       {data.weeks < 4 && (
-        <p className="pr-note">
+        <p className="pr-note no-print">
           <Info size={16} aria-hidden="true" />
           <span>{t("Prediction gets more accurate as more services are recorded.")}</span>
         </p>
       )}
 
       {/* ---------- stat cards ---------- */}
-      <div className="pr-stats">
+      <div className={`pr-stats${hide(show.stats)}`}>
         {stats.map(({ Icon, tone, value, label }) => (
           <div className={`pr-stat ${tone}`} key={label}>
             <span className="pr-stat-icon"><Icon size={18} aria-hidden="true" /></span>
@@ -100,7 +147,7 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
       </div>
 
       {/* ---------- charts ---------- */}
-      <div className="pr-charts">
+      <div className={`pr-charts${hide(show.charts)}`}>
         <div className="sp-card pr-card">
           <h4 className="sp-card-title">{t("Attendance per service")}</h4>
           <div className="pr-cols" role="img" aria-label={t("Attendance per service")}>
@@ -140,7 +187,7 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
       </div>
 
       {/* ---------- follow-up list ---------- */}
-      <div className="sp-card pr-card">
+      <div className={`sp-card pr-card${hide(show.list)}`}>
         <div className="pr-list-head">
           <h4 className="sp-card-title">{t("Members to follow up")}</h4>
           <div className="pr-chips no-print" role="group" aria-label={t("Show")}>
@@ -150,7 +197,7 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
                 type="button"
                 className={`pr-chip${filter === c.key ? " on" : ""}`}
                 aria-pressed={filter === c.key}
-                onClick={() => setFilter(c.key)}
+                onClick={() => changeFilter(c.key)}
               >
                 {c.label} <b>{c.count}</b>
               </button>
@@ -169,6 +216,16 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
             <table className="pr-table">
               <thead>
                 <tr>
+                  {!embedded && (
+                    <th className="no-print pr-check">
+                      <input
+                        type="checkbox"
+                        checked={allPicked}
+                        onChange={toggleAll}
+                        aria-label={t("Select all")}
+                      />
+                    </th>
+                  )}
                   <th>{t("Member")}</th>
                   <th>{t("Phone")}</th>
                   <th>{t("Attended")}</th>
@@ -180,8 +237,19 @@ export default function SecretaryPredictiveReport({ embedded = false }) {
               <tbody>
                 {shown.map((m) => {
                   const pct = Math.round(m.prob * 100);
+                  const isPicked = picked.has(m.id);
                   return (
-                    <tr key={m.id}>
+                    <tr key={m.id} className={hasPick && !isPicked ? "pr-hide-print" : ""}>
+                      {!embedded && (
+                        <td className="no-print pr-check">
+                          <input
+                            type="checkbox"
+                            checked={isPicked}
+                            onChange={() => toggleOne(m.id)}
+                            aria-label={`${t("Select")} ${m.full_name}`}
+                          />
+                        </td>
+                      )}
                       <td>
                         <div className="pr-person">
                           <span className="pr-avatar" aria-hidden="true">{initialsOf(m.full_name)}</span>
