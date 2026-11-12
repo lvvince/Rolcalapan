@@ -1,6 +1,6 @@
 // frontend/src/pages/Home.jsx
 // Public home page ng River of Life Calapan.
-// Black & white · sharp edges · editorial/bold type · mobile-first.
+// Black & white theme · mixed sharp/soft edges · editorial type · mobile-first.
 //
 // MGA LARAWAN (ilagay sa frontend/public/). Kapag wala pa, may maayos na placeholder at hindi masisira ang layout:
 //   hero.jpg        - malapad na photo sa likod ng hero (landscape, mas maganda kung 1920x1080 pataas)
@@ -152,23 +152,24 @@ function River({ className = "" }) {
 }
 
 // Larawan na may matalas na frame. Kapag wala pa ang file, logo placeholder ang lalabas.
-function Photo({ src, alt, ratio = "4 / 5", className = "", children }) {
+function Photo({ src, alt, ratio = "4 / 5", className = "", tilt = false, chip, children }) {
   const [ok, setOk] = useState(true);
   return (
-    <figure className={`photo ${className}`} style={{ "--ratio": ratio }}>
+    <figure className={`photo ${className}`} style={{ "--ratio": ratio }} data-tilt={tilt ? "" : undefined}>
       <div className="photo-in">
         <span className="photo-fallback" aria-hidden="true"><img src="/logo.png" alt="" /></span>
         {ok && (
           <img src={src} alt={alt} loading="lazy" decoding="async" data-parallax="0.07" onError={() => setOk(false)} />
         )}
       </div>
+      {chip}
       {children}
     </figure>
   );
 }
 
-function Eyebrow({ n, children }) {
-  return <p className="eyebrow"><b>/ {n}</b>{children}</p>;
+function Eyebrow({ children }) {
+  return <p className="eyebrow"><i aria-hidden="true" />{children}</p>;
 }
 
 // Hinahati ang heading sa mga salita para sa stagger reveal
@@ -321,7 +322,7 @@ function Accordion({ items, idPrefix, className = "", firstOpen = true, renderBo
       {items.map((it, i) => {
         const isOpen = open === i;
         return (
-          <li key={it.q || it.title} className={`acc-item ${isOpen ? "is-open" : ""}`}>
+          <li key={it.q || it.title} className={`acc-item ${isOpen ? "is-open" : ""}`} style={{ "--k": i }}>
             <h3>
               <button type="button" className="acc-q" aria-expanded={isOpen} aria-controls={`${idPrefix}-${i}`} onClick={() => setOpen(isOpen ? -1 : i)}>
                 {renderLead && <span className="acc-no" aria-hidden="true">{renderLead(i)}</span>}
@@ -355,7 +356,7 @@ function GiveSection() {
         <div className="give reveal">
           {!qrBroken && <img className="give-qr" src={GIVE.qrImage} alt="GCash QR code" onError={() => setQrBroken(true)} />}
           <div>
-            <Eyebrow n="08">Give</Eyebrow>
+            <Eyebrow>Give</Eyebrow>
             <h2 className="h2"><Words text="Your offering helps us serve." /></h2>
             {GIVE.gcashName && <p>Account name: <strong>{GIVE.gcashName}</strong></p>}
             {GIVE.gcashNumber && (
@@ -435,6 +436,12 @@ export default function Home() {
   // Spotlight na sumusunod sa cursor (mouse/pen lang, hindi sa touch)
   const spot = (e) => {
     if (e.pointerType === "touch") return;
+    const t = e.target.closest?.("[data-tilt]");
+    if (t) {
+      const b = t.getBoundingClientRect();
+      t.style.setProperty("--ry", `${(((e.clientX - b.left) / b.width) - 0.5) * 7}deg`);
+      t.style.setProperty("--rx", `${(0.5 - ((e.clientY - b.top) / b.height)) * 7}deg`);
+    }
     const el = e.target.closest?.("[data-spot]");
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -442,8 +449,13 @@ export default function Home() {
     el.style.setProperty("--my", `${e.clientY - r.top}px`);
   };
 
+  const untilt = (e) => {
+    const t = e.target.closest?.("[data-tilt]");
+    if (t && !t.contains(e.relatedTarget)) { t.style.setProperty("--rx", "0deg"); t.style.setProperty("--ry", "0deg"); }
+  };
+
   return (
-    <div className="home" id="top" onPointerMove={spot}>
+    <div className="home" id="top" onPointerMove={spot} onPointerOut={untilt}>
       {/* ================= NAVBAR ================= */}
       <header className={`nav ${scrolled ? "is-scrolled" : ""}`}>
         <div className="wrap nav-in">
@@ -512,7 +524,6 @@ export default function Home() {
             )}
           </div>
           <div className="hero-glow" aria-hidden="true" />
-          <River />
           <div className="wrap hero-main">
             <p className="hero-meta">
               <span><Clock size={16} aria-hidden="true" />{services[0].day} · {services[0].time}</span>
@@ -543,14 +554,13 @@ export default function Home() {
                 <b>{daily.reference}</b>
               </p>
             )}
-            <a href="#about" className="cue" aria-label="Scroll to About"><i /></a>
           </div>
         </section>
 
         {/* ================= TICKER ================= */}
         <div className="ticker" aria-hidden="true">
           <ul>
-            {TICKER.map((t, i) => (<li key={t}>{t}{i < TICKER.length - 1 && <i />}</li>))}
+            {TICKER.map((t) => (<li key={t}><i />{t}</li>))}
           </ul>
         </div>
 
@@ -558,7 +568,7 @@ export default function Home() {
         <section id="about" className="sec">
           <div className="wrap split">
             <div className="reveal">
-              <Photo src="/about.jpg" alt="River of Life Calapan worshipping together" ratio="4 / 5" className="photo-tall">
+              <Photo src="/about.jpg" alt="River of Life Calapan worshipping together" ratio="4 / 5" className="photo-tall" tilt>
                 <figcaption className="pastor">
                   <span className="pastor-av">
                     <span aria-hidden="true">{pastorInitials}</span>
@@ -569,7 +579,7 @@ export default function Home() {
               </Photo>
             </div>
             <div className="copy reveal">
-              <Eyebrow n="01">About us</Eyebrow>
+              <Eyebrow>About us</Eyebrow>
               <h2 className="h2"><Words text="A home for everyone looking for one." /></h2>
               <p>
                 River of Life Calapan is a community of believers committed to worshipping God,
@@ -592,7 +602,7 @@ export default function Home() {
           <div className="wrap">
             <div className="sec-head reveal">
               <div>
-                <Eyebrow n="02">Gatherings</Eyebrow>
+                <Eyebrow>Gatherings</Eyebrow>
                 <h2 className="h2"><Words text="Join us this week" /></h2>
               </div>
               <p>Two times to meet with God and with each other. Come as you are.</p>
@@ -600,9 +610,14 @@ export default function Home() {
             <div className="gather">
               {services.map((s, i) => (
                 <article className="g-card reveal" data-spot key={s.id} style={{ "--d": `${i * 100}ms` }}>
-                  <Photo src={s.img} alt={`${s.title} at River of Life Calapan`} ratio="16 / 10" className="photo-card" />
+                  <Photo
+                    src={s.img}
+                    alt={`${s.title} at River of Life Calapan`}
+                    ratio="16 / 10"
+                    className="photo-card"
+                    chip={<span className="chip"><Clock size={14} aria-hidden="true" />{s.day} · {s.time}</span>}
+                  />
                   <div className="g-body">
-                    <span className="tag"><Clock size={14} aria-hidden="true" />{s.day} · {s.time}</span>
                     <h3>{s.title}</h3>
                     <p>{s.desc}</p>
                     <a href="#visit" className="text-cta">Where to find us<ArrowRight size={16} aria-hidden="true" /></a>
@@ -617,17 +632,16 @@ export default function Home() {
         <section id="ministries" className="sec">
           <div className="wrap split">
             <div className="reveal">
-              <Photo src="/ministries.jpg" alt="Members serving together in ministry" ratio="4 / 5" className="photo-tall photo-stick" />
+              <Photo src="/ministries.jpg" alt="Members serving together in ministry" ratio="4 / 5" className="photo-tall photo-stick" tilt chip={<span className="chip"><Users size={14} aria-hidden="true" />{ministries.length} ministries</span>} />
             </div>
             <div className="reveal">
-              <Eyebrow n="03">Ministries</Eyebrow>
+              <Eyebrow>Ministries</Eyebrow>
               <h2 className="h2"><Words text="Find a place to serve and grow" /></h2>
               <p className="sub">Every gift matters here. Pick a ministry to learn more, then join through your account.</p>
               <Accordion
                 items={ministries}
                 idPrefix="min"
                 className="acc-min"
-                renderLead={(i) => `0${i + 1}`}
                 renderBody={(m) => (
                   <>
                     <p>{m.desc}</p>
@@ -643,7 +657,7 @@ export default function Home() {
         <section id="community" className="sec sec-alt">
           <div className="wrap split split-rev">
             <div className="copy reveal">
-              <Eyebrow n="04">Community</Eyebrow>
+              <Eyebrow>Community</Eyebrow>
               <h2 className="h2"><Words text="Carry each other's prayers. Celebrate every answer." /></h2>
               <p>
                 Your account is your door into our digital community space: submit a prayer request,
@@ -657,7 +671,7 @@ export default function Home() {
               <Link to="/register" className="rl-btn rl-btn-primary">Create your account<ArrowRight size={18} aria-hidden="true" /></Link>
             </div>
             <div className="reveal">
-              <Photo src="/community.jpg" alt="Church family sharing a moment of fellowship" ratio="1 / 1" className="photo-sq" />
+              <Photo src="/community.jpg" alt="Church family sharing a moment of fellowship" ratio="1 / 1" className="photo-sq" tilt chip={<span className="chip"><Heart size={14} aria-hidden="true" />Pray together</span>} />
             </div>
           </div>
         </section>
@@ -667,7 +681,7 @@ export default function Home() {
           <div className="wrap">
             <div className="sec-head reveal">
               <div>
-                <Eyebrow n="05">What you can do</Eyebrow>
+                <Eyebrow>What you can do</Eyebrow>
                 <h2 className="h2"><Words text="Everything you need to stay connected" /></h2>
               </div>
               <p>One account opens your church family's space, on any device.</p>
@@ -677,7 +691,6 @@ export default function Home() {
                 const Icon = f.icon;
                 return (
                   <article className="cell reveal" key={f.title} style={{ "--d": `${i * 80}ms` }}>
-                    <span className="cell-n" aria-hidden="true">0{i + 1}</span>
                     <span className="cell-icon"><Icon size={24} strokeWidth={1.6} aria-hidden="true" /></span>
                     <h3>{f.title}</h3>
                     <p>{f.desc}</p>
@@ -694,7 +707,7 @@ export default function Home() {
           <div className="wrap">
             <div className="sec-head reveal">
               <div>
-                <Eyebrow n="06">Words we gather around</Eyebrow>
+                <Eyebrow>Words we gather around</Eyebrow>
                 <h2 className="h2"><Words text="What we hold on to, together" /></h2>
               </div>
             </div>
@@ -749,7 +762,7 @@ export default function Home() {
           <div className="wrap">
             <div className="sec-head reveal">
               <div>
-                <Eyebrow n="07">Visit us</Eyebrow>
+                <Eyebrow>Visit us</Eyebrow>
                 <h2 className="h2"><Words text="First time? You're welcome here" /></h2>
               </div>
             </div>
