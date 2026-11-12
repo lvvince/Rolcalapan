@@ -1,8 +1,28 @@
-import { useCallback, useEffect, useState } from "react";
+// frontend/src/pages/Home.jsx
+// Public home page ng River of Life Calapan.
+// Black & white · sharp edges · editorial/bold type · mobile-first.
+//
+// MGA LARAWAN (ilagay sa frontend/public/). Kapag wala pa, may maayos na placeholder at hindi masisira ang layout:
+//   hero.jpg        - malapad na photo sa likod ng hero (landscape, mas maganda kung 1920x1080 pataas)
+//   about.jpg       - About section (portrait / 4:5)
+//   pastor.jpg      - maliit na larawan ng pastor (square)
+//   sunday.jpg      - Sunday Service card (landscape)
+//   fire.jpg        - Fire on the Altar card (landscape)
+//   ministries.jpg  - Ministries section (portrait / 4:5)
+//   community.jpg   - Community section (square)
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  Menu, X, ArrowRight, ArrowUpRight, MapPin, Clock, Phone, Mail,
+  Heart, CalendarDays, Users, MessageCircle, BookOpen,
+} from "lucide-react";
 import ThemeToggle from "../components/ThemeToggle";
+import api from "../api";
 import "./home.css";
 
+/* ====================================================================
+   NILALAMAN (dito mo palitan ang mga teksto, oras, at link)
+==================================================================== */
 const FACEBOOK_URL = "https://www.facebook.com/riveroflifeintcalapan";
 const INSTAGRAM_URL = "https://www.instagram.com/riveroflifecalapan";
 
@@ -11,62 +31,45 @@ const CONTACT = {
   address: "Lalud Highway, Calapan City, 5200 Oriental Mindoro",
   phone: "0963 590 3836",
   email: "riveroflifecalapan.ph@gmail.com",
-  // Ito ang hinahanap sa Google Maps (pangalan ng listing + address) para lumabas ang eksaktong pin.
   mapQuery: "Janssen Rabulan, Lalud Highway, Calapan City, 5200 Oriental Mindoro",
-  // MAS TUMPAK: Google Maps > ilagay ang listing > Share > "Embed a map" > kopyahin ang src="..." (URL lang) dito
+  // MAS TUMPAK: Google Maps > Share > "Embed a map" > kopyahin ang src="..." (URL lang) dito
   mapEmbedUrl: "",
-  // Google Maps > Share > "Send a link" > Copy link, at ilagay dito
+  // Google Maps > Share > "Send a link" > Copy link
   mapLinkUrl: "",
 };
 
 // TODO: palitan ng totoong araw at oras
 const services = [
-  { title: "Sunday Service", day: "Sunday", time: "9:00 AM – 11:00 AM", desc: "Join us in worship, the Word, and fellowship." },
-  { title: "Fire on the Altar", day: "Friday", time: "6:00 PM – 8:00 PM", desc: "A night of prayer and worship as we seek God together." },
+  { id: "sunday", title: "Sunday Service", day: "Sunday", time: "9:00 AM – 11:00 AM", desc: "Worship, the Word, and fellowship. Come as you are and stay for coffee and conversation.", img: "/sunday.jpg" },
+  { id: "fire", title: "Fire on the Altar", day: "Friday", time: "6:00 PM – 8:00 PM", desc: "A night of prayer and worship as we seek God together and lift one another up.", img: "/fire.jpg" },
 ];
 
-// TODO: ilagay ang litrato sa /public/pastor.jpg
 const PASTOR = { name: "Pastor Alvin Jester Culla", role: "Lead Pastor", photo: "/pastor.jpg" };
 
 // TODO: palitan ng aktwal na ministries ng simbahan
 const ministries = [
-  { icon: <MusicIcon />, title: "Worship", desc: "Lead the church in song through vocals, instruments, and the praise team." },
-  { icon: <UsersIcon />, title: "Youth", desc: "A space for young people to grow in faith, friendship, and purpose." },
-  { icon: <SmileIcon />, title: "Kids", desc: "Fun, safe, and Bible-based lessons for our youngest members." },
-  { icon: <VideoIcon />, title: "Media", desc: "Sound, lights, livestream, and graphics that help the church connect." },
-  { icon: <HeartIcon />, title: "Prayer", desc: "Stand in the gap and pray for the needs of our church and city." },
-  { icon: <GlobeIcon />, title: "Outreach", desc: "Serve the community of Calapan through feeding programs and visits." },
+  { title: "Worship", desc: "Lead the church in song through vocals, instruments, and the praise team." },
+  { title: "Youth", desc: "A space for young people to grow in faith, friendship, and purpose." },
+  { title: "Kids", desc: "Fun, safe, and Bible-based lessons for our youngest members." },
+  { title: "Media", desc: "Sound, lights, livestream, and graphics that help the church connect." },
+  { title: "Prayer", desc: "Stand in the gap and pray for the needs of our church and city." },
+  { title: "Outreach", desc: "Serve the community of Calapan through feeding programs and visits." },
 ];
 
-// action: "chat" (bubuksan ang chatbot) | to: route (react-router) | href: section/anchor
-// TODO: palitan ang "/register" ng actual route (e.g. "/events") kapag meron na
+// to: route · href: anchor · action: "chat" (bubuksan ang chatbot)
 const features = [
-  { icon: <BookIcon />, title: "Ministries", desc: "Find a ministry where you can serve and grow.", href: "#ministries" },
-  { icon: <CalendarIcon />, title: "Events", desc: "Stay updated with church activities and announcements.", to: "/register" },
-  { icon: <HeartIcon />, title: "Prayer Requests", desc: "Share your prayer needs with our church family.", to: "/register" },
-  { icon: <ChatIcon />, title: "AI Assistant", desc: "Ask questions about the church anytime.", action: "chat" },
+  { icon: Users, title: "Ministries", desc: "Find a ministry where you can serve, belong, and grow alongside others.", cta: "Explore ministries", href: "#ministries" },
+  { icon: CalendarDays, title: "Events", desc: "Stay updated with church activities and announcements, and RSVP in a tap.", cta: "Create an account", to: "/register" },
+  { icon: Heart, title: "Prayer requests", desc: "Share your prayer needs with your church family and pray for one another.", cta: "Share a prayer", to: "/register" },
+  { icon: MessageCircle, title: "AI assistant", desc: "Questions about service times, ministries, or visiting? Ask anytime.", cta: "Ask now", action: "chat" },
 ];
 
-// TODO: ilagay ang mga litrato sa /public/gallery/ (1.jpg, 2.jpg, ...). Ang hindi makita ay awtomatikong nakatago.
-const GALLERY = Array.from({ length: 8 }, (_, i) => ({
-  src: `/gallery/${i + 1}.jpg`,
-  alt: `River of Life Calapan photo ${i + 1}`,
-}));
-const GALLERY_COMING_SOON = true; // gawing false kapag may litrato na
-
-// TODO: ilagay ang totoong detalye. Kapag walang laman, hindi lalabas ang Give section.
-const GIVE = {
-  gcashName: "",
-  gcashNumber: "",
-  qrImage: "/gcash-qr.png",
-};
-
-// TODO: PLACEHOLDER lang ito. Palitan ng totoong testimonies (with permission) bago i-deploy.
-const testimonies = [
-  { quote: "I came in not knowing anyone, and now this church feels like family.", name: "Church member" },
-  { quote: "Serving in ministry helped me grow in faith and in confidence.", name: "Ministry volunteer" },
-  { quote: "Our whole family looks forward to Sunday worship every week.", name: "Church family" },
+// Mga talata mula sa Biblia (KJV, public domain)
+const verses = [
+  { tone: "dark", label: "Share your prayers", text: "Bear ye one another's burdens, and so fulfil the law of Christ.", ref: "Galatians 6:2" },
+  { tone: "light", label: "Celebrate His goodness", text: "O magnify the LORD with me, and let us exalt his name together.", ref: "Psalm 34:3" },
 ];
+const FALLBACK_VERSE = { reference: "Ecclesiastes 3:11", text_en: "He hath made every thing beautiful in his time." };
 
 const faqs = [
   { q: "What should I wear?", a: "Come as you are. Most people wear casual or smart-casual clothes." },
@@ -76,51 +79,147 @@ const faqs = [
   { q: "I have other questions.", a: null }, // may link sa chatbot
 ];
 
-/* ---------- Icons (inline SVG, sumusunod sa kulay ng text via currentColor) ---------- */
-function FacebookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-    </svg>
-  );
-}
-function InstagramIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-    </svg>
-  );
-}
-function Svg({ children, size = 24 }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      {children}
-    </svg>
-  );
-}
-function BookIcon() { return <Svg><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></Svg>; }
-function HeartIcon() { return <Svg><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></Svg>; }
-function ChatIcon() { return <Svg><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Svg>; }
-function CalendarIcon() { return <Svg><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></Svg>; }
-function PinIcon({ size = 18 }) { return <Svg size={size}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></Svg>; }
-function ClockIcon({ size = 18 }) { return <Svg size={size}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></Svg>; }
-function PhoneIcon() { return <Svg size={18}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></Svg>; }
-function MailIcon() { return <Svg size={18}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22 6 12 13 2 6" /></Svg>; }
-function MusicIcon() { return <Svg><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></Svg>; }
-function UsersIcon() { return <Svg><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></Svg>; }
-function SmileIcon() { return <Svg><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></Svg>; }
-function VideoIcon() { return <Svg><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></Svg>; }
-function GlobeIcon() { return <Svg><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></Svg>; }
-function ChevronDown() { return <Svg size={20}><polyline points="6 9 12 15 18 9" /></Svg>; }
-function ChevronLeft() { return <Svg size={22}><polyline points="15 18 9 12 15 6" /></Svg>; }
-function ChevronRight() { return <Svg size={22}><polyline points="9 18 15 12 9 6" /></Svg>; }
-function CloseIcon() { return <Svg size={22}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Svg>; }
+// TODO: ilagay ang totoong detalye. Kapag walang laman, hindi lalabas ang Give section.
+const GIVE = { gcashName: "", gcashNumber: "", qrImage: "/gcash-qr.png" };
 
-/* ---------- Hooks ---------- */
+const NAV = [
+  ["about", "About"],
+  ["gatherings", "Gatherings"],
+  ["ministries", "Ministries"],
+  ["faq", "FAQ"],
+  ["visit", "Visit"],
+];
+const SPY_IDS = NAV.map(([id]) => id);
+const TICKER = ["Worship", "Prayer", "Community", "The Word", "Service", "Growth", "Fellowship"];
+const HERO_WORDS = ["Let", "your", "life", "flow", "with", "God's", "love."];
+
+const openChatbot = () => window.dispatchEvent(new CustomEvent("open-chatbot"));
+const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/* ====================================================================
+   Maliliit na piyesa
+==================================================================== */
+// Opisyal na hitsura at kulay ng Facebook at Instagram
+function FacebookIcon({ size = 36 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <circle cx="12" cy="12" r="12" fill="#1877F2" />
+      <path fill="#fff" d="M16.671 15.469 17.203 12h-3.328V9.75c0-.949.465-1.875 1.956-1.875h1.513V4.922s-1.373-.234-2.686-.234c-2.741 0-4.533 1.662-4.533 4.669V12H7.078v3.469h3.047V24h3.75v-8.531h2.796Z" />
+    </svg>
+  );
+}
+function InstagramIcon({ size = 36 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <defs>
+        <linearGradient id="ig-grad" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stopColor="#FEDA77" />
+          <stop offset=".3" stopColor="#F58529" />
+          <stop offset=".55" stopColor="#DD2A7B" />
+          <stop offset=".8" stopColor="#8134AF" />
+          <stop offset="1" stopColor="#515BD4" />
+        </linearGradient>
+      </defs>
+      <rect width="24" height="24" rx="6" fill="url(#ig-grad)" />
+      <rect x="5.2" y="5.2" width="13.6" height="13.6" rx="4" fill="none" stroke="#fff" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="3.2" fill="none" stroke="#fff" strokeWidth="1.6" />
+      <circle cx="16.1" cy="7.9" r="1" fill="#fff" />
+    </svg>
+  );
+}
+
+// Payak na alon (sine) na paulit-ulit; 1200 ang lapad, 600 ang period kaya seamless ang loop.
+const wavePath = (base, amp, phase) => {
+  let d = "";
+  for (let x = 0; x <= 1200; x += 20) {
+    const y = base + amp * Math.sin((x / 600) * Math.PI * 2 + phase);
+    d += `${x === 0 ? "M" : "L"}${x} ${y.toFixed(1)} `;
+  }
+  return d;
+};
+const WAVES = [wavePath(40, 14, 0), wavePath(70, 12, 1.4), wavePath(100, 10, 2.8)];
+
+function River({ className = "" }) {
+  return (
+    <div className={`river ${className}`} aria-hidden="true">
+      <svg viewBox="0 0 1200 140" preserveAspectRatio="none">
+        {WAVES.map((d, i) => (
+          <path key={i} d={d} />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// Larawan na may matalas na frame. Kapag wala pa ang file, logo placeholder ang lalabas.
+function Photo({ src, alt, ratio = "4 / 5", className = "", children }) {
+  const [ok, setOk] = useState(true);
+  return (
+    <figure className={`photo ${className}`} style={{ "--ratio": ratio }}>
+      <div className="photo-in">
+        <span className="photo-fallback" aria-hidden="true"><img src="/logo.png" alt="" /></span>
+        {ok && (
+          <img src={src} alt={alt} loading="lazy" decoding="async" data-parallax="0.07" onError={() => setOk(false)} />
+        )}
+      </div>
+      {children}
+    </figure>
+  );
+}
+
+function Eyebrow({ n, children }) {
+  return <p className="eyebrow"><b>/ {n}</b>{children}</p>;
+}
+
+// Hinahati ang heading sa mga salita para sa stagger reveal
+function Words({ text }) {
+  return text.split(" ").map((w, i, a) => (
+    <Fragment key={i}>
+      <span className="wd"><span style={{ "--i": i }}>{w}</span></span>
+      {i < a.length - 1 ? " " : null}
+    </Fragment>
+  ));
+}
+
+// Numero na umaakyat kapag nakita sa screen. Totoong bilang mula sa data, hindi gawa-gawa.
+function Stat({ to, label }) {
+  const ref = useRef(null);
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (prefersReducedMotion() || !("IntersectionObserver" in window)) { setV(to); return; }
+    let raf;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      const t0 = performance.now();
+      const tick = (t) => {
+        const k = Math.min(1, (t - t0) / 1400);
+        setV(Math.round(to * (1 - Math.pow(1 - k, 3))));
+        if (k < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }, { threshold: 0.6 });
+    io.observe(el);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); };
+  }, [to]);
+  return <div className="stat" ref={ref}><b>{v}</b><span>{label}</span></div>;
+}
+
+// Gumagana ang mga CTA: router link / anchor / chatbot
+function CtaLink({ item, className, children }) {
+  const inner = children ?? <>{item.cta}<ArrowUpRight size={18} aria-hidden="true" /></>;
+  if (item.action === "chat") return <button type="button" className={className} onClick={openChatbot}>{inner}</button>;
+  if (item.to) return <Link to={item.to} className={className}>{inner}</Link>;
+  return <a href={item.href} className={className}>{inner}</a>;
+}
+
+/* ====================================================================
+   Hooks
+==================================================================== */
 // Fade-in kapag lumabas sa screen ang element na may class na "reveal"
-function useReveal(deps = []) {
+function useReveal() {
   useEffect(() => {
     const els = document.querySelectorAll(".home .reveal:not(.in)");
     if (!("IntersectionObserver" in window)) {
@@ -135,121 +234,107 @@ function useReveal(deps = []) {
             io.unobserve(e.target);
           }
         }),
-      { threshold: 0.15 }
+      { threshold: 0.1, rootMargin: "0px 0px -5% 0px" }
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, []);
 }
 
-// Scrollspy: alin ang section na nasa screen para ma-highlight sa navbar.
-// Kapag nasa pinakababa na ng page, ang huling id (contact) ang active.
-function useActiveSection(ids) {
-  const [active, setActive] = useState("");
+// ISANG scroll listener (rAF-throttled) para sa: nav line, scrollspy, at parallax
+// ng mga elementong nakikita lang sa screen. Transform lang ang ginagalaw (mura sa GPU).
+function useScrollEffects(ids, setActive, setScrolled) {
   useEffect(() => {
-    const onScroll = () => {
-      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      if (atBottom) {
-        setActive(ids[ids.length - 1]);
-        return;
-      }
-      const line = window.innerHeight * 0.35;
+    const parallaxOn = !prefersReducedMotion() && !navigator.connection?.saveData;
+    const visible = new Set();
+    const root = document.querySelector(".home");
+    let io;
+    if (parallaxOn && "IntersectionObserver" in window) {
+      io = new IntersectionObserver(
+        (entries) => entries.forEach((e) => (e.isIntersecting ? visible.add(e.target) : visible.delete(e.target))),
+        { rootMargin: "120px 0px" }
+      );
+      document.querySelectorAll(".home [data-parallax]").forEach((el) => io.observe(el));
+    }
+
+    let ticking = false;
+    let lastActive = "";
+    let lastScrolled = false;
+
+    const run = () => {
+      ticking = false;
+      const vh = window.innerHeight;
+
+      const max = document.documentElement.scrollHeight - vh;
+      root?.style.setProperty("--sp", max > 0 ? Math.min(1, window.scrollY / max).toFixed(4) : "0");
+
+      const sc = window.scrollY > 8;
+      if (sc !== lastScrolled) { lastScrolled = sc; setScrolled(sc); }
+
+      const atBottom = vh + window.scrollY >= document.documentElement.scrollHeight - 4;
       let current = "";
-      ids.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top <= line) current = id;
-      });
-      setActive(current);
+      if (atBottom) current = ids[ids.length - 1];
+      else {
+        const line = vh * 0.35;
+        ids.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el && el.getBoundingClientRect().top <= line) current = id;
+        });
+      }
+      if (current !== lastActive) { lastActive = current; setActive(current); }
+
+      if (visible.size) {
+        const factor = window.innerWidth < 720 ? 0.6 : 1;
+        visible.forEach((el) => {
+          const box = el.parentElement.getBoundingClientRect();
+          const speed = parseFloat(el.dataset.parallax) * factor;
+          const range = el.dataset.range ? parseFloat(el.dataset.range) : box.height * 0.07;
+          const raw = (box.top + box.height / 2 - vh / 2) * -speed;
+          const y = Math.max(-range, Math.min(range, raw));
+          el.style.setProperty("--py", `${y.toFixed(1)}px`);
+        });
+      }
     };
-    onScroll();
+    const onScroll = () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(run); }
+    };
+    run();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      io?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return active;
 }
 
-const openChatbot = () => window.dispatchEvent(new CustomEvent("open-chatbot"));
-
-/* ---------- Mga section ---------- */
-function GallerySection() {
-  const [broken, setBroken] = useState({});
-  const [open, setOpen] = useState(-1);
-  const visible = GALLERY.map((g, i) => ({ ...g, i })).filter((g) => !broken[g.i]);
-  const pos = visible.findIndex((g) => g.i === open);
-
-  const close = useCallback(() => setOpen(-1), []);
-  const step = useCallback(
-    (dir) => {
-      if (visible.length === 0) return;
-      const next = (pos + dir + visible.length) % visible.length;
-      setOpen(visible[next].i);
-    },
-    [pos, visible]
-  );
-
-  useEffect(() => {
-    if (open < 0) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") close();
-      if (e.key === "ArrowLeft") step(-1);
-      if (e.key === "ArrowRight") step(1);
-    };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [open, close, step]);
-
-  if (GALLERY_COMING_SOON) {
-    return (
-      <section id="gallery" className="home-section">
-        <div className="home-container">
-          <h2 className="center">Gallery</h2>
-          <p className="section-lead">Moments from our worship, events, and fellowship.</p>
-          <p className="section-note">Coming soon.</p>
-        </div>
-      </section>
-    );
-  }
-
+/* ====================================================================
+   Mga section
+==================================================================== */
+// Accordion na gamit ng Ministries at FAQ (isa lang ang bukas, may smooth na height animation)
+function Accordion({ items, idPrefix, className = "", firstOpen = true, renderBody, renderLead }) {
+  const [open, setOpen] = useState(firstOpen ? 0 : -1);
   return (
-    <section id="gallery" className="home-section">
-      <div className="home-container">
-        <h2 className="center">Gallery</h2>
-        <p className="section-lead">Moments from our worship, events, and fellowship.</p>
-        <div className="gallery-grid">
-          {GALLERY.map((g, i) =>
-            broken[i] ? null : (
-              <button type="button" className="gallery-tile reveal" key={g.src} onClick={() => setOpen(i)} aria-label={`Open photo ${i + 1}`}>
-                <img src={g.src} alt={g.alt} loading="lazy" onError={() => setBroken((b) => ({ ...b, [i]: true }))} />
+    <ul className={`acc ${className}`}>
+      {items.map((it, i) => {
+        const isOpen = open === i;
+        return (
+          <li key={it.q || it.title} className={`acc-item ${isOpen ? "is-open" : ""}`}>
+            <h3>
+              <button type="button" className="acc-q" aria-expanded={isOpen} aria-controls={`${idPrefix}-${i}`} onClick={() => setOpen(isOpen ? -1 : i)}>
+                {renderLead && <span className="acc-no" aria-hidden="true">{renderLead(i)}</span>}
+                <span className="acc-t">{it.q || it.title}</span>
               </button>
-            )
-          )}
-        </div>
-        {visible.length === 0 && <p className="section-note">Add photos to <code>public/gallery/1.jpg</code>, <code>2.jpg</code>, and so on.</p>}
-      </div>
-
-      {open >= 0 && visible[pos] && (
-        <div className="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={close}>
-          <img src={visible[pos].src} alt={visible[pos].alt} onClick={(e) => e.stopPropagation()} />
-          <button type="button" className="lightbox-btn lightbox-close" onClick={close} aria-label="Close"><CloseIcon /></button>
-          {visible.length > 1 && (
-            <>
-              <button type="button" className="lightbox-btn lightbox-prev" onClick={(e) => { e.stopPropagation(); step(-1); }} aria-label="Previous photo"><ChevronLeft /></button>
-              <button type="button" className="lightbox-btn lightbox-next" onClick={(e) => { e.stopPropagation(); step(1); }} aria-label="Next photo"><ChevronRight /></button>
-            </>
-          )}
-        </div>
-      )}
-    </section>
+            </h3>
+            <div className="acc-panel" id={`${idPrefix}-${i}`} role="region" aria-label={it.q || it.title}>
+              <div>{renderBody(it, i)}</div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -257,7 +342,6 @@ function GiveSection() {
   const [copied, setCopied] = useState(false);
   const [qrBroken, setQrBroken] = useState(false);
   if (!GIVE.gcashNumber && !GIVE.gcashName) return null;
-
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(GIVE.gcashNumber.replace(/\s/g, ""));
@@ -265,21 +349,19 @@ function GiveSection() {
       setTimeout(() => setCopied(false), 2000);
     } catch { /* ignore */ }
   };
-
   return (
-    <section id="give" className="home-section">
-      <div className="home-container">
-        <h2 className="center">Give</h2>
-        <p className="section-lead">Your offering helps us serve our church and community.</p>
-        <div className="give-card reveal">
+    <section id="give" className="sec">
+      <div className="wrap">
+        <div className="give reveal">
           {!qrBroken && <img className="give-qr" src={GIVE.qrImage} alt="GCash QR code" onError={() => setQrBroken(true)} />}
-          <div className="give-details" style={qrBroken ? { gridColumn: "1 / -1" } : undefined}>
-            <h3>Give through GCash</h3>
+          <div>
+            <Eyebrow n="08">Give</Eyebrow>
+            <h2 className="h2"><Words text="Your offering helps us serve." /></h2>
             {GIVE.gcashName && <p>Account name: <strong>{GIVE.gcashName}</strong></p>}
             {GIVE.gcashNumber && (
               <div className="give-number">
                 {GIVE.gcashNumber}
-                <button type="button" className="btn btn-outline" onClick={copy}>{copied ? "Copied" : "Copy number"}</button>
+                <button type="button" className="rl-btn rl-btn-ghost" onClick={copy}>{copied ? "Copied" : "Copy number"}</button>
               </div>
             )}
           </div>
@@ -289,325 +371,481 @@ function GiveSection() {
   );
 }
 
-/* ---------- Page ---------- */
+/* ====================================================================
+   Page
+==================================================================== */
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [active, setActive] = useState("");
+  const [scrolled, setScrolled] = useState(false);
+  const [daily, setDaily] = useState(null);
   const [heroBroken, setHeroBroken] = useState(false);
   const [pastorBroken, setPastorBroken] = useState(false);
-  const closeMenu = () => setMenuOpen(false);
+
+  const burgerRef = useRef(null);
+  const closeRef = useRef(null);
+  const drawerRef = useRef(null);
+
   useReveal();
-  const active = useActiveSection(["about", "services", "ministries", "visit", "contact"]);
+  useScrollEffects(SPY_IDS, setActive, setScrolled);
+
+  // Verse of the day (public endpoint). Kapag offline/walang data, may fallback.
+  useEffect(() => {
+    let cancelled = false;
+    api.get("/verse/daily", { params: { portal: "home" } })
+      .then((r) => { if (!cancelled) setDaily(r.data?.success ? r.data.data : FALLBACK_VERSE); })
+      .catch(() => { if (!cancelled) setDaily(FALLBACK_VERSE); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Side drawer: Esc para magsara, focus trap, lock ang scroll ng page
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") { closeMenu(); burgerRef.current?.focus(); return; }
+      if (e.key !== "Tab" || !drawerRef.current) return;
+      const f = drawerRef.current.querySelectorAll("a[href], button:not([disabled])");
+      if (!f.length) return;
+      const first = f[0];
+      const last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    const onResize = () => { if (window.innerWidth >= 960) closeMenu(); };
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [menuOpen, closeMenu]);
 
   const mapQuery = encodeURIComponent(CONTACT.mapQuery || CONTACT.address);
-  // Kapag may inilagay na exact embed/link, iyon ang gagamitin; kung wala, ang pangalan + address ng listing ang gamit
   const mapSrc = CONTACT.mapEmbedUrl || `https://www.google.com/maps?q=${mapQuery}&output=embed`;
   const mapLink = CONTACT.mapLinkUrl || `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
+  const tel = `tel:${CONTACT.phone.replace(/\s/g, "")}`;
+  const pastorInitials = PASTOR.name.split(" ").filter((w) => !/^pastor$/i.test(w)).map((w) => w[0]).slice(0, 2).join("");
+  const dailyText = daily?.text_en;
 
-  const navLink = (id, label) => (
-    <a href={`#${id}`} onClick={closeMenu} className={active === id ? "active" : undefined} aria-current={active === id ? "true" : undefined}>
-      {label}
-    </a>
-  );
+  // Spotlight na sumusunod sa cursor (mouse/pen lang, hindi sa touch)
+  const spot = (e) => {
+    if (e.pointerType === "touch") return;
+    const el = e.target.closest?.("[data-spot]");
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    el.style.setProperty("--my", `${e.clientY - r.top}px`);
+  };
 
   return (
-    <div className="home">
-      {/* NAVBAR */}
-      <header className="home-nav">
-        <div className="home-container home-nav-inner">
-          <a href="#top" className="home-logo" onClick={closeMenu}>
-            <img src="/logo.png" alt="River of Life Calapan logo" />
-            <span className="home-logo-text">
-              River of Life <span>Calapan</span>
-            </span>
+    <div className="home" id="top" onPointerMove={spot}>
+      {/* ================= NAVBAR ================= */}
+      <header className={`nav ${scrolled ? "is-scrolled" : ""}`}>
+        <div className="wrap nav-in">
+          <a href="#top" className="rl-brand" aria-label="River of Life Calapan, back to top">
+            <img src="/logo.png" alt="" />
+            <span>River of Life <em>Calapan</em></span>
           </a>
 
-          <nav id="home-menu" className={`home-links ${menuOpen ? "open" : ""}`} aria-label="Main">
-            {navLink("about", "About")}
-            {navLink("services", "Services")}
-            {navLink("ministries", "Ministries")}
-            {navLink("visit", "Visit")}
-            {navLink("contact", "Contact")}
-            {/* Lalabas lang sa mobile menu */}
-            <Link to="/login" className="home-links-login" onClick={closeMenu}>Login</Link>
+          <nav className="nav-links" aria-label="Main">
+            {NAV.map(([id, label]) => (
+              <a key={id} href={`#${id}`} className={active === id ? "is-active" : undefined} aria-current={active === id ? "true" : undefined}>{label}</a>
+            ))}
           </nav>
 
-          <div className="home-actions">
+          <div className="nav-actions">
             <ThemeToggle />
-            <Link to="/login" className="btn btn-outline home-login-btn">Login</Link>
-            <Link to="/register" className="btn btn-primary">Register</Link>
+            <Link to="/login" className="rl-btn rl-btn-ghost nav-login">Login</Link>
+            <Link to="/register" className="rl-btn rl-btn-primary nav-register">Register</Link>
             <button
+              ref={burgerRef}
               type="button"
-              className="home-burger"
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              className="burger"
+              aria-label="Open menu"
               aria-expanded={menuOpen}
-              aria-controls="home-menu"
-              onClick={() => setMenuOpen((v) => !v)}
+              aria-controls="drawer"
+              onClick={() => setMenuOpen(true)}
             >
-              <span />
-              <span />
-              <span />
+              <Menu size={22} strokeWidth={1.75} aria-hidden="true" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* HERO (optional photo: /public/hero.jpg) */}
-      <section id="top" className="home-hero">
-        {!heroBroken && (
-          <div className="home-hero-bg" aria-hidden="true">
-            <img src="/hero.jpg" alt="" onError={() => setHeroBroken(true)} />
-          </div>
-        )}
-        <div className="home-container">
-          <img src="/logo.png" alt="" className="home-hero-logo" />
-          <p className="home-eyebrow">Welcome to</p>
-          <h1>River of Life Calapan</h1>
-          <p className="home-sub">A church family where everyone is welcome. Let your life flow with God's love.</p>
-          <div className="home-hero-btns">
-            <Link to="/register" className="btn btn-primary btn-lg">Join Us</Link>
-            <a href="#services" className="btn btn-light btn-lg">Service Times</a>
-          </div>
+      {/* Mobile side drawer */}
+      <div className={`scrim ${menuOpen ? "is-open" : ""}`} onClick={closeMenu} aria-hidden="true" />
+      <aside id="drawer" ref={drawerRef} className={`drawer ${menuOpen ? "is-open" : ""}`} aria-label="Menu" aria-hidden={!menuOpen} inert={!menuOpen}>
+        <div className="drawer-top">
+          <span className="rl-brand">
+            <img src="/logo.png" alt="" />
+            <span>River of Life <em>Calapan</em></span>
+          </span>
+          <button ref={closeRef} type="button" className="burger" aria-label="Close menu" onClick={() => { closeMenu(); burgerRef.current?.focus(); }}>
+            <X size={22} strokeWidth={1.75} aria-hidden="true" />
+          </button>
         </div>
-      </section>
-
-      {/* VERSE */}
-      <section className="home-verse">
-        <div className="home-container">
-          <figure className="verse-card">
-            <blockquote className="verse-text">
-              "He has made everything beautiful in its time.
-              He has also set eternity in the human heart;
-              yet no one can fathom what God has done from beginning to end." (NIV)
-            </blockquote>
-            <figcaption className="verse-ref">Ecclesiastes 3:11</figcaption>
-          </figure>
+        <nav className="drawer-links" aria-label="Mobile">
+          {NAV.map(([id, label], i) => (
+            <a key={id} href={`#${id}`} onClick={closeMenu} style={{ "--i": i }} className={active === id ? "is-active" : undefined}>
+              <span>{label}</span><ArrowRight size={20} aria-hidden="true" />
+            </a>
+          ))}
+        </nav>
+        <div className="drawer-cta">
+          <Link to="/register" className="rl-btn rl-btn-primary rl-btn-block" onClick={closeMenu}>Register</Link>
+          <Link to="/login" className="rl-btn rl-btn-ghost rl-btn-block" onClick={closeMenu}>Login</Link>
+          <p>{CONTACT.address}</p>
         </div>
-      </section>
+      </aside>
 
-      {/* ABOUT + PASTOR */}
-      <section id="about" className="home-section">
-        <div className="home-container about-grid reveal">
-          <div className="about-photo">
-            <div className="about-photo-fallback" aria-hidden="true">{PASTOR.name.split(" ").filter((w) => !/^pastor$/i.test(w)).map((w) => w[0]).slice(0, 2).join("")}</div>
-            {!pastorBroken && <img src={PASTOR.photo} alt={PASTOR.name} onError={() => setPastorBroken(true)} />}
+      <main>
+        {/* ================= HERO ================= */}
+        <section className="hero" data-spot>
+          <div className="hero-bg" aria-hidden="true">
+            {!heroBroken && (
+              <img src="/hero.jpg" alt="" fetchPriority="high" decoding="async" data-parallax="0.14" data-range="80" onError={() => setHeroBroken(true)} />
+            )}
           </div>
-          <div className="about-text">
-            <h2>About Us</h2>
-            <p>
-              River of Life Calapan is a community of believers committed to worshipping God,
-              growing in His Word, and serving one another. Whether you are new to faith or have
-              walked with Christ for years, you have a home here.
+          <div className="hero-glow" aria-hidden="true" />
+          <River />
+          <div className="wrap hero-main">
+            <p className="hero-meta">
+              <span><Clock size={16} aria-hidden="true" />{services[0].day} · {services[0].time}</span>
+              <span><MapPin size={16} aria-hidden="true" />Calapan City, Oriental Mindoro</span>
             </p>
-            <p className="about-name">{PASTOR.name}</p>
-            <p className="about-role">{PASTOR.role}</p>
+            <h1 aria-label="Let your life flow with God's love.">
+              {HERO_WORDS.map((w, i) => (
+                <Fragment key={w}>
+                  <span className="w" aria-hidden="true">
+                    <span className={w === "flow" ? "outline" : undefined} style={{ "--i": i }}>{w}</span>
+                  </span>{" "}
+                </Fragment>
+              ))}
+            </h1>
+            <p className="lead">
+              A church family where everyone is welcome. A space to share prayers,
+              encourage one another, and celebrate God's goodness together.
+            </p>
+            <div className="hero-btns">
+              <Link to="/register" className="rl-btn rl-btn-light rl-btn-lg">Join the community<ArrowRight size={18} aria-hidden="true" /></Link>
+              <a href="#gatherings" className="rl-btn rl-btn-outline-light rl-btn-lg">See gathering times</a>
+            </div>
           </div>
-        </div>
-      </section>
+          <div className="wrap hero-foot">
+            {dailyText && (
+              <p className="hero-verse">
+                <span>“{dailyText}”</span>
+                <b>{daily.reference}</b>
+              </p>
+            )}
+            <a href="#about" className="cue" aria-label="Scroll to About"><i /></a>
+          </div>
+        </section>
 
-      {/* SERVICES */}
-      <section id="services" className="home-section home-alt">
-        <div className="home-container">
-          <h2 className="center">Join Our Gatherings</h2>
-          <div className="home-grid home-grid-3">
-            {services.map((s) => (
-              <div className="home-card reveal" key={s.title}>
-                <h3>{s.title}</h3>
-                <span className="home-tag">{s.day} · {s.time}</span>
-                <p>{s.desc}</p>
+        {/* ================= TICKER ================= */}
+        <div className="ticker" aria-hidden="true">
+          <ul>
+            {TICKER.map((t, i) => (<li key={t}>{t}{i < TICKER.length - 1 && <i />}</li>))}
+          </ul>
+        </div>
+
+        {/* ================= ABOUT ================= */}
+        <section id="about" className="sec">
+          <div className="wrap split">
+            <div className="reveal">
+              <Photo src="/about.jpg" alt="River of Life Calapan worshipping together" ratio="4 / 5" className="photo-tall">
+                <figcaption className="pastor">
+                  <span className="pastor-av">
+                    <span aria-hidden="true">{pastorInitials}</span>
+                    {!pastorBroken && <img src={PASTOR.photo} alt="" loading="lazy" onError={() => setPastorBroken(true)} />}
+                  </span>
+                  <span><strong>{PASTOR.name}</strong><small>{PASTOR.role}</small></span>
+                </figcaption>
+              </Photo>
+            </div>
+            <div className="copy reveal">
+              <Eyebrow n="01">About us</Eyebrow>
+              <h2 className="h2"><Words text="A home for everyone looking for one." /></h2>
+              <p>
+                River of Life Calapan is a community of believers committed to worshipping God,
+                growing in His Word, and serving one another. Whether you are new to faith or
+                have walked with Christ for years, you have a place here.
+              </p>
+              <p>We believe faith is lived best together, in prayer, in encouragement, and in celebrating what God has done.</p>
+              <div className="stats">
+                <Stat to={services.length} label="Weekly gatherings" />
+                <Stat to={ministries.length} label="Ministries to join" />
+                <Stat to={features.length} label="Ways to stay connected" />
               </div>
-            ))}
+              <a href="#visit" className="rl-btn rl-btn-primary">Find us<ArrowRight size={18} aria-hidden="true" /></a>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* MINISTRIES */}
-      <section id="ministries" className="home-section">
-        <div className="home-container">
-          <h2 className="center">Ministries</h2>
-          <p className="section-lead">Find a place to serve and grow with others.</p>
-          <div className="home-grid home-grid-3">
-            {ministries.map((m) => (
-              <Link to="/register" className="home-card home-card-link reveal" key={m.title}>
-                <div className="home-icon">{m.icon}</div>
-                <h3>{m.title}</h3>
-                <p>{m.desc}</p>
-                <span className="home-card-more">Join this ministry</span>
-              </Link>
-            ))}
+        {/* ================= GATHERINGS ================= */}
+        <section id="gatherings" className="sec sec-alt">
+          <div className="wrap">
+            <div className="sec-head reveal">
+              <div>
+                <Eyebrow n="02">Gatherings</Eyebrow>
+                <h2 className="h2"><Words text="Join us this week" /></h2>
+              </div>
+              <p>Two times to meet with God and with each other. Come as you are.</p>
+            </div>
+            <div className="gather">
+              {services.map((s, i) => (
+                <article className="g-card reveal" data-spot key={s.id} style={{ "--d": `${i * 100}ms` }}>
+                  <Photo src={s.img} alt={`${s.title} at River of Life Calapan`} ratio="16 / 10" className="photo-card" />
+                  <div className="g-body">
+                    <span className="tag"><Clock size={14} aria-hidden="true" />{s.day} · {s.time}</span>
+                    <h3>{s.title}</h3>
+                    <p>{s.desc}</p>
+                    <a href="#visit" className="text-cta">Where to find us<ArrowRight size={16} aria-hidden="true" /></a>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* FEATURES */}
-      <section id="features" className="home-section home-alt">
-        <div className="home-container">
-          <h2 className="center">What You Can Do</h2>
-          <div className="home-grid home-grid-4">
-            {features.map((f) => {
-              const inner = (
-                <>
-                  <div className="home-icon">{f.icon}</div>
-                  <h3>{f.title}</h3>
-                  <p>{f.desc}</p>
-                </>
-              );
-              return f.action === "chat" ? (
-                <button type="button" className="home-card home-card-link reveal" key={f.title} onClick={openChatbot}>{inner}</button>
-              ) : f.to ? (
-                <Link to={f.to} className="home-card home-card-link reveal" key={f.title}>{inner}</Link>
-              ) : (
-                <a href={f.href} className="home-card home-card-link reveal" key={f.title}>{inner}</a>
-              );
-            })}
+        {/* ================= MINISTRIES ================= */}
+        <section id="ministries" className="sec">
+          <div className="wrap split">
+            <div className="reveal">
+              <Photo src="/ministries.jpg" alt="Members serving together in ministry" ratio="4 / 5" className="photo-tall photo-stick" />
+            </div>
+            <div className="reveal">
+              <Eyebrow n="03">Ministries</Eyebrow>
+              <h2 className="h2"><Words text="Find a place to serve and grow" /></h2>
+              <p className="sub">Every gift matters here. Pick a ministry to learn more, then join through your account.</p>
+              <Accordion
+                items={ministries}
+                idPrefix="min"
+                className="acc-min"
+                renderLead={(i) => `0${i + 1}`}
+                renderBody={(m) => (
+                  <>
+                    <p>{m.desc}</p>
+                    <Link to="/register" className="text-cta">Join {m.title}<ArrowRight size={16} aria-hidden="true" /></Link>
+                  </>
+                )}
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* GALLERY */}
-      <GallerySection />
-
-      {/* GIVE (lalabas lang kapag may laman ang GIVE) */}
-      <GiveSection />
-
-      {/* TESTIMONIES */}
-      <section id="testimonies" className="home-section home-alt">
-        <div className="home-container">
-          <h2 className="center">Stories from Our Church Family</h2>
-          <div className="home-grid home-grid-3">
-            {testimonies.map((t, i) => (
-              <figure className="home-card quote-card reveal" key={i}>
-                <blockquote>"{t.quote}"</blockquote>
-                <figcaption>{t.name}</figcaption>
-              </figure>
-            ))}
+        {/* ================= COMMUNITY ================= */}
+        <section id="community" className="sec sec-alt">
+          <div className="wrap split split-rev">
+            <div className="copy reveal">
+              <Eyebrow n="04">Community</Eyebrow>
+              <h2 className="h2"><Words text="Carry each other's prayers. Celebrate every answer." /></h2>
+              <p>
+                Your account is your door into our digital community space: submit a prayer request,
+                stand with others in theirs, and share the good things God is doing in your life.
+              </p>
+              <ul className="points">
+                <li><Heart size={20} aria-hidden="true" />Share prayer needs with your church family</li>
+                <li><Users size={20} aria-hidden="true" />Encourage one another through ministries and groups</li>
+                <li><CalendarDays size={20} aria-hidden="true" />Never miss an event, announcement, or sermon</li>
+              </ul>
+              <Link to="/register" className="rl-btn rl-btn-primary">Create your account<ArrowRight size={18} aria-hidden="true" /></Link>
+            </div>
+            <div className="reveal">
+              <Photo src="/community.jpg" alt="Church family sharing a moment of fellowship" ratio="1 / 1" className="photo-sq" />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* FAQ */}
-      <section id="faq" className="home-section">
-        <div className="home-container">
-          <h2 className="center">What to Expect</h2>
-          <div className="faq-list">
-            {faqs.map((f) => (
-              <details className="faq-item" key={f.q}>
-                <summary>{f.q}<ChevronDown /></summary>
-                <div className="faq-body">
+        {/* ================= WHAT YOU CAN DO ================= */}
+        <section id="features" className="sec">
+          <div className="wrap">
+            <div className="sec-head reveal">
+              <div>
+                <Eyebrow n="05">What you can do</Eyebrow>
+                <h2 className="h2"><Words text="Everything you need to stay connected" /></h2>
+              </div>
+              <p>One account opens your church family's space, on any device.</p>
+            </div>
+            <div className="cells">
+              {features.map((f, i) => {
+                const Icon = f.icon;
+                return (
+                  <article className="cell reveal" key={f.title} style={{ "--d": `${i * 80}ms` }}>
+                    <span className="cell-n" aria-hidden="true">0{i + 1}</span>
+                    <span className="cell-icon"><Icon size={24} strokeWidth={1.6} aria-hidden="true" /></span>
+                    <h3>{f.title}</h3>
+                    <p>{f.desc}</p>
+                    <CtaLink item={f} className="cell-link" />
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ================= VERSES ================= */}
+        <section id="verses" className="sec sec-alt">
+          <div className="wrap">
+            <div className="sec-head reveal">
+              <div>
+                <Eyebrow n="06">Words we gather around</Eyebrow>
+                <h2 className="h2"><Words text="What we hold on to, together" /></h2>
+              </div>
+            </div>
+            <div className="quotes">
+              <aside className="today reveal" aria-live="polite">
+                {dailyText && (
+                  <>
+                    <p className="today-label"><BookOpen size={15} aria-hidden="true" />Verse of the day</p>
+                    <p className="today-text">“{dailyText}”</p>
+                    <p className="today-ref">{daily.reference}</p>
+                  </>
+                )}
+              </aside>
+              {verses.map((v, i) => (
+                <figure key={v.ref} data-spot className={`quote quote-${v.tone} reveal`} style={{ "--d": `${i * 100}ms` }}>
+                  <span className="quote-mark" aria-hidden="true">“</span>
+                  <blockquote>{v.text}</blockquote>
+                  <figcaption><b>{v.label}</b><span>{v.ref}</span></figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ================= FAQ (minimal) ================= */}
+        <section id="faq" className="sec">
+          <div className="wrap faq">
+            <h2 className="faq-title reveal"><Words text="Frequently Asked Questions" /></h2>
+            <div className="reveal">
+              <Accordion
+                items={faqs}
+                idPrefix="faq"
+                className="acc-faq"
+                firstOpen={false}
+                renderBody={(f) => (
                   <p>
                     {f.a ?? (
                       <>
-                        Ask our <button type="button" className="faq-link" onClick={openChatbot}>AI Assistant</button> anytime, or message us on{" "}
+                        Ask our <button type="button" className="text-link" onClick={openChatbot}>AI assistant</button> anytime, or message us on{" "}
                         <a href={FACEBOOK_URL} target="_blank" rel="noreferrer">Facebook</a>.
                       </>
                     )}
                   </p>
-                </div>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* VISIT US */}
-      <section id="visit" className="home-section home-alt">
-        <div className="home-container">
-          <h2 className="center">Visit Us</h2>
-          <div className="visit-grid">
-            <div className="visit-info reveal">
-              <h3>First time? You're welcome here.</h3>
-              <ul className="visit-list">
-                <li><span aria-hidden="true"><PinIcon /></span>{CONTACT.address}</li>
-                <li><span aria-hidden="true"><ClockIcon /></span>{services[0].title} · {services[0].day}, {services[0].time}</li>
-                <li><span aria-hidden="true"><PhoneIcon /></span><a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}>{CONTACT.phone}</a></li>
-                <li><span aria-hidden="true"><MailIcon /></span><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></li>
-              </ul>
-              <div className="visit-btns">
-                <a className="btn btn-primary" href={mapLink} target="_blank" rel="noreferrer">Get Directions</a>
-                <a className="btn btn-outline" href={FACEBOOK_URL} target="_blank" rel="noreferrer">Message Us</a>
-              </div>
-            </div>
-            <div className="visit-map reveal">
-              <iframe
-                title="River of Life Calapan location"
-                src={mapSrc}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
+                )}
               />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA */}
-      <section className="home-cta">
-        <div className="home-container">
-          <h2>Be part of our church family</h2>
-          <p>Create an account to access church information, events, and more.</p>
-          <Link to="/register" className="btn btn-light btn-lg">Register Now</Link>
-        </div>
-      </section>
-
-            {/* CONTACT / FOOTER */}
-      <footer id="contact" className="home-footer">
-        <div className="home-container home-footer-inner">
-          {/* Brand + socials */}
-          <div>
-            <div className="home-footer-brand">
-              <img src="/logo.png" alt="River of Life Calapan logo" />
+        {/* ================= VISIT ================= */}
+        <section id="visit" className="sec sec-alt">
+          <div className="wrap">
+            <div className="sec-head reveal">
               <div>
-                <strong>River of Life Calapan</strong>
-                <p>{CONTACT.address}</p>
+                <Eyebrow n="07">Visit us</Eyebrow>
+                <h2 className="h2"><Words text="First time? You're welcome here" /></h2>
               </div>
             </div>
-            <div className="home-social-row">
-              <a href={FACEBOOK_URL} target="_blank" rel="noreferrer" className="home-social" aria-label="River of Life Calapan on Facebook">
-                <FacebookIcon />
-                <span>Facebook</span>
-              </a>
-              <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="home-social" aria-label="River of Life Calapan on Instagram">
-                <InstagramIcon />
-                <span>Instagram</span>
-              </a>
+            <div className="visit">
+              <div className="visit-info reveal">
+                <ul className="visit-list">
+                  <li><span><MapPin size={20} aria-hidden="true" /></span><div><small>Address</small>{CONTACT.address}</div></li>
+                  {services.map((s) => (
+                    <li key={s.id}><span><Clock size={20} aria-hidden="true" /></span><div><small>{s.title}</small>{s.day}, {s.time}</div></li>
+                  ))}
+                  <li><span><Phone size={20} aria-hidden="true" /></span><div><small>Call</small><a href={tel}>{CONTACT.phone}</a></div></li>
+                  <li><span><Mail size={20} aria-hidden="true" /></span><div><small>Email</small><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></div></li>
+                </ul>
+                <div className="btn-row">
+                  <a className="rl-btn rl-btn-primary" href={mapLink} target="_blank" rel="noreferrer">Get directions<ArrowUpRight size={18} aria-hidden="true" /></a>
+                  <a className="rl-btn rl-btn-ghost" href={FACEBOOK_URL} target="_blank" rel="noreferrer">Message us</a>
+                </div>
+              </div>
+              <div className="visit-map reveal">
+                <iframe title="River of Life Calapan location" src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <GiveSection />
+
+        {/* ================= CTA (full-bleed) ================= */}
+        <section className="cta">
+          <River className="river-cta" />
+          <div className="wrap cta-in reveal">
+            <h2><Words text="Be part of our church family" /></h2>
+            <p>Create an account to share prayers, join ministries, and stay close to what God is doing among us.</p>
+            <div className="btn-row">
+              <Link to="/register" className="rl-btn rl-btn-light rl-btn-lg">Register now<ArrowRight size={18} aria-hidden="true" /></Link>
+              <button type="button" className="rl-btn rl-btn-outline-light rl-btn-lg" onClick={openChatbot}>Ask the assistant</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* ================= FOOTER ================= */}
+      <footer id="contact" className="foot">
+        <div className="wrap foot-grid">
+          <div className="foot-brand">
+            <span className="rl-brand">
+              <img src="/logo.png" alt="" />
+              <span>River of Life <em>Calapan</em></span>
+            </span>
+            <p>{CONTACT.address}</p>
+            <div className="social">
+              <a href={FACEBOOK_URL} target="_blank" rel="noreferrer" aria-label="River of Life Calapan on Facebook"><FacebookIcon /></a>
+              <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label="River of Life Calapan on Instagram"><InstagramIcon /></a>
             </div>
           </div>
 
-          {/* Quick links */}
           <nav aria-label="Footer">
-            <h4>Quick Links</h4>
-            <ul className="footer-list">
+            <h4>Explore</h4>
+            <ul>
               <li><a href="#about">About</a></li>
-              <li><a href="#services">Services</a></li>
+              <li><a href="#gatherings">Gatherings</a></li>
               <li><a href="#ministries">Ministries</a></li>
-              <li><a href="#faq">What to Expect</a></li>
-              <li><a href="#visit">Visit Us</a></li>
-              <li><Link to="/login">Login</Link></li>
-              <li><Link to="/register">Register</Link></li>
+              <li><a href="#faq">FAQ</a></li>
+              <li><a href="#visit">Visit us</a></li>
             </ul>
           </nav>
 
-          {/* Service times + contact */}
           <div>
-            <h4>Service Times</h4>
-            <ul className="footer-list footer-services">
+            <h4>Gatherings</h4>
+            <ul className="foot-times">
               {services.map((s) => (
-                <li key={s.title}>
-                  <span>{s.title}</span>
-                  <b>{s.day}, {s.time}</b>
-                </li>
+                <li key={s.id}><span>{s.title}</span><b>{s.day}, {s.time}</b></li>
               ))}
             </ul>
+          </div>
 
-            <h4 className="footer-h-gap">Contact</h4>
-            <ul className="footer-list">
-              <li><a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}>{CONTACT.phone}</a></li>
+          <div>
+            <h4>Contact</h4>
+            <ul>
+              <li><a href={tel}>{CONTACT.phone}</a></li>
               <li><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></li>
-              <li><a href={mapLink} target="_blank" rel="noreferrer">Get directions →</a></li>
+              <li><a href={mapLink} target="_blank" rel="noreferrer">Get directions</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4>Your account</h4>
+            <ul>
+              <li><Link to="/login">Login</Link></li>
+              <li><Link to="/register">Register</Link></li>
+              <li><button type="button" onClick={openChatbot}>Ask the assistant</button></li>
             </ul>
           </div>
         </div>
-
-        <div className="home-container">
-          <p className="home-copy">© {new Date().getFullYear()} River of Life Calapan. All rights reserved.</p>
+        <div className="wrap">
+          <p className="copy-line">© {new Date().getFullYear()} River of Life Calapan. All rights reserved.</p>
         </div>
       </footer>
     </div>
