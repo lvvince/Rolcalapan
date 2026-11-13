@@ -25,4 +25,4 @@ venv/
 .venv/
 __pycache__/
 .env
-.env.bak
+.env.bakchatbot_py/nlp_model.joblib
