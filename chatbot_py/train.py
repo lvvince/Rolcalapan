@@ -17,7 +17,7 @@ MODEL_PATH = os.path.join(BASE_DIR, "nlp_model.joblib")
 # Dapat pareho ito sa NLP_THRESHOLD ng app.py
 THRESHOLD = float(os.getenv("NLP_THRESHOLD", "0.25"))
 
-PREFIXES = ["", "hi ", "hello po ", "pwede po magtanong ", "excuse me ", "tanong ko lang po "]
+PREFIXES = ["", "hi ", "hello po "]
 
 STOP = set(
     "po ang ng sa na ay mga ba ko mo nyo niyo namin kayo ako the a an is are of to in at do you your we i can me my it".split()
@@ -233,7 +233,7 @@ def build_examples(df):
 
         keywords = " ".join(w for w in normalize(question).split() if w not in STOP)
         if keywords:
-            for _ in range(2):
+            for _ in range(1):
                 X.append(keywords)
                 y.append(ans)
                 W.append(1.0)
@@ -269,15 +269,16 @@ def main():
     # LinearSVC walang predict_proba, kaya nilagyan ng calibration para magamit ang THRESHOLD
     model = Pipeline([
         ("features", FeatureUnion([
-            ("word", TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True)),
-            ("char", TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5), sublinear_tf=True)),
+            ("word", TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True, min_df=2)),
+            ("char", TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5), sublinear_tf=True, min_df=3)),
         ])),
-        ("clf", CalibratedClassifierCV(LinearSVC(C=1.0), method="sigmoid", cv=cv)),
+        ("clf", CalibratedClassifierCV(LinearSVC(C=1.0), method="sigmoid", cv=cv, ensemble=False)),
     ])
     model.fit(X, y, clf__sample_weight=W)
 
-    joblib.dump(model, MODEL_PATH)
+    joblib.dump(model, MODEL_PATH, compress=3)
     print("Saved ->", MODEL_PATH)
+    print("Size (MB):", round(os.path.getsize(MODEL_PATH) / 1024 / 1024, 1))
 
     # Test sa mga bagong tanong
     print(f"\nTest sa mga bagong tanong (threshold = {THRESHOLD})")
