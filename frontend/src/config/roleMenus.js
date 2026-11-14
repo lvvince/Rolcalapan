@@ -34,7 +34,7 @@ export const roleMenus = {
       { path: "profile", label: "My Profile", desc: "Update your profile and photo" },
     ],
   },
-  member: {
+    member: {
     title: "Member Portal",
     base: "/portal",
     items: [
@@ -42,12 +42,11 @@ export const roleMenus = {
       { path: "qr", label: "My QR Code", desc: "Show your QR code for check-in" },
       { path: "checkin", label: "GPS Check-in", desc: "Check in at off-site events" },
       { path: "prayers", label: "Prayer Requests", desc: "Submit a prayer request" },
-      { path: "announcements", label: "Announcements & Sermons", desc: "View announcements, transcripts and summaries" },
+      { path: "announcements", label: "Announcements", desc: "View church announcements" },
+      { path: "sermons", label: "Sermons", desc: "View sermon transcripts and summaries" },
       { path: "events", label: "Events & RSVP", desc: "RSVP to events" },
       { path: "ministries", label: "Ministries & Groups", desc: "Join ministries and small groups" },
-      { path: "recommended", label: "Recommended", desc: "Recommended ministries and groups" },
-      { path: "language", label: "Language", desc: "Choose preferred language" },
       { path: "notifications", label: "Notifications", desc: "View your notifications" },
     ],
   },
-};
+}

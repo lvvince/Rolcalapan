@@ -1,6 +1,6 @@
 // frontend/src/pages/member/MemberDashboard.jsx
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Home,
   HeartHandshake,
@@ -284,16 +284,13 @@ export function Prayers() {
   );
 }
 
-/* ---------------------------------------------- Announcements & Sermons */
-export function AnnouncementsSermons() {
+/* ------------------------------------------------------- Announcements */
+export function MemberAnnouncements() {
   const { t } = useLang();
   const [ann, setAnn] = useState([]);
-  const [ser, setSer] = useState([]);
-  const [open, setOpen] = useState(null);
 
   useEffect(() => {
     api.get("/resource", { params: { name: "announcements" } }).then((r) => setAnn(r.data));
-    api.get("/resource", { params: { name: "sermons" } }).then((r) => setSer(r.data));
   }, []);
 
   return (
@@ -307,8 +304,23 @@ export function AnnouncementsSermons() {
           <small className="muted">{a.created_at}</small>
         </div>
       ))}
+    </>
+  );
+}
 
-      <h2 style={{ marginTop: 28 }}>{t("Sermons")}</h2>
+/* ------------------------------------------------------------- Sermons */
+export function MemberSermons() {
+  const { t } = useLang();
+  const [ser, setSer] = useState([]);
+  const [open, setOpen] = useState(null);
+
+  useEffect(() => {
+    api.get("/resource", { params: { name: "sermons" } }).then((r) => setSer(r.data));
+  }, []);
+
+  return (
+    <>
+      <h2>{t("Sermons")}</h2>
       {ser.length === 0 && <div className="empty">{t("No sermons yet.")}</div>}
       {ser.map((s) => (
         <div className="item" key={s.id}>
@@ -525,9 +537,13 @@ export function Ministries() {
   const { t } = useLang();
   const [list, setList] = useState([]);
   const [msg, setMsg] = useState(null);
-  const [filter, setFilter] = useState("all");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(null);
+
+  // Ang tab ay nasa URL (?tab=recommended) para gumana ang "View all" sa dashboard
+  const [params, setParams] = useSearchParams();
+  const filter = params.get("tab") || "all";
+  const setFilter = (key) => setParams(key === "all" ? {} : { tab: key }, { replace: true });
 
   const load = () => api.get("/portal/ministries").then((r) => setList(r.data));
   useEffect(() => {
@@ -553,6 +569,7 @@ export function Ministries() {
 
   const pills = [
     { key: "all", label: t("All") },
+    { key: "recommended", label: t("Recommended") },
     { key: "ministry", label: t("Ministries") },
     { key: "small_group", label: t("Small groups") },
     { key: "joined", label: t("Joined") },
@@ -568,6 +585,7 @@ export function Ministries() {
   });
 
   const joinedCount = list.filter((m) => m.joined).length;
+  const isRecommended = filter === "recommended";
 
   return (
     <>
@@ -579,15 +597,17 @@ export function Ministries() {
       {msg && <div className="msg err">{t(msg.text)}</div>}
 
       <div className="min-toolbar">
-        <div className="min-searchwrap">
-          <Search size={16} aria-hidden="true" />
-          <input
-            className="min-search"
-            placeholder={t("Search ministries or groups...")}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
+        {!isRecommended && (
+          <div className="min-searchwrap">
+            <Search size={16} aria-hidden="true" />
+            <input
+              className="min-search"
+              placeholder={t("Search ministries or groups...")}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+        )}
         <div className="min-pills">
           {pills.map((p) => (
             <button
@@ -596,13 +616,15 @@ export function Ministries() {
               className={`min-pill ${filter === p.key ? "active" : ""}`}
               onClick={() => setFilter(p.key)}
             >
-              {p.label}
+              {p.key === "recommended" && <Sparkles size={13} aria-hidden="true" />} {p.label}
             </button>
           ))}
         </div>
       </div>
 
-      {shown.length === 0 ? (
+      {isRecommended ? (
+        <Recommended embedded onJoined={load} />
+      ) : shown.length === 0 ? (
         <div className="min-empty">{t("No ministries or groups found.")}</div>
       ) : (
         <div className="min-grid">
@@ -664,7 +686,9 @@ export function Ministries() {
 }
 
 /* ---------------------------------------------------------- Recommended */
-export function Recommended() {
+// embedded = true kapag nasa loob ng Ministries tab (walang sariling title)
+// onJoined = callback para ma-refresh ang listahan ng parent pagkatapos mag-join
+export function Recommended({ embedded = false, onJoined }) {
   const { t } = useLang();
   const [list, setList] = useState([]);
   const [msg, setMsg] = useState(null);
@@ -681,6 +705,7 @@ export function Recommended() {
       await api.post("/portal/join", { ministry_id: id });
       setMsg(null);
       await load();
+      onJoined?.();
     } catch (x) {
       setMsg({ ok: false, text: err(x) });
     } finally {
@@ -692,7 +717,7 @@ export function Recommended() {
 
   return (
     <>
-      <h2>{t("Recommended for You")}</h2>
+      {!embedded && <h2>{t("Recommended for You")}</h2>}
       <p className="min-summary">
         {t("Ministries and groups that fit you, based on your interests, your age, and the ones you joined.")}
       </p>

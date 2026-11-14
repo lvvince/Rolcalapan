@@ -166,7 +166,7 @@ export default function MemberHome() {
       {/* Recommended for you */}
       <div className="dash-section-head">
         <h3>{t("Recommended for You")}</h3>
-        <Link to="/portal/recommended" className="dash-viewall">
+        <Link to="/portal/ministries?tab=recommended" className="dash-viewall">
           {t("View all")} <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </div>

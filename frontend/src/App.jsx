@@ -55,16 +55,17 @@ import {
   LeaderProfile,
 } from "./pages/ministry/MinistryDashboard";
 
+// Ang Recommended ay tab na sa Ministries (may redirect sa ibaba).
+// Wala na ang Language sa sidebar (nasa topbar switcher na).
 import {
   Profile,
   MyQr,
   GpsCheckin,
   Prayers,
-  AnnouncementsSermons,
+  MemberAnnouncements,
+  MemberSermons,
   EventsRsvp,
   Ministries,
-  Recommended,
-  Language,
   MemberNotifications,
 } from "./pages/member/MemberDashboard";
 import MemberHome from "./pages/member/MemberHome";
@@ -177,11 +178,16 @@ export default function App() {
               <Route path="qr" element={<MyQr />} />
               <Route path="checkin" element={<GpsCheckin />} />
               <Route path="prayers" element={<Prayers />} />
-              <Route path="announcements" element={<AnnouncementsSermons />} />
+              <Route path="announcements" element={<MemberAnnouncements />} />
+              <Route path="sermons" element={<MemberSermons />} />
               <Route path="events" element={<EventsRsvp />} />
               <Route path="ministries" element={<Ministries />} />
-              <Route path="recommended" element={<Recommended />} />
-              <Route path="language" element={<Language />} />
+              {/* lumang links, redirect para hindi masira ang bookmarks */}
+              <Route
+                path="recommended"
+                element={<Navigate to="/portal/ministries?tab=recommended" replace />}
+              />
+              <Route path="language" element={<Navigate to="/portal" replace />} />
               <Route path="notifications" element={<MemberNotifications />} />
             </>,
             <MemberHome />

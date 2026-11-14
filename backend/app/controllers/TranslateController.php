@@ -3,17 +3,27 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
 /**
  * POST /api/translate   (route: TranslateController::batch)
- * Body: { "lang": "tl" | "ceb" | "ilo", "texts": ["Login", "Welcome", ...] }
+ * Body: { "lang": "tl" | "ceb" | "ilo" | "hil", "texts": ["Login", "Welcome", ...] }
  * Returns: { "translations": { "Login": "...", ... } }
  *
- * Gumagamit ng Google Apps Script (LanguageApp) bilang translator.
- * Env sa Render:
+ * - tl, ceb : Google Apps Script (LanguageApp)
+ * - ilo, hil: diretso mula sa PHP papunta sa libreng Google Translate endpoint
+ *             (hinaharang ng Google ang Apps Script servers, HTTP 429)
+ * Env (para sa tl at ceb):
  *   TRANSLATE_GAS_URL   = https://script.google.com/macros/s/XXXX/exec
  *   TRANSLATE_GAS_TOKEN = parehong secret ng TOKEN sa Code.gs
  */
 class TranslateController extends Controller
 {
-    private $langs = ['tl' => 'Tagalog', 'ceb' => 'Cebuano', 'ilo' => 'Ilocano'];
+    private $langs = [
+        'tl'  => 'Tagalog',
+        'ceb' => 'Cebuano',
+        'ilo' => 'Ilocano',
+        'hil' => 'Hiligaynon',
+    ];
+
+    // Mga language na diretso sa web endpoint (hindi dumadaan sa Apps Script)
+    private $direct = ['ilo', 'hil'];
 
     // Glossary: eksaktong salin para sa mga karaniwang label (hindi na dadaan sa Google)
     private $glossary = [
@@ -45,6 +55,16 @@ class TranslateController extends Controller
             'announcements'   => 'Dagiti Pakaammo',
             'members'         => 'Dagiti Miembro',
             'language'        => 'Pagsasao',
+        ],
+        // Hiligaynon: maikli lang muna, ipa-check sa native speaker bago dagdagan
+        'hil' => [
+            'ministries'      => 'Mga Ministeryo',
+            'sermons'         => 'Mga Sermon',
+            'announcements'   => 'Mga Pahibalo',
+            'giving'          => 'Paghatag',
+            'members'         => 'Mga Miyembro',
+            'language'        => 'Pinulongan',
+            'save'            => 'I-save',
         ],
     ];
 
@@ -136,7 +156,9 @@ class TranslateController extends Controller
         }
 
         if ($missing) {
-            $res = $this->gasTranslate($missing, $lang);
+            $res = in_array($lang, $this->direct, true)
+                ? $this->webTranslateBatch($missing, $lang)
+                : $this->gasTranslate($missing, $lang);
 
             if (!$res['ok'] && !$result) {
                 $this->json(['error' => 'Translate failed', 'detail' => $res['error']], 502);
@@ -166,7 +188,111 @@ class TranslateController extends Controller
         $this->json(['translations' => $result]);
     }
 
-    // Tumatawag sa Google Apps Script web app
+    /* ------------------------------------------------------------------
+     * ilo / hil: libreng web endpoint ng Google Translate (hindi opisyal)
+     * ------------------------------------------------------------------ */
+    private function webTranslateBatch(array $items, $lang)
+    {
+        $data  = [];
+        $codes = [];
+        $last  = '';
+
+        foreach ($items as $text) {
+            $r = $this->webTranslateOne((string)$text, $lang);
+            $data[]  = $r['text'];
+            $codes[] = $r['code'];
+            if ($r['error']) {
+                $last = $r['error'];
+            }
+            usleep(120000); // 0.12s, iwas rate limit
+        }
+
+        $good = array_filter($data, function ($d) {
+            return is_string($d) && $d !== '';
+        });
+        if (!$good && $last !== '') {
+            return ['ok' => false, 'error' => $last];
+        }
+        return ['ok' => true, 'data' => $data];
+    }
+
+    private function webTranslateOne($text, $lang)
+    {
+        $fail = function ($msg, $code = 0) {
+            return ['text' => null, 'code' => $code, 'error' => $msg];
+        };
+
+        if (trim($text) === '') {
+            return $fail('');
+        }
+
+        // Protektahan ang {name}, {{name}} at HTML tags
+        $ph = [];
+        $masked = preg_replace_callback('/\{\{[^}]*\}\}|\{[^}]*\}|<[^>]+>/', function ($m) use (&$ph) {
+            $ph[] = $m[0];
+            return '§' . (count($ph) - 1) . '§';
+        }, $text);
+
+        // Walang dapat isalin (puro numero o placeholder lang)
+        if (!preg_match('/[A-Za-z]/', preg_replace('/§\d+§/u', '', $masked))) {
+            return ['text' => $text, 'code' => 200, 'error' => ''];
+        }
+
+        $url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl='
+            . rawurlencode($lang) . '&dt=t&q=' . rawurlencode($masked);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+            CURLOPT_HTTPHEADER     => ['Accept: application/json, text/plain, */*'],
+        ]);
+        $raw  = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+
+        if ($raw === false) {
+            return $fail('Web translate unreachable: ' . $cerr);
+        }
+        if ($code !== 200) {
+            return $fail('Web translate HTTP ' . $code, $code);
+        }
+
+        $j = json_decode($raw, true);
+        if (!is_array($j) || !isset($j[0]) || !is_array($j[0])) {
+            return $fail('Web translate bad output', $code);
+        }
+
+        $t = '';
+        foreach ($j[0] as $seg) {
+            if (is_array($seg) && isset($seg[0]) && is_string($seg[0])) {
+                $t .= $seg[0];
+            }
+        }
+        if (trim($t) === '') {
+            return $fail('', $code);
+        }
+
+        // Siguraduhing buo pa ang lahat ng placeholder
+        for ($i = 0; $i < count($ph); $i++) {
+            if (!preg_match('/§\s*' . $i . '\s*§/u', $t)) {
+                return $fail('', $code);
+            }
+        }
+        $t = preg_replace_callback('/§\s*(\d+)\s*§/u', function ($m) use ($ph) {
+            return $ph[(int)$m[1]] ?? '';
+        }, $t);
+
+        return ['text' => $t, 'code' => $code, 'error' => ''];
+    }
+
+    /* ------------------------------------------------------------------
+     * tl / ceb: Google Apps Script web app
+     * ------------------------------------------------------------------ */
     private function gasTranslate(array $items, $lang)
     {
         $url   = $this->env('TRANSLATE_GAS_URL');

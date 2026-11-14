@@ -6,6 +6,7 @@ export const LANGS = [
   { code: 'tl', label: 'Tagalog' },
   { code: 'ceb', label: 'Cebuano' },
   { code: 'ilo', label: 'Ilocano' },
+  { code: 'hil', label: 'Hiligaynon' },
 ];
 
 const API = import.meta.env.VITE_API_URL || '';
@@ -41,9 +42,12 @@ const saveCache = (l, c) => {
   try { localStorage.setItem('tr_' + l, JSON.stringify(c)); } catch { /* ignore */ }
 };
 
+// Kapag may nakasave na lang na hindi na supported (hal. tinanggal), bumalik sa English
+const validLang = (l) => (LANGS.some((x) => x.code === l) ? l : 'en');
+
 export function LanguageProvider({ children }) {
-  const [lang, setLangState] = useState(() => localStorage.getItem('lang') || 'en');
-  const [cache, setCache] = useState(() => loadCache(localStorage.getItem('lang') || 'en'));
+  const [lang, setLangState] = useState(() => validLang(localStorage.getItem('lang') || 'en'));
+  const [cache, setCache] = useState(() => loadCache(validLang(localStorage.getItem('lang') || 'en')));
 
   const langRef = useRef(lang);
   const requested = useRef(new Set());
@@ -51,28 +55,32 @@ export function LanguageProvider({ children }) {
   const queue = useRef([]);
   const timer = useRef(null);
   const busy = useRef(false);
-
-  const setLang = (l) => {
-    localStorage.setItem('lang', l);
-    document.documentElement.lang = l;
-    langRef.current = l;
-    requested.current = new Set();
-    attempts.current = {};
-    queue.current = [];
-    setLangState(l);
-    setCache(loadCache(l));
-  };
+  const flushRef = useRef(() => {});
 
   const schedule = (ms) => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => flushRef.current(), ms);
   };
-  const flushRef = useRef(() => {});
+
+  const setLang = (l) => {
+    const next = validLang(l);
+    localStorage.setItem('lang', next);
+    document.documentElement.lang = next;
+    langRef.current = next;
+    requested.current = new Set();
+    attempts.current = {};
+    queue.current = [];
+    setLangState(next);
+    setCache(loadCache(next));
+  };
 
   const flush = useCallback(async () => {
     if (busy.current) return; // isang request lang sa isang pagkakataon
     const l = langRef.current;
-    if (l === 'en') { queue.current = []; return; }
+    if (l === 'en') {
+      queue.current = [];
+      return;
+    }
     const texts = queue.current.splice(0, BATCH);
     if (!texts.length) return;
 
@@ -90,7 +98,7 @@ export function LanguageProvider({ children }) {
       } else {
         try {
           translations = JSON.parse(raw).translations || {};
-console.info('[translate] ok', l, Object.keys(translations).length, 'of', texts.length);
+          console.info('[translate] ok', l, Object.keys(translations).length, 'of', texts.length);
         } catch {
           const msg = raw
             .replace(/<style[\s\S]*?<\/style>/gi, '')
