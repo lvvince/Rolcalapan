@@ -18,8 +18,8 @@ const links = [
   { to: "/admin/events", key: "nav.events" },
   { to: "/admin/announcements", key: "nav.announcements", fallback: "Announcements" },
   { to: "/admin/giving", key: "nav.giving" },
-  { to: "/admin/attendance", key: "nav.attendance" },
-  { to: "/admin/reports", key: "nav.reports", fallback: "Reports" },
+  { to: "/admin/attendance", key: "nav.attendanceRecording", fallback: "Attendance" },
+  { to: "/admin/reports", key: "nav.reportsAnalytics", fallback: "Reports & Analytics" },
   { to: "/admin/prayers", key: "nav.prayers" },
   { to: "/admin/notifications", key: "nav.notifications", fallback: "Notifications" },
 ];

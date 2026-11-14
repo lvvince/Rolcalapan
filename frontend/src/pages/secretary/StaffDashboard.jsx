@@ -32,6 +32,9 @@ export { StaffAttendance } from "./StaffAttendance";
 const money = (n) => Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2 });
 const statusBadge = (s, t) => <span className={`badge ${s === "active" ? "ok" : "warn"}`}>{t(s)}</span>;
 
+const pad2 = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
 function PageHeader({ icon: Icon, title, subtitle }) {
   return (
     <div className="sp-head">
@@ -138,16 +141,59 @@ export const getEventColumns = (t) => [
   { key: "ministry_name", label: t("Ministry") },
 ];
 
+// Tapos na ang event kung lumampas na ang date, o ngayon pero lampas na ang end_time
+const isPastEvent = (e) => {
+  const now = new Date();
+  const today = ymd(now);
+  const d = String(e.event_date).slice(0, 10);
+  if (d < today) return true;
+  if (d > today) return false;
+  if (!e.end_time) return false;
+  return hm(e.end_time) < `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+};
+
+const upcomingFilter = (e) => !isPastEvent(e);
+const archivedFilter = (e) => isPastEvent(e);
+const sortAsc = (a, b) => String(a.event_date).localeCompare(String(b.event_date));
+const sortDesc = (a, b) => String(b.event_date).localeCompare(String(a.event_date));
+
 export function EventsAnnouncements({ canDelete = false }) {
   const { t } = useLang();
+  const [view, setView] = useState("upcoming");
+  const archived = view === "archived";
+
   return (
     <>
       <PageHeader icon={CalendarDays} title={t("Events & Schedules")} subtitle={t("Manage church events.")} />
+
+      <div className="rp-tabs" role="tablist" aria-label={t("Events")}>
+        {[
+          { key: "upcoming", label: t("Upcoming") },
+          { key: "archived", label: t("Archived") },
+        ].map((tb) => (
+          <button
+            key={tb.key}
+            type="button"
+            role="tab"
+            aria-selected={view === tb.key}
+            className={`rp-tab${view === tb.key ? " on" : ""}`}
+            onClick={() => setView(tb.key)}
+          >
+            {tb.label}
+          </button>
+        ))}
+      </div>
+
       <DataPage
-        title={t("Events")}
+        title={archived ? t("Archived events") : t("Events")}
         resource="events"
         addLabel={t("Event")}
-        canDelete={canDelete}
+        canAdd={!archived}
+        canEdit={!archived}
+        canDelete={canDelete && !archived}
+        filter={archived ? archivedFilter : upcomingFilter}
+        sort={archived ? sortDesc : sortAsc}
+        emptyText={archived ? "No archived events yet." : "No upcoming events."}
         lookups={{ ministries: { resource: "ministries", label: "name" } }}
         columns={getEventColumns(t)}
         fields={getEventFields(t)}
@@ -639,9 +685,6 @@ const PERIODS = [
   { key: "month", label: "Month", n: 12 },
   { key: "year", label: "Year", n: 5 },
 ];
-
-const pad2 = (n) => String(n).padStart(2, "0");
-const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 const parseDate = (s) => {
   const [y, m, d] = String(s).slice(0, 10).split("-").map(Number);

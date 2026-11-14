@@ -57,14 +57,15 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const logout = async () => {
-    try {
-      await api.post("/auth/logout");
-    } catch {
-      // kahit pumalya, ituloy ang local logout
-    }
+  // Mabilis na logout: i-clear agad ang session, tapos ang server call ay sa background
+  // (hindi hinihintay). Kailangan pa rin ito para ma-clear ng server ang remember-me cookie.
+  const logout = () => {
+    const token = localStorage.getItem("token");
     clearSession();
     setUser(null);
+    api
+      .post("/auth/logout", null, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .catch(() => {});
   };
 
   // Huwag munang i-render ang app habang chine-check ang remember-me cookie
