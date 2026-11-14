@@ -1,103 +1,188 @@
 // frontend/src/components/LoginLayout.jsx
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+// Shared na layout ng Login at Register. Black & white, minimal, smooth.
+//
+// SWAP: sa desktop, nagpapalit ng pwesto ang brand panel at ang form (slide pakaliwa/pakanan)
+// kapag pinindot ang "Sign up" / "Sign in". Magkaibang route ang Login at Register kaya ang slide
+// ay nagpe-play MUNA bago mag-navigate; pagdating sa bagong pahina, tuloy ang galaw (walang fade).
+//
+// LARAWAN (optional): frontend/public/auth.jpg ang background ng brand panel. Kapag wala, hero.jpg.
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, Phone, User } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 import "./login.css";
 import "./auth-extras.css";
 
-function Logo({ className = "" }) {
-  const onLight = className.includes("on-light");
+const SWAP_MS = 700;
+const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+// Direksyon ng huling swap ("l" o "r"). Binabasa ng bagong pahina para ituloy ang galaw.
+let lastGo = null;
+
+/* Nilalaman ng brand panel. Ang brand panel ay laging nag-aanyaya sa KABILANG pahina. */
+const COPY = {
+  login: {
+    side: "form-left",
+    go: "l",
+    kicker: "Welcome home",
+    title: "There's always a seat for you.",
+    body: "Create an account to share your prayers, join a ministry, and celebrate God's goodness together with your church family.",
+    cta: "Sign up",
+    to: "/register",
+    verse: "So we, being many, are one body in Christ, and every one members one of another.",
+    ref: "Romans 12:5",
+  },
+  register: {
+    side: "form-right",
+    go: "r",
+    kicker: "Join the family",
+    title: "God has been faithful.",
+    body: "Sign in and pick up where you left off. Your church family has been praying for you, and we are glad you are home.",
+    cta: "Sign in",
+    to: "/login",
+    verse: "Behold, how good and how pleasant it is for brethren to dwell together in unity!",
+    ref: "Psalm 133:1",
+  },
+};
+
+/* ---------- SWAP context ---------- */
+const SwapContext = createContext(() => {});
+
+/* Link na may swap animation. Normal na link pa rin kapag Ctrl/Cmd-click o kung reduced motion. */
+export function SwapLink({ to, className, children, ...rest }) {
+  const swapTo = useContext(SwapContext);
+  const onClick = (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    swapTo(to);
+  };
+  return <Link to={to} className={className} onClick={onClick} {...rest}>{children}</Link>;
+}
+
+function Logo() {
   return (
-    <Link to="/" className={`auth-logo ${className}`}>
-      <img
-        src="/logo.png"
-        alt="River of Life Calapan logo"
-        width={44}
-        height={44}
-        style={{
-          width: 44,
-          height: 44,
-          objectFit: "contain",
-          flexShrink: 0,
-          filter: onLight ? "invert(1)" : "none",
-        }}
-      />
-      <span className="auth-logo-text">
-        River of Life <strong>Calapan</strong>
-      </span>
+    <Link to="/" className="auth-logo" aria-label="River of Life Calapan, back to home">
+      <img src="/logo.png" alt="" width={40} height={40} />
+      <span>River of Life <em>Calapan</em></span>
     </Link>
   );
 }
 
-/* Two repeating waves; the SVG is 200% wide and slides by exactly one period. */
-const WAVE = "M0,50 C100,10 200,10 300,50 S500,90 600,50 S800,10 900,50 S1100,90 1200,50 V140 H0 Z";
+/* ---------- Layout ---------- */
+export function LoginLayout({ mode = "login", title, subtitle, children }) {
+  const copy = COPY[mode] || COPY.login;
+  const navigate = useNavigate();
+  const [swapping, setSwapping] = useState(false);
+  const [photoSrc, setPhotoSrc] = useState("/auth.jpg"); // auth.jpg muna, kung wala ay hero.jpg
+  const timer = useRef(0);
+  const arrive = useRef(lastGo); // galing sa swap? ("l" | "r" | null)
 
-function Waves() {
-  return (
-    <div className="auth-waves" aria-hidden="true">
-      {[1, 2, 3].map((n) => (
-        <svg key={n} className={`auth-wave auth-wave-${n}`} viewBox="0 0 1200 140" preserveAspectRatio="none">
-          <path d={WAVE} />
-        </svg>
-      ))}
-    </div>
-  );
-}
+  useEffect(() => { lastGo = null; }, []);
 
-export function LoginLayout({ title, subtitle, children }) {
   // Tamang tab title sa bawat hakbang (Login, Register, Verify...)
   useEffect(() => {
     const prev = document.title;
     document.title = `${title} · River of Life Calapan`;
-    return () => {
-      document.title = prev;
-    };
+    return () => { document.title = prev; };
   }, [title]);
 
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const swapTo = (to) => {
+    if (swapping) return;
+    if (prefersReducedMotion()) { navigate(to); return; }
+    setSwapping(true);
+    timer.current = setTimeout(() => { lastGo = copy.go; navigate(to); }, SWAP_MS);
+  };
+
   return (
-    <div className="auth-page">
-      <aside className="auth-brand">
-        <Logo className="on-dark" />
+    <SwapContext.Provider value={swapTo}>
+      <div
+        className={`auth-page${swapping ? " is-swapping" : ""}`}
+        data-side={copy.side}
+        data-mode={mode}
+        data-go={swapping ? copy.go : undefined}
+        data-arrive={arrive.current || undefined}
+      >
+        <div className="auth-shell">
+          {/* ============ BRAND PANEL ============ */}
+          <aside className="auth-brand">
+            <div className="auth-photo" aria-hidden="true">
+              {photoSrc && (
+                <img key={photoSrc} src={photoSrc} alt="" decoding="async" onError={() => setPhotoSrc(photoSrc === "/auth.jpg" ? "/hero.jpg" : "")} />
+              )}
+            </div>
 
-        <div className="auth-hero">
-          <h2>Let your life flow with God&apos;s love.</h2>
-          <p className="lead">A church family where everyone is welcome.</p>
+            <div className="auth-brand-in">
+              <Logo />
+              <div className="auth-copy">
+                <h2>{copy.title}</h2>
+                <p>{copy.body}</p>
+                <SwapLink to={copy.to} className="auth-ghost">
+                  {copy.cta}<ArrowRight size={18} aria-hidden="true" />
+                </SwapLink>
+              </div>
+              <figure className="auth-verse">
+                <blockquote>“{copy.verse}”</blockquote>
+                <figcaption>{copy.ref}</figcaption>
+              </figure>
+            </div>
+          </aside>
+
+          {/* ============ FORM PANEL ============ */}
+          <main className="auth-main">
+            <div className="auth-topbar">
+              <Link to="/" className="auth-back"><ArrowLeft size={18} aria-hidden="true" />Back to home</Link>
+              <ThemeToggle />
+            </div>
+
+            <div className="auth-card">
+              <nav className="auth-tabs" data-on={swapping ? (mode === "login" ? "register" : "login") : mode} aria-label="Login or register">
+                <SwapLink to="/login" className={mode === "login" ? "on" : undefined} aria-current={mode === "login" ? "page" : undefined}>Login</SwapLink>
+                <SwapLink to="/register" className={mode === "register" ? "on" : undefined} aria-current={mode === "register" ? "page" : undefined}>Register</SwapLink>
+                <i aria-hidden="true" />
+              </nav>
+              <p className="auth-kicker"><i aria-hidden="true" />{copy.kicker}</p>
+              <h1>{title}</h1>
+              <p className="auth-sub">{subtitle}</p>
+              {children}
+            </div>
+          </main>
         </div>
+      </div>
+    </SwapContext.Provider>
+  );
+}
 
-        <figure className="auth-verse">
-          <blockquote>
-            “He has made everything beautiful in its time. He has also set eternity in the human heart; yet no one can
-            fathom what God has done from beginning to end.” (NIV)
-          </blockquote>
-          <figcaption>Ecclesiastes 3:11</figcaption>
-        </figure>
-
-        <Waves />
-      </aside>
-
-      <main className="auth-main">
-        <Link to="/" className="auth-back">
-          <span aria-hidden="true">←</span> Back to home
-        </Link>
-
-        <div className="auth-card">
-          {/* Only visible on small screens, where the brand panel is hidden */}
-          <Logo className="on-light" />
-          <h1>{title}</h1>
-          <p className="auth-sub">{subtitle}</p>
-          {children}
-        </div>
-      </main>
+/* ---------- Mga field ---------- */
+// Kapag payak na <input> ang ipinasa (walang AuthInput), kusa itong ginagawang styled na may icon.
+const iconFor = (p) => {
+  if (p.type === "email") return Mail;
+  if (p.type === "tel") return Phone;
+  if (p.type === "password") return Lock;
+  return /name/i.test(`${p.id || ""} ${p.name || ""} ${p.autoComplete || ""}`) ? User : null;
+};
+export function AuthField({ id, label, hint, children }) {
+  const kids = Array.isArray(children) ? children : [children];
+  const body = kids.map((c, i) =>
+    c && c.type === "input" ? <AuthInput key={c.key ?? i} icon={iconFor(c.props)} {...c.props} /> : c
+  );
+  return (
+    <div className="auth-field">
+      <label htmlFor={id}>{label}{hint && <span className="hint"> {hint}</span>}</label>
+      {body}
     </div>
   );
 }
 
-function EyeIcon({ off }) {
+// Input na may icon sa kaliwa at animated na linya kapag naka-focus
+export function AuthInput({ icon: Icon, right, placeholder, ...props }) { // walang placeholder, label lang ang gabay
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
-      <circle cx="12" cy="12" r="3" />
-      {off && <path d="M4 4l16 16" />}
-    </svg>
+    <div className="af">
+      {Icon && <Icon className="af-ico" size={19} strokeWidth={1.75} aria-hidden="true" />}
+      <input {...props} />
+      {right}
+      <i className="af-bar" aria-hidden="true" />
+    </div>
   );
 }
 
@@ -108,42 +193,39 @@ export function PasswordInput({ id, value, onChange, ...rest }) {
 
   return (
     <>
-      <div className="auth-pw">
-        <input
-          id={id}
-          type={show ? "text" : "password"}
-          value={value}
-          onChange={onChange}
-          {...rest}
-          onKeyDown={detectCaps}
-          onKeyUp={detectCaps}
-          onBlur={() => setCaps(false)}
-        />
-        <button
-          type="button"
-          className="auth-pw-toggle"
-          onClick={() => setShow((s) => !s)}
-          aria-label={show ? "Hide password" : "Show password"}
-          aria-pressed={show}
-        >
-          <EyeIcon off={show} />
-        </button>
-      </div>
-      {caps && (
-        <p className="auth-caps" role="status">
-          Caps Lock is on
-        </p>
-      )}
+      <AuthInput
+        icon={Lock}
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        {...rest}
+        onKeyDown={detectCaps}
+        onKeyUp={detectCaps}
+        onBlur={() => setCaps(false)}
+        right={
+          <button
+            type="button"
+            className="auth-pw-toggle"
+            onClick={() => setShow((s) => !s)}
+            aria-label={show ? "Hide password" : "Show password"}
+            aria-pressed={show}
+          >
+            {show ? <EyeOff size={19} strokeWidth={1.75} aria-hidden="true" /> : <Eye size={19} strokeWidth={1.75} aria-hidden="true" />}
+          </button>
+        }
+      />
+      {caps && <p className="auth-caps" role="status">Caps Lock is on</p>}
     </>
   );
 }
 
-/* Optional: swap your <button className="auth-submit"> for this to get a loading spinner */
 export function SubmitButton({ loading = false, loadingText = "Signing in…", children, ...rest }) {
   return (
     <button type="submit" className="auth-submit" disabled={loading} aria-busy={loading} {...rest}>
-      {loading && <span className="auth-spinner" aria-hidden="true" />}
+      {loading ? <span className="auth-spinner" aria-hidden="true" /> : null}
       <span>{loading ? loadingText : children}</span>
+      {!loading && <ArrowRight size={18} aria-hidden="true" />}
     </button>
   );
 }

@@ -1,68 +1,47 @@
 /* frontend/src/components/auth-extras.css
-   Dagdag lang ito sa login.css / portal.css mo. Bago ang mga class dito.
-   Para baguhin ang kulay, i-set ang --auth-accent sa .auth-page (default: teal). */
+   Mga piyesa ng Register: steps, password meter, 6-box code, at success. Black & white. */
 
 /* ---------- Progress steps ---------- */
-.auth-steps {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  margin: 0 0 22px; padding: 0; list-style: none;
-  font-size: .8rem; color: #64748b;
-}
-.auth-steps li { display: flex; align-items: center; gap: 8px; }
-.auth-steps li + li::before { content: ""; width: 22px; height: 2px; border-radius: 2px; background: #cbd5e1; }
-.auth-steps .num {
-  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
-  font-size: .75rem; font-weight: 700; background: #e2e8f0; color: #475569;
-}
-.auth-steps li.active { color: #0f172a; font-weight: 600; }
-.auth-steps li.active .num { background: var(--auth-accent, #0891b2); color: #fff; }
-.auth-steps li.done .num { background: #16a34a; color: #fff; }
-.auth-steps li.done + li::before { background: #16a34a; }
+.auth-page .auth-steps { display: flex; align-items: center; gap: 10px; margin: 0 0 24px; padding: 0; list-style: none; font: 700 .72rem/1 var(--f-display, "Archivo", sans-serif); letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+.auth-page .auth-steps li { display: flex; align-items: center; gap: 8px; }
+.auth-page .auth-steps li + li::before { content: ""; width: 26px; height: 2px; background: var(--line); transition: background-color .5s; }
+.auth-page .auth-steps .num { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; font-size: .72rem; background: var(--paper-2); color: var(--ink-2); transition: background-color .4s, color .4s, transform .4s var(--ease); }
+.auth-page .auth-steps li.active { color: var(--ink); }
+.auth-page .auth-steps li.active .num { background: var(--ink); color: var(--paper); transform: scale(1.1); }
+.auth-page .auth-steps li.done .num { background: var(--ink); color: var(--paper); }
+.auth-page .auth-steps li.done + li::before { background: var(--ink); }
 
 /* ---------- Password strength / match ---------- */
-.pw-meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
-.pw-meter span { height: 4px; border-radius: 2px; background: #e2e8f0; transition: background .2s; }
-.pw-meter[data-level="1"] span:nth-child(-n+1) { background: #ef4444; }
-.pw-meter[data-level="2"] span:nth-child(-n+2) { background: #f59e0b; }
-.pw-meter[data-level="3"] span:nth-child(-n+3) { background: #65a30d; }
-.pw-meter[data-level="4"] span:nth-child(-n+4) { background: #16a34a; }
-.pw-hint { margin: 6px 0 0; font-size: .8rem; color: #64748b; }
-.pw-hint.ok { color: #15803d; }
-.pw-hint.bad { color: #b91c1c; }
-.auth-caps { margin: 6px 0 0; font-size: .8rem; color: #b45309; }
+.auth-page .pw-meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 10px; }
+.auth-page .pw-meter span { height: 4px; background: var(--paper-2); transition: background-color .3s; }
+.auth-page .pw-meter[data-level="1"] span:nth-child(-n+1) { background: #ef4444; }
+.auth-page .pw-meter[data-level="2"] span:nth-child(-n+2) { background: #f59e0b; }
+.auth-page .pw-meter[data-level="3"] span:nth-child(-n+3) { background: #65a30d; }
+.auth-page .pw-meter[data-level="4"] span:nth-child(-n+4) { background: #16a34a; }
+.auth-page .pw-hint { margin: 6px 0 0 !important; font-size: .82rem; color: var(--mute); }
+.auth-page .pw-hint.ok { color: var(--ok); }
+.auth-page .pw-hint.bad { color: var(--bad); }
+.auth-page .auth-caps { margin: 6px 0 0 !important; font-size: .82rem; color: var(--warn); }
 
 /* ---------- 6-box verification code ---------- */
-.otp { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-.otp input {
-  width: 100%; min-width: 0; padding: 0; text-align: center;
-  height: 56px; font-size: 1.5rem; font-weight: 700; color: inherit;
-  background: #fff; border: 1.5px solid #cbd5e1; border-radius: 12px;
-  transition: border-color .15s, box-shadow .15s;
-}
-.otp input.filled { border-color: var(--auth-accent, #0891b2); }
-.otp input:focus {
-  outline: none; border-color: var(--auth-accent, #0891b2);
-  box-shadow: 0 0 0 3px rgba(8, 145, 178, .2);
-}
-.otp.invalid input { border-color: #ef4444; }
-@media (max-width: 380px) { .otp { gap: 6px; } .otp input { height: 50px; font-size: 1.3rem; } }
+.auth-page .otp { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.auth-page .otp input { width: 100%; min-width: 0; height: 60px; padding: 0; text-align: center; font: 800 1.6rem/1 var(--f-display, "Archivo", sans-serif); color: var(--ink); background: var(--paper-2); border: 1.5px solid transparent; border-radius: var(--r, 6px); outline: none; transition: border-color .25s, background-color .25s, transform .3s var(--ease); }
+.auth-page .otp input.filled { border-color: var(--ink); transform: translateY(-2px); }
+.auth-page .otp input:focus { background: var(--paper); border-color: var(--ink); }
+.auth-page .otp.invalid input { border-color: var(--bad); }
+@media (max-width: 380px) { .auth-page .otp { gap: 6px; } .auth-page .otp input { height: 52px; font-size: 1.35rem; } }
 
-/* ---------- Small link-style buttons ---------- */
-.auth-linkbtn {
-  background: none; border: none; padding: 0; font: inherit; color: inherit;
-  text-decoration: underline; cursor: pointer;
-}
-.auth-linkbtn:disabled { opacity: .6; cursor: not-allowed; }
-.auth-linkbtn:focus-visible { outline: 2px solid var(--auth-accent, #0891b2); outline-offset: 2px; border-radius: 3px; }
+/* ---------- Link-style buttons ---------- */
+.auth-page .auth-linkbtn { padding: 0; border: 0; background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1.5px no-repeat; font: inherit; font-weight: 700; color: var(--ink); cursor: pointer; transition: background-size .4s var(--ease); }
+.auth-page .auth-linkbtn:hover:not(:disabled) { background-size: 0 1.5px; background-position: 100% 100%; }
+.auth-page .auth-linkbtn:disabled { opacity: .6; cursor: not-allowed; }
+.auth-page .auth-linkbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
 /* ---------- Success ---------- */
-.auth-success { text-align: center; padding: 8px 0 4px; }
-.auth-success p { margin: 12px 0; }
-.auth-check circle { fill: none; stroke: #16a34a; stroke-width: 3; stroke-dasharray: 151; stroke-dashoffset: 151; animation: auth-draw .6s ease forwards; }
-.auth-check path { fill: none; stroke: #16a34a; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: auth-draw .4s .45s ease forwards; }
-@keyframes auth-draw { to { stroke-dashoffset: 0; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .auth-check circle, .auth-check path { animation: none; stroke-dashoffset: 0; }
-  .pw-meter span, .otp input { transition: none; }
-}
+.auth-page .auth-success { text-align: center; padding: 8px 0 4px; }
+.auth-page .auth-success p { margin: 14px 0 !important; color: var(--ink-2); }
+.auth-page .auth-success .auth-check { display: block; margin: 0 auto; width: 76px; height: 76px; }
+.auth-page .auth-success .auth-check circle { fill: none; stroke: var(--ink); stroke-width: 2; stroke-dasharray: 160; stroke-dashoffset: 0; animation: auth-ring .9s var(--ease) both; }
+.auth-page .auth-success .auth-check path { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 0; animation: auth-tick .5s var(--ease) .7s both; }
+@keyframes auth-ring { from { stroke-dashoffset: 160; } }
+@keyframes auth-tick { from { stroke-dashoffset: 40; } }
