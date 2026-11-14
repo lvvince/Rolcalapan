@@ -1,7 +1,9 @@
 // frontend/src/pages/ResetPassword.jsx
+// Gumagamit ng parehong layout at design ng Login/Register.
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api";
+import { AuthField, LoginLayout, PasswordInput, SubmitButton } from "../components/LoginLayout.jsx";
 import "../components/portal.css";
 
 export default function ResetPassword() {
@@ -16,13 +18,14 @@ export default function ResetPassword() {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
-    if (password !== confirm) return setError("Passwords do not match");
+    if (password.length < 6) return setError("Password must be at least 6 characters.");
+    if (password !== confirm) return setError("Passwords do not match.");
     setLoading(true);
     try {
       const { data } = await api.post("/auth/reset", { token, password });
       navigate("/login", { replace: true, state: { message: data.message } });
     } catch (err) {
-      setError(err.response?.data?.error || "Hindi makakonekta sa server.");
+      setError(err.response?.data?.error || "Cannot connect to the server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -30,36 +33,47 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="login-wrap">
-        <div className="login-card">
-          <h1>Reset Password</h1>
-          <div className="alert">Invalid reset link.</div>
-          <p style={{ textAlign: "center" }}><Link to="/forgot-password">Request a new link</Link></p>
-        </div>
-      </div>
+      <LoginLayout mode="reset" title="Link expired" subtitle="This reset link is invalid or has already been used.">
+        <div className="auth-alert error" role="alert">Invalid reset link.</div>
+        <Link to="/forgot-password" className="auth-submit" style={{ textDecoration: "none" }}>Request a new link</Link>
+      </LoginLayout>
     );
   }
 
   return (
-    <div className="login-wrap">
-      <form className="login-card" onSubmit={submit}>
-        <h1>New Password</h1>
-        <p className="muted">Maglagay ng bagong password.</p>
+    <LoginLayout mode="reset" title="Set a new password" subtitle="Choose a password you will remember. At least 6 characters.">
+      <form onSubmit={submit}>
+        {error && <div className="auth-alert error" role="alert">{error}</div>}
 
-        {error && <div className="alert">{error}</div>}
+        <AuthField id="password" label="New password" hint="(at least 6 characters)">
+          <PasswordInput
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={6}
+            required
+            autoFocus
+          />
+        </AuthField>
 
-        <label>New password (min 6 characters)</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required autoFocus />
+        <AuthField id="confirm" label="Confirm password">
+          <PasswordInput
+            id="confirm"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            autoComplete="new-password"
+            aria-invalid={!!confirm && confirm !== password}
+            required
+          />
+        </AuthField>
 
-        <label>Confirm password</label>
-        <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+        <SubmitButton loading={loading} loadingText="Saving…">Save password</SubmitButton>
 
-        <button type="submit" disabled={loading}>{loading ? "Saving..." : "Save password"}</button>
-
-        <p style={{ textAlign: "center", fontSize: 14, marginBottom: 0 }}>
-          <Link to="/forgot-password">Request a new link</Link>
+        <p className="auth-alt">
+          Link not working? <Link to="/forgot-password">Request a new link</Link>
         </p>
       </form>
-    </div>
+    </LoginLayout>
   );
 }

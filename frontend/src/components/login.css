@@ -58,15 +58,15 @@ html[data-theme="dark"] .auth-page {
 .auth-page .auth-brand { position: relative; z-index: 2; height: 100%; overflow: hidden; isolation: isolate; color: #fff; background: #0a0a0a; transition: transform var(--swap) var(--ease); }
 .auth-page .auth-photo { position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 0%, #2a2a2a, #050505 70%); }
 .auth-page .auth-photo img { width: 100%; height: 100%; object-fit: cover; filter: brightness(.78); }
-.auth-page .auth-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .5), rgba(0, 0, 0, .1) 38%, rgba(0, 0, 0, .8)); }
+.auth-page .auth-photo::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 75% 50% at 50% 50%, rgba(0, 0, 0, .55), transparent 80%), linear-gradient(180deg, rgba(0, 0, 0, .5), rgba(0, 0, 0, .12) 35%, rgba(0, 0, 0, .78)); }
 
 .auth-page .auth-brand-in { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; height: 100%; padding: clamp(24px, 4vh, 40px) clamp(28px, 4.2vw, 64px) clamp(24px, 4.5vh, 44px); }
 .auth-page .auth-logo { display: inline-flex; align-items: center; gap: 10px; width: fit-content; color: #fff; text-decoration: none; font: 700 .98rem/1 var(--f-display); letter-spacing: .01em; }
 .auth-page .auth-logo img { width: 40px; height: 40px; object-fit: contain; }
 .auth-page .auth-logo em { font-style: normal; font-weight: 500; opacity: .75; }
-.auth-page .auth-copy { display: grid; gap: 14px; justify-items: start; margin-top: auto; }
-.auth-page .auth-brand h2 { max-width: 14ch; font-size: clamp(2.2rem, 4vw, 3.6rem); font-weight: 800; color: #fff; }
-.auth-page .auth-brand p { max-width: 42ch; color: rgba(255, 255, 255, .86); font-size: clamp(.95rem, 1.2vw, 1.05rem); text-align: justify; text-justify: inter-word; }
+.auth-page .auth-copy { display: grid; gap: 14px; justify-items: center; text-align: center; margin: auto; }
+.auth-page .auth-brand h2 { max-width: 13ch; text-align: center; font-size: clamp(2.2rem, 4vw, 3.6rem); font-weight: 800; color: #fff; }
+.auth-page .auth-brand p { max-width: 38ch; color: rgba(255, 255, 255, .9); font-size: clamp(.95rem, 1.2vw, 1.05rem); text-align: justify; text-align-last: center; text-justify: inter-word; text-shadow: 0 1px 14px rgba(0, 0, 0, .55); }
 
 .auth-page .auth-ghost { position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 50px; padding: 0 28px; margin-top: 4px; border: 1.5px solid rgba(255, 255, 255, .85); border-radius: var(--r); color: #fff; background: transparent; text-decoration: none; font: 700 .84rem/1 var(--f-display); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: color .35s var(--ease), transform .3s var(--ease); -webkit-tap-highlight-color: transparent; }
 .auth-page .auth-ghost::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #fff; transform: scaleX(0); transform-origin: right; transition: transform .5s var(--ease); }
@@ -77,8 +77,8 @@ html[data-theme="dark"] .auth-page {
   .auth-page .auth-ghost:hover::before { transform: scaleX(1); transform-origin: left; }
   .auth-page .auth-ghost:hover svg { transform: translateX(5px); }
 }
-.auth-page .auth-verse { margin: 0; max-width: 46ch; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, .25); }
-.auth-page .auth-verse blockquote { margin: 0; font: italic 400 1.02rem/1.55 var(--f-serif); color: rgba(255, 255, 255, .92); text-shadow: 0 1px 12px rgba(0, 0, 0, .5); }
+.auth-page .auth-verse { margin: 0 auto; max-width: 40ch; text-align: center; }
+.auth-page .auth-verse blockquote { margin: 0; text-align: center; font: italic 400 1.02rem/1.55 var(--f-serif); color: rgba(255, 255, 255, .92); text-shadow: 0 1px 12px rgba(0, 0, 0, .5); }
 .auth-page .auth-verse figcaption { margin-top: 8px; font: 700 .7rem/1 var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: #fff; }
 
 /* ================= FORM PANEL ================= */
@@ -122,12 +122,12 @@ html[data-theme="dark"] .auth-page {
 
 .auth-page .auth-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 4px 0 22px; font-size: .92rem; }
 .auth-page .auth-remember { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 36px; margin: 0 !important; font: 500 .92rem/1.2 var(--f-body) !important; letter-spacing: 0 !important; text-transform: none !important; color: var(--ink-2) !important; cursor: pointer; user-select: none; }
-.auth-page .auth-remember input { position: absolute; opacity: 0; width: 0; height: 0; }
-.auth-page .auth-box { position: relative; width: 20px; height: 20px; flex-shrink: 0; border: 1.5px solid var(--ink); border-radius: 4px; transition: background-color .25s; }
-.auth-page .auth-box::after { content: ""; position: absolute; left: 5px; top: 1px; width: 6px; height: 11px; border: solid var(--paper); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .3s var(--ease); }
-.auth-page .auth-remember input:checked + .auth-box { background: var(--ink); }
-.auth-page .auth-remember input:checked + .auth-box::after { transform: rotate(45deg) scale(1); }
-.auth-page .auth-remember input:focus-visible + .auth-box { outline: 2px solid var(--ink); outline-offset: 3px; }
+.auth-page .auth-remember input[type="checkbox"] { -webkit-appearance: none; appearance: none; position: relative; flex-shrink: 0; width: 20px; height: 20px; margin: 0; padding: 0; border: 1.5px solid var(--ink); border-radius: 4px; background: transparent; accent-color: var(--ink); cursor: pointer; transition: background-color .25s; }
+.auth-page .auth-remember input[type="checkbox"]::after { content: ""; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px; border: solid var(--paper); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .25s var(--ease); }
+.auth-page .auth-remember input[type="checkbox"]:checked { background: var(--ink); border-color: var(--ink); }
+.auth-page .auth-remember input[type="checkbox"]:checked::after { transform: rotate(45deg) scale(1); }
+.auth-page .auth-remember input[type="checkbox"]:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.auth-page .auth-box { display: none; }
 .auth-page .auth-link, .auth-page .auth-alt a { position: relative; color: var(--ink); font-weight: 700; text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1.5px no-repeat; transition: background-size .4s var(--ease); }
 .auth-page .auth-link:hover, .auth-page .auth-alt a:hover { background-size: 0 1.5px; background-position: 100% 100%; }
 
@@ -185,16 +185,11 @@ html[data-theme="dark"] .auth-page {
 /* ================= SWAP: slide pakaliwa/pakanan ================= */
 @media (min-width: 900px) {
   /* papalabas: ang dalawang panel ay nagpapalit ng pwesto, kasama ang laman */
-  .auth-page.is-swapping { pointer-events: none; }
-  .auth-page.is-swapping .auth-brand { transform: translateX(calc(var(--dir) * 100%)); }
+    .auth-page.is-swapping .auth-brand { transform: translateX(calc(var(--dir) * 100%)); box-shadow: 0 0 90px rgba(0, 0, 0, .5); }
   .auth-page.is-swapping .auth-main { transform: translateX(calc(var(--dir) * -100%)); }
 
   /* papasok (bagong pahina): tuloy ang galaw, hindi fade. Pa-wipe mula sa gilid. */
   .auth-page { animation: none; }
-  .auth-page[data-arrive="l"] .auth-brand-in { animation: auth-enter-l .7s var(--ease) both; }
-  .auth-page[data-arrive="l"] .auth-card { animation: auth-enter-r .7s var(--ease) both; }
-  .auth-page[data-arrive="r"] .auth-brand-in { animation: auth-enter-r .7s var(--ease) both; }
-  .auth-page[data-arrive="r"] .auth-card { animation: auth-enter-l .7s var(--ease) both; }
   .auth-page:not([data-arrive]) { animation: auth-fade .5s ease both; }
 }
 /* enter-l: pumapasok mula sa kanan papuntang kaliwa */
@@ -223,8 +218,7 @@ html[data-theme="dark"] .auth-page {
   .auth-page .auth-tabs[data-on="register"] i { transform: translateX(100%); }
 
   /* mobile swap: slide pakaliwa/pakanan ang buong pahina */
-  .auth-page.is-swapping { pointer-events: none; }
-  .auth-page[data-go="l"].is-swapping .auth-brand, .auth-page[data-go="l"].is-swapping .auth-main { transform: translateX(-110%); }
+    .auth-page[data-go="l"].is-swapping .auth-brand, .auth-page[data-go="l"].is-swapping .auth-main { transform: translateX(-110%); }
   .auth-page[data-go="r"].is-swapping .auth-brand, .auth-page[data-go="r"].is-swapping .auth-main { transform: translateX(110%); }
   .auth-page[data-arrive="l"] .auth-shell { animation: auth-slide-l .6s var(--ease) both; }
   .auth-page[data-arrive="r"] .auth-shell { animation: auth-slide-r .6s var(--ease) both; }
@@ -236,6 +230,26 @@ html[data-theme="dark"] .auth-page {
 @media (min-width: 600px) and (max-width: 899px) { .auth-page .auth-brand-in { padding-inline: 40px; } .auth-page .auth-main { padding-inline: 40px; } }
 @media (max-width: 360px) { .auth-page .auth-card h1 { font-size: 1.85rem; } .auth-page .auth-logo span { font-size: .85rem; } }
 
+/* Ang swap ay galaw na sinimulan mismo ng user at ito ang pangunahing feature, kaya hindi ito pinapatay.
+   Ang mga hindi mahalagang galaw (fade ng pahina, wipe ng laman) lang ang inaalis. */
 @media (prefers-reduced-motion: reduce) {
-  .auth-page, .auth-page *, .auth-page *::before, .auth-page *::after { animation: none !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
+  .auth-page, .auth-page .auth-brand-in, .auth-page .auth-card, .auth-page .auth-shell { animation: none !important; }
 }
+
+/* ---------- Konting polish sa form ---------- */
+.auth-page .auth-field label { transition: color .25s; }
+.auth-page .auth-field:focus-within label { color: var(--ink); }
+.auth-page .af:focus-within .af-ico { color: var(--ink); transform: scale(1.1); }
+.auth-page .af-ico { transition: color .25s, transform .35s var(--ease); }
+.auth-page .auth-brand-in { text-align: center; }
+.auth-page .auth-logo { align-self: flex-start; }
+@media (max-width: 899px) { .auth-page .auth-copy { margin: 0; justify-items: start; text-align: left; } .auth-page .auth-brand h2 { text-align: left; } }
+
+/* ---------- Forgot password link at mga text link ---------- */
+.auth-page a.auth-link, .auth-page .auth-alt a { font-family: var(--f-body); font-size: .92rem; font-weight: 700; color: var(--ink); text-decoration: none; letter-spacing: 0; }
+.auth-page a.auth-link { color: var(--ink-2); }
+.auth-page a.auth-link:hover { color: var(--ink); }
+.auth-page .auth-row { gap: 12px 16px; flex-wrap: wrap; }
+.auth-page .auth-ghost svg { flex-shrink: 0; }
+.auth-page[data-mode="forgot"] .auth-card, .auth-page[data-mode="reset"] .auth-card { max-width: 440px; }
+.auth-page .auth-hint { margin: -4px 0 18px; font-size: .88rem; color: var(--mute); }

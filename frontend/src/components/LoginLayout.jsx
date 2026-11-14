@@ -6,17 +6,18 @@
 // ay nagpe-play MUNA bago mag-navigate; pagdating sa bagong pahina, tuloy ang galaw (walang fade).
 //
 // LARAWAN (optional): frontend/public/auth.jpg ang background ng brand panel. Kapag wala, hero.jpg.
-import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, Phone, User } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import "./login.css";
 import "./auth-extras.css";
 
 const SWAP_MS = 700;
-const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 // Direksyon ng huling swap ("l" o "r"). Binabasa ng bagong pahina para ituloy ang galaw.
 let lastGo = null;
+// Larawang gumana na (auth.jpg o hero.jpg). Naaalala para hindi mag-flash ang larawan kapag nagpalit ng pahina.
+let knownPhoto = null;
 
 /* Nilalaman ng brand panel. Ang brand panel ay laging nag-aanyaya sa KABILANG pahina. */
 const COPY = {
@@ -31,6 +32,26 @@ const COPY = {
     verse: "So we, being many, are one body in Christ, and every one members one of another.",
     ref: "Romans 12:5",
   },
+  forgot: {
+    side: "form-left",
+    kicker: "Account recovery",
+    title: "Lost your way? We'll walk you back.",
+    body: "Enter the email you registered with and we'll send a link to set a new password. You are never locked out of your church family.",
+    cta: "Back to login",
+    to: "/login",
+    verse: "Come unto me, all ye that labour and are heavy laden, and I will give you rest.",
+    ref: "Matthew 11:28",
+  },
+  reset: {
+    side: "form-left",
+    kicker: "Almost there",
+    title: "A fresh start.",
+    body: "Choose a new password you will remember. Use at least 6 characters, then sign in again.",
+    cta: "Back to login",
+    to: "/login",
+    verse: "Behold, I make all things new.",
+    ref: "Revelation 21:5",
+  },
   register: {
     side: "form-right",
     go: "r",
@@ -44,18 +65,10 @@ const COPY = {
   },
 };
 
-/* ---------- SWAP context ---------- */
-const SwapContext = createContext(() => {});
-
-/* Link na may swap animation. Normal na link pa rin kapag Ctrl/Cmd-click o kung reduced motion. */
+/* Link papunta sa /login o /register. Nagsli-slide kapag pinindot (tingnan ang onLinkClick sa LoginLayout). */
 export function SwapLink({ to, className, children, ...rest }) {
-  const swapTo = useContext(SwapContext);
-  const onClick = (e) => {
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    swapTo(to);
-  };
-  return <Link to={to} className={className} onClick={onClick} {...rest}>{children}</Link>;
+  // Ang slide mismo ay hawak ng LoginLayout (event delegation), kaya payak na Link na lang ito.
+  return <Link to={to} className={className} {...rest}>{children}</Link>;
 }
 
 function Logo() {
@@ -68,11 +81,21 @@ function Logo() {
 }
 
 /* ---------- Layout ---------- */
-export function LoginLayout({ mode = "login", title, subtitle, children }) {
+export function LoginLayout({ mode: modeProp = "login", title, subtitle, children }) {
+  // Ang URL ang nagpapasya kung Login o Register (hindi na umaasa sa prop), para laging tama ang pwesto ng panels:
+  //   /login    -> form sa KALIWA, larawan sa KANAN
+  //   /register -> larawan sa KALIWA, form sa KANAN
+  const { pathname = "" } = useLocation() || {};
+  const mode = pathname.startsWith("/register") ? "register"
+    : pathname.startsWith("/login") ? "login"
+    : pathname.startsWith("/forgot-password") ? "forgot"
+    : pathname.startsWith("/reset-password") ? "reset"
+    : modeProp;
+  const swappable = mode === "login" || mode === "register"; // Login/Register lang ang may swap
   const copy = COPY[mode] || COPY.login;
   const navigate = useNavigate();
   const [swapping, setSwapping] = useState(false);
-  const [photoSrc, setPhotoSrc] = useState("/auth.jpg"); // auth.jpg muna, kung wala ay hero.jpg
+  const [photoSrc, setPhotoSrc] = useState(knownPhoto || "/auth.jpg"); // auth.jpg muna, kung wala ay hero.jpg
   const timer = useRef(0);
   const arrive = useRef(lastGo); // galing sa swap? ("l" | "r" | null)
 
@@ -87,28 +110,55 @@ export function LoginLayout({ mode = "login", title, subtitle, children }) {
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  const here = mode === "register" ? "/register" : "/login";
+
+  // Slide muna, saka mag-navigate. Hindi gagalaw kung nasa parehong pahina na (iyon ang dating nagpapa-stuck).
   const swapTo = (to) => {
-    if (swapping) return;
-    if (prefersReducedMotion()) { navigate(to); return; }
+    if (!swappable || swapping || to === here) return;
     setSwapping(true);
-    timer.current = setTimeout(() => { lastGo = copy.go; navigate(to); }, SWAP_MS);
+    timer.current = setTimeout(() => {
+      lastGo = copy.go;
+      try { navigate(to); } catch { window.location.assign(to); }
+      // Safety: kung hindi nagpalit ang pahina, ibalik sa normal para mapindot ulit ang mga button
+      timer.current = setTimeout(() => { lastGo = null; setSwapping(false); }, 1500);
+    }, SWAP_MS);
+  };
+
+  // Kahit payak na <Link to="/login"> o "/register" ang gamit ng pahina, magsli-slide din (event delegation)
+  // Capture phase: mauuna ito sa sariling click handler ng <Link>, kaya mapipigilan ang agarang navigate
+  const onLinkClick = (e) => {
+    if (!swappable || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest?.("a[href]");
+    if (!a || a.target === "_blank") return;
+    const path = a.getAttribute("href");
+    if (path !== "/login" && path !== "/register") return;
+    e.preventDefault();
+    swapTo(path);
   };
 
   return (
-    <SwapContext.Provider value={swapTo}>
       <div
         className={`auth-page${swapping ? " is-swapping" : ""}`}
         data-side={copy.side}
         data-mode={mode}
         data-go={swapping ? copy.go : undefined}
         data-arrive={arrive.current || undefined}
+        onClickCapture={onLinkClick}
       >
         <div className="auth-shell">
           {/* ============ BRAND PANEL ============ */}
           <aside className="auth-brand">
             <div className="auth-photo" aria-hidden="true">
               {photoSrc && (
-                <img key={photoSrc} src={photoSrc} alt="" decoding="async" onError={() => setPhotoSrc(photoSrc === "/auth.jpg" ? "/hero.jpg" : "")} />
+                <img
+                  key={photoSrc}
+                  src={photoSrc}
+                  alt=""
+                  decoding="sync"
+                  fetchPriority="high"
+                  onLoad={() => { knownPhoto = photoSrc; }}
+                  onError={() => setPhotoSrc(photoSrc === "/auth.jpg" ? "/hero.jpg" : "")}
+                />
               )}
             </div>
 
@@ -117,9 +167,11 @@ export function LoginLayout({ mode = "login", title, subtitle, children }) {
               <div className="auth-copy">
                 <h2>{copy.title}</h2>
                 <p>{copy.body}</p>
-                <SwapLink to={copy.to} className="auth-ghost">
-                  {copy.cta}<ArrowRight size={18} aria-hidden="true" />
-                </SwapLink>
+                <Link to={copy.to} className="auth-ghost">
+                  {!swappable && <ArrowLeft size={18} aria-hidden="true" />}
+                  {copy.cta}
+                  {swappable && <ArrowRight size={18} aria-hidden="true" />}
+                </Link>
               </div>
               <figure className="auth-verse">
                 <blockquote>“{copy.verse}”</blockquote>
@@ -136,11 +188,13 @@ export function LoginLayout({ mode = "login", title, subtitle, children }) {
             </div>
 
             <div className="auth-card">
-              <nav className="auth-tabs" data-on={swapping ? (mode === "login" ? "register" : "login") : mode} aria-label="Login or register">
-                <SwapLink to="/login" className={mode === "login" ? "on" : undefined} aria-current={mode === "login" ? "page" : undefined}>Login</SwapLink>
-                <SwapLink to="/register" className={mode === "register" ? "on" : undefined} aria-current={mode === "register" ? "page" : undefined}>Register</SwapLink>
-                <i aria-hidden="true" />
-              </nav>
+              {swappable && (
+                <nav className="auth-tabs" data-on={swapping ? (mode === "login" ? "register" : "login") : mode} aria-label="Login or register">
+                  <Link to="/login" className={mode === "login" ? "on" : undefined} aria-current={mode === "login" ? "page" : undefined}>Login</Link>
+                  <Link to="/register" className={mode === "register" ? "on" : undefined} aria-current={mode === "register" ? "page" : undefined}>Register</Link>
+                  <i aria-hidden="true" />
+                </nav>
+              )}
               <p className="auth-kicker"><i aria-hidden="true" />{copy.kicker}</p>
               <h1>{title}</h1>
               <p className="auth-sub">{subtitle}</p>
@@ -149,7 +203,6 @@ export function LoginLayout({ mode = "login", title, subtitle, children }) {
           </main>
         </div>
       </div>
-    </SwapContext.Provider>
   );
 }
 
