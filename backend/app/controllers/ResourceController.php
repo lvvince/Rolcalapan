@@ -14,6 +14,9 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
  *
  * NEW: kapag may bagong notification (website), nag-e-email din sa Gmail
  * ng recipient gamit ang rol_email_notification() sa rolmail.
+ *
+ * NEW: events may speaker_id (pastor/admin lang). Lumalabas bilang speaker_name.
+ * Kailangan ng column: ALTER TABLE events ADD COLUMN speaker_id INT NULL;
  */
 class ResourceController extends Controller
 {
@@ -121,12 +124,15 @@ class ResourceController extends Controller
             'events' => [
                 'table' => 'events', 'read' => $any, 'write' => ['admin', 'staff'],
                 'leader_write' => true, 'scope' => 'ministry_id', 'scope_read' => false,
-                'fields' => ['title', 'description', 'event_date', 'start_time', 'end_time', 'location', 'event_type', 'ministry_id', 'lat', 'lng', 'radius_m'],
+                'fields' => ['title', 'description', 'event_date', 'start_time', 'end_time', 'location', 'event_type', 'ministry_id', 'speaker_id', 'lat', 'lng', 'radius_m'],
                 'required' => ['title', 'event_date', 'event_type'],
-                'nullable' => ['description', 'start_time', 'end_time', 'location', 'ministry_id', 'lat', 'lng'],
+                'nullable' => ['description', 'start_time', 'end_time', 'location', 'ministry_id', 'speaker_id', 'lat', 'lng'],
                 'defaults' => ['event_type' => 'internal', 'radius_m' => 100],
                 'created_by' => true,
-                'join' => ['ministry_id' => ['ministries', 'name', 'ministry_name']],
+                'join' => [
+                    'ministry_id' => ['ministries', 'name', 'ministry_name'],
+                    'speaker_id'  => ['users', 'full_name', 'speaker_name'],
+                ],
                 'sort' => ['event_date', 'asc'],
             ],
             'rsvps' => [
@@ -279,7 +285,7 @@ class ResourceController extends Controller
         foreach (($c['join'] ?? []) as $fk => $j) {
             $map = [];
             foreach ($this->all($j[0]) as $r) $map[$r['id']] = $r[$j[1]];
-            foreach ($rows as &$row) $row[$j[2]] = $map[$row[$fk]] ?? null;
+            foreach ($rows as &$row) $row[$j[2]] = $map[$row[$fk] ?? null] ?? null;
             unset($row);
         }
 
@@ -383,6 +389,14 @@ class ResourceController extends Controller
             $q = $this->db->table($c['table']);
             foreach ($c['unique'] as $f) $q = $q->where($f, $data[$f] ?? null);
             if ($q->get()) $this->out(['error' => 'Record already exists'], 409);
+        }
+
+        // Speaker ng event: pastor/admin lang
+        if ($name === 'events' && !empty($data['speaker_id'])) {
+            $sp = $this->db->table('users')->where('id', (int)$data['speaker_id'])->get();
+            if (!$sp || $sp['role'] !== 'admin') {
+                $this->out(['error' => 'Speaker must be a pastor/admin'], 422);
+            }
         }
 
         // Hooks
