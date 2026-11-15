@@ -13,9 +13,14 @@ import ThemeToggle from "./ThemeToggle";
 import "./login.css";
 import "./auth-extras.css";
 
-const SWAP_MS = 700;
+const PATHS = { login: "/login", register: "/register", forgot: "/forgot-password", reset: "/reset-password" };
+const MODES = { "/login": "login", "/register": "register", "/forgot-password": "forgot" };
+const DEPTH = { login: 0, register: 0, forgot: 1, reset: 2 };
 // Direksyon ng huling swap ("l" o "r"). Binabasa ng bagong pahina para ituloy ang galaw.
 let lastGo = null;
+let ghost = null; // ang kopyang umaalis; aalisin kapag nakapasok na ang bagong pahina
+const FADE_AT = { swap: 320, slide: 500, "soft-f": 200, "soft-b": 200 }; // ms bago itago ang kopya
+let lastGoAt = 0; // oras ng huling swap, para maisabay ang animation ng bagong pahina
 // Larawang gumana na (auth.jpg o hero.jpg). Naaalala para hindi mag-flash ang larawan kapag nagpalit ng pahina.
 let knownPhoto = null;
 
@@ -91,15 +96,25 @@ export function LoginLayout({ mode: modeProp = "login", title, subtitle, childre
     : pathname.startsWith("/forgot-password") ? "forgot"
     : pathname.startsWith("/reset-password") ? "reset"
     : modeProp;
-  const swappable = mode === "login" || mode === "register"; // Login/Register lang ang may swap
+  const pair = mode === "login" || mode === "register"; // Login/Register lang ang may tabs
   const copy = COPY[mode] || COPY.login;
   const navigate = useNavigate();
-  const [swapping, setSwapping] = useState(false);
   const [photoSrc, setPhotoSrc] = useState(knownPhoto || "/auth.jpg"); // auth.jpg muna, kung wala ay hero.jpg
-  const timer = useRef(0);
-  const arrive = useRef(lastGo); // galing sa swap? ("l" | "r" | null)
+  const busy = useRef(false);
+  const rootRef = useRef(null);
+  const lag = useRef(lastGo ? Math.min(400, Math.round(performance.now() - lastGoAt)) : 0);
+  const arrive = useRef(lastGo); // paano dumating ang pahinang ito? ("swap" | "l" | "r" | "soft-f" | "soft-b" | null)
 
-  useEffect(() => { lastGo = null; }, []);
+  // Kapag nakapasok na ang bagong pahina, saka lang itatago ang kopya (sa tamang oras), kaya laging pareho ang galaw
+  // kahit gaano katagal mag-render ang pahina.
+  useEffect(() => {
+    const g = ghost; const kind = g?.dataset.kind;
+    ghost = null; lastGo = null;
+    if (!g) return;
+    const wait = Math.max(0, (FADE_AT[kind] ?? 300) - (performance.now() - lastGoAt));
+    setTimeout(() => g.classList.add("is-fading"), wait);
+    setTimeout(() => g.remove(), wait + 500);
+  }, []);
 
   // Tamang tab title sa bawat hakbang (Login, Register, Verify...)
   useEffect(() => {
@@ -108,41 +123,64 @@ export function LoginLayout({ mode: modeProp = "login", title, subtitle, childre
     return () => { document.title = prev; };
   }, [title]);
 
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const here = PATHS[mode];
 
-  const here = mode === "register" ? "/register" : "/login";
+  // PAANO GUMAGANA: kinukunan ng "kopya" ang kasalukuyang pahina, inilalagay sa ibabaw, at AGAD nagna-navigate.
+  // Ang kopya ang gumagalaw palabas (slide/swap) habang ang bagong pahina ay pumapasok mula sa kabila,
+  // kaya sabay ang galaw, walang puwang, walang flash, at nagbabago na ang text habang gumagalaw.
+  const goTo = (to) => {
+    const target = MODES[to];
+    if (!target || to === here || busy.current) return;
+    const root = rootRef.current;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const pair = (mode === "login" || mode === "register") && (target === "login" || target === "register");
+    const mobile = window.matchMedia?.("(max-width: 899px)").matches;
+    const kind = pair ? (mobile ? "slide" : "swap") : (DEPTH[target] > DEPTH[mode] ? "soft-f" : "soft-b");
+    const go = kind === "slide" ? COPY[mode].go : null;
+    busy.current = true;
+    setTimeout(() => { busy.current = false; }, 900);
 
-  // Slide muna, saka mag-navigate. Hindi gagalaw kung nasa parehong pahina na (iyon ang dating nagpapa-stuck).
-  const swapTo = (to) => {
-    if (!swappable || swapping || to === here) return;
-    setSwapping(true);
-    timer.current = setTimeout(() => {
-      lastGo = copy.go;
-      try { navigate(to); } catch { window.location.assign(to); }
-      // Safety: kung hindi nagpalit ang pahina, ibalik sa normal para mapindot ulit ang mga button
-      timer.current = setTimeout(() => { lastGo = null; setSwapping(false); }, 1500);
-    }, SWAP_MS);
+    if (root && !reduce) {
+      const c = root.cloneNode(true);
+      c.classList.add("auth-leaving");
+      c.setAttribute("aria-hidden", "true");
+      c.setAttribute("inert", "");
+      c.removeAttribute("data-arrive");
+      c.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+      c.dataset.kind = kind;
+      if (go) c.dataset.go = go;
+      if (window.scrollY) c.querySelector(".auth-shell").style.marginTop = `-${window.scrollY}px`;
+      document.body.appendChild(c);
+      void c.offsetWidth; // sisimulan ang transition mula sa kasalukuyang posisyon
+      c.classList.add("is-swapping");
+      ghost = c;
+      setTimeout(() => { c.classList.add("is-fading"); setTimeout(() => c.remove(), 400); }, 2000); // safety lang
+      lastGo = go || kind;
+      lastGoAt = performance.now();
+    }
+    try { navigate(to); } catch { window.location.assign(to); }
   };
 
-  // Kahit payak na <Link to="/login"> o "/register" ang gamit ng pahina, magsli-slide din (event delegation)
-  // Capture phase: mauuna ito sa sariling click handler ng <Link>, kaya mapipigilan ang agarang navigate
+  // Kahit payak na <Link> ang gamit ng pahina, magsli-slide din (event delegation).
+  // Capture phase: mauuna ito sa sariling click handler ng <Link>, kaya mapipigilan ang agarang navigate.
   const onLinkClick = (e) => {
-    if (!swappable || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest?.("a[href]");
     if (!a || a.target === "_blank") return;
     const path = a.getAttribute("href");
-    if (path !== "/login" && path !== "/register") return;
+    if (!MODES[path]) return;
     e.preventDefault();
-    swapTo(path);
+    goTo(path);
   };
 
   return (
       <div
-        className={`auth-page${swapping ? " is-swapping" : ""}`}
+        ref={rootRef}
+        className="auth-page"
         data-side={copy.side}
         data-mode={mode}
-        data-go={swapping ? copy.go : undefined}
         data-arrive={arrive.current || undefined}
+        style={lag.current ? { "--lag": `-${lag.current}ms` } : undefined}
         onClickCapture={onLinkClick}
       >
         <div className="auth-shell">
@@ -168,9 +206,9 @@ export function LoginLayout({ mode: modeProp = "login", title, subtitle, childre
                 <h2>{copy.title}</h2>
                 <p>{copy.body}</p>
                 <Link to={copy.to} className="auth-ghost">
-                  {!swappable && <ArrowLeft size={18} aria-hidden="true" />}
+                  {!pair && <ArrowLeft size={18} aria-hidden="true" />}
                   {copy.cta}
-                  {swappable && <ArrowRight size={18} aria-hidden="true" />}
+                  {pair && <ArrowRight size={18} aria-hidden="true" />}
                 </Link>
               </div>
               <figure className="auth-verse">
@@ -188,8 +226,8 @@ export function LoginLayout({ mode: modeProp = "login", title, subtitle, childre
             </div>
 
             <div className="auth-card">
-              {swappable && (
-                <nav className="auth-tabs" data-on={swapping ? (mode === "login" ? "register" : "login") : mode} aria-label="Login or register">
+              {pair && (
+                <nav className="auth-tabs" data-on={mode} aria-label="Login or register">
                   <Link to="/login" className={mode === "login" ? "on" : undefined} aria-current={mode === "login" ? "page" : undefined}>Login</Link>
                   <Link to="/register" className={mode === "register" ? "on" : undefined} aria-current={mode === "register" ? "page" : undefined}>Register</Link>
                   <i aria-hidden="true" />

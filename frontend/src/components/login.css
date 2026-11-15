@@ -122,11 +122,14 @@ html[data-theme="dark"] .auth-page {
 
 .auth-page .auth-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 4px 0 22px; font-size: .92rem; }
 .auth-page .auth-remember { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 36px; margin: 0 !important; font: 500 .92rem/1.2 var(--f-body) !important; letter-spacing: 0 !important; text-transform: none !important; color: var(--ink-2) !important; cursor: pointer; user-select: none; }
-.auth-page .auth-remember input[type="checkbox"] { -webkit-appearance: none; appearance: none; position: relative; flex-shrink: 0; width: 20px; height: 20px; margin: 0; padding: 0; border: 1.5px solid var(--ink); border-radius: 4px; background: transparent; accent-color: var(--ink); cursor: pointer; transition: background-color .25s; }
-.auth-page .auth-remember input[type="checkbox"]::after { content: ""; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px; border: solid var(--paper); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .25s var(--ease); }
-.auth-page .auth-remember input[type="checkbox"]:checked { background: var(--ink); border-color: var(--ink); }
-.auth-page .auth-remember input[type="checkbox"]:checked::after { transform: rotate(45deg) scale(1); }
-.auth-page .auth-remember input[type="checkbox"]:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.auth-page, .auth-page input { accent-color: var(--ink); }
+.auth-page input[type="checkbox"] { -webkit-appearance: none; appearance: none; position: relative; display: inline-block; flex-shrink: 0; width: 20px; height: 20px; margin: 0; padding: 0; border: 1.5px solid var(--ink); border-radius: 4px; background: transparent; box-shadow: none; cursor: pointer; transition: background-color .25s var(--ease); }
+.auth-page input[type="checkbox"]::after { content: ""; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .25s var(--ease); }
+html[data-theme="dark"] .auth-page input[type="checkbox"]::after { border-color: #0c0c0c; }
+.auth-page input[type="checkbox"]:checked { background: #0c0c0c; border-color: #0c0c0c; }
+html[data-theme="dark"] .auth-page input[type="checkbox"]:checked { background: #fff; border-color: #fff; }
+.auth-page input[type="checkbox"]:checked::after { transform: rotate(45deg) scale(1); }
+.auth-page input[type="checkbox"]:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .auth-page .auth-box { display: none; }
 .auth-page .auth-link, .auth-page .auth-alt a { position: relative; color: var(--ink); font-weight: 700; text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1.5px no-repeat; transition: background-size .4s var(--ease); }
 .auth-page .auth-link:hover, .auth-page .auth-alt a:hover { background-size: 0 1.5px; background-position: 100% 100%; }
@@ -185,8 +188,8 @@ html[data-theme="dark"] .auth-page {
 /* ================= SWAP: slide pakaliwa/pakanan ================= */
 @media (min-width: 900px) {
   /* papalabas: ang dalawang panel ay nagpapalit ng pwesto, kasama ang laman */
-    .auth-page.is-swapping .auth-brand { transform: translateX(calc(var(--dir) * 100%)); box-shadow: 0 0 90px rgba(0, 0, 0, .5); }
-  .auth-page.is-swapping .auth-main { transform: translateX(calc(var(--dir) * -100%)); }
+    .auth-page.is-swapping[data-kind="swap"] .auth-brand { transform: translateX(calc(var(--dir) * 100%)); }
+  .auth-page.is-swapping[data-kind="swap"] .auth-main { transform: translateX(calc(var(--dir) * -100%)); }
 
   /* papasok (bagong pahina): tuloy ang galaw, hindi fade. Pa-wipe mula sa gilid. */
   .auth-page { animation: none; }
@@ -218,10 +221,10 @@ html[data-theme="dark"] .auth-page {
   .auth-page .auth-tabs[data-on="register"] i { transform: translateX(100%); }
 
   /* mobile swap: slide pakaliwa/pakanan ang buong pahina */
-    .auth-page[data-go="l"].is-swapping .auth-brand, .auth-page[data-go="l"].is-swapping .auth-main { transform: translateX(-110%); }
-  .auth-page[data-go="r"].is-swapping .auth-brand, .auth-page[data-go="r"].is-swapping .auth-main { transform: translateX(110%); }
-  .auth-page[data-arrive="l"] .auth-shell { animation: auth-slide-l .6s var(--ease) both; }
-  .auth-page[data-arrive="r"] .auth-shell { animation: auth-slide-r .6s var(--ease) both; }
+    .auth-page[data-go="l"].is-swapping .auth-brand, .auth-page[data-go="l"].is-swapping .auth-main { transform: translateX(-100%); }
+  .auth-page[data-go="r"].is-swapping .auth-brand, .auth-page[data-go="r"].is-swapping .auth-main { transform: translateX(100%); }
+  .auth-page[data-arrive="l"] .auth-shell { animation: auth-slide-l .5s var(--ease) var(--lag, 0s) both; }
+  .auth-page[data-arrive="r"] .auth-shell { animation: auth-slide-r .5s var(--ease) var(--lag, 0s) both; }
   .auth-page { animation: none; }
   .auth-page:not([data-arrive]) { animation: auth-fade .5s ease both; }
 }
@@ -233,6 +236,7 @@ html[data-theme="dark"] .auth-page {
 /* Ang swap ay galaw na sinimulan mismo ng user at ito ang pangunahing feature, kaya hindi ito pinapatay.
    Ang mga hindi mahalagang galaw (fade ng pahina, wipe ng laman) lang ang inaalis. */
 @media (prefers-reduced-motion: reduce) {
+  .auth-page .auth-brand, .auth-page .auth-main { animation: none !important; }
   .auth-page, .auth-page .auth-brand-in, .auth-page .auth-card, .auth-page .auth-shell { animation: none !important; }
 }
 
@@ -253,3 +257,37 @@ html[data-theme="dark"] .auth-page {
 .auth-page .auth-ghost svg { flex-shrink: 0; }
 .auth-page[data-mode="forgot"] .auth-card, .auth-page[data-mode="reset"] .auth-card { max-width: 440px; }
 .auth-page .auth-hint { margin: -4px 0 18px; font-size: .88rem; color: var(--mute); }
+
+/* ---------- Paglipat ng pahina ----------
+   Ang "kopya" (.auth-leaving) ang umaalis; ang bagong pahina (data-arrive) ang pumapasok. Sabay ang galaw. */
+.auth-page.auth-leaving .auth-brand, .auth-page.auth-leaving .auth-main { will-change: transform; }
+.auth-page.auth-leaving { position: fixed; inset: 0; z-index: 90; height: 100vh; height: 100dvh; overflow: hidden; pointer-events: none; animation: none !important; }
+.auth-page.auth-leaving *, .auth-page.auth-leaving *::before { animation: none !important; }
+
+/* Desktop swap: gumagalaw ang kopya, tapos natutunaw habang gumagalaw para lumabas ang bagong text */
+.auth-page.auth-leaving { transition: opacity .25s ease; }
+.auth-page.auth-leaving.is-fading { opacity: 0; }
+.auth-page.auth-leaving[data-kind="swap"] .auth-copy, .auth-page.auth-leaving[data-kind="swap"] .auth-verse, .auth-page.auth-leaving[data-kind="swap"] .auth-card { transition: opacity .16s ease; }
+.auth-page.auth-leaving[data-kind="swap"].is-swapping .auth-copy, .auth-page.auth-leaving[data-kind="swap"].is-swapping .auth-verse, .auth-page.auth-leaving[data-kind="swap"].is-swapping .auth-card { opacity: 0; }
+@keyframes auth-brand-from { from { transform: translateX(calc(var(--dir) * 100%)); } }
+@keyframes auth-main-from { from { transform: translateX(calc(var(--dir) * -100%)); } }
+@media (min-width: 900px) {
+  .auth-page[data-arrive="swap"] .auth-brand { animation: auth-brand-from var(--swap) var(--ease) var(--lag, 0s) both; will-change: transform; }
+  .auth-page[data-arrive="swap"] .auth-copy, .auth-page[data-arrive="swap"] .auth-verse, .auth-page[data-arrive="swap"] .auth-card { animation: auth-fade .4s ease calc(.34s + var(--lag, 0s)) both; }
+  .auth-page[data-arrive="swap"] .auth-main { animation: auth-main-from var(--swap) var(--ease) var(--lag, 0s) both; will-change: transform; }
+}
+
+/* Forgot / Reset: natutunaw ang lumang pahina, at dumudulas ang bagong form mula sa gilid */
+.auth-page.auth-leaving[data-kind^="soft"] .auth-card { transition: transform .4s var(--ease), opacity .2s ease; }
+.auth-page.auth-leaving[data-kind^="soft"] .auth-brand-in { transition: opacity .2s ease; }
+.auth-page.auth-leaving[data-kind^="soft"].is-swapping .auth-card, .auth-page.auth-leaving[data-kind^="soft"].is-swapping .auth-brand-in { opacity: 0; }
+.auth-page.auth-leaving[data-kind="soft-f"].is-swapping .auth-card { transform: translateX(-36px); }
+.auth-page.auth-leaving[data-kind="soft-b"].is-swapping .auth-card { transform: translateX(36px); }
+@keyframes auth-soft-f { from { opacity: 0; transform: translateX(36px); } }
+@keyframes auth-soft-b { from { opacity: 0; transform: translateX(-36px); } }
+.auth-page[data-arrive="soft-f"] .auth-card { animation: auth-soft-f .5s var(--ease) calc(.22s + var(--lag, 0s)) both; }
+.auth-page[data-arrive="soft-b"] .auth-card { animation: auth-soft-b .5s var(--ease) calc(.22s + var(--lag, 0s)) both; }
+@media (prefers-reduced-motion: reduce) { .auth-page .auth-card { animation: none !important; } }
+/* Mobile slide: pagkatapos lumabas ang kopya, itago agad para hindi tumagos ang anino sa gilid */
+.auth-page.auth-leaving[data-kind="slide"] { transition: opacity .01s linear; }
+.auth-page[data-arrive^="soft"] .auth-brand-in { animation: auth-fade .4s ease calc(.22s + var(--lag, 0s)) both; }
