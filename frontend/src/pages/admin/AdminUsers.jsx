@@ -5,6 +5,7 @@ import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../i18n/LanguageContext";
 import "../../components/portal.css";
+import "../secretary/StaffPages.css"; // para sa sp-* styles (search, card, filters)
 
 const roles = [
   { value: "admin", label: "Admin / Pastor", short: "Admin", badge: "warn" },
@@ -12,8 +13,13 @@ const roles = [
   { value: "ministry_leader", label: "Ministry Leader", short: "Ministry Leader", badge: "" },
   { value: "member", label: "Member / Congregant / Volunteer", short: "Member", badge: "" },
 ];
+const statuses = [
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
 const roleOf = (v) => roles.find((r) => r.value === v);
 const validRole = (v) => (roles.some((r) => r.value === v) ? v : "all");
+const validStatus = (v) => (statuses.some((s) => s.value === v) ? v : "all");
 const empty = { id: null, full_name: "", email: "", role: "member", status: "active", password: "" };
 
 const fmtDate = (d) => {
@@ -29,14 +35,18 @@ export default function AdminUsers() {
   const [rows, setRows] = useState(null);
   const [form, setForm] = useState(null);
   const filter = validRole(searchParams.get("role"));
+  const statusFilter = validStatus(searchParams.get("status"));
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const setFilter = (v) => {
-    if (v === "all") setSearchParams({}, { replace: true });
-    else setSearchParams({ role: v }, { replace: true });
+  // Role at status ay nasa URL (?role=admin&status=inactive)
+  const setParam = (key, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === "all") next.delete(key);
+    else next.set(key, value);
+    setSearchParams(next, { replace: true });
   };
 
   const load = async () => {
@@ -92,11 +102,22 @@ export default function AdminUsers() {
   };
 
   const all = rows || [];
-  const countFor = (v) => (v === "all" ? all.length : all.filter((r) => r.role === v).length);
-  const shown = all.filter((r) =>
-    (filter === "all" || r.role === filter) &&
-    `${r.full_name} ${r.email}`.toLowerCase().includes(search.toLowerCase())
+  const countRole = (v) => (v === "all" ? all.length : all.filter((r) => r.role === v).length);
+  const countStatus = (v) => (v === "all" ? all.length : all.filter((r) => r.status === v).length);
+
+  const needle = search.trim().toLowerCase();
+  const shown = all.filter(
+    (r) =>
+      (filter === "all" || r.role === filter) &&
+      (statusFilter === "all" || r.status === statusFilter) &&
+      `${r.full_name} ${r.email}`.toLowerCase().includes(needle)
   );
+
+  const hasFilter = filter !== "all" || statusFilter !== "all" || needle !== "";
+  const clearAll = () => {
+    setSearchParams({}, { replace: true });
+    setSearch("");
+  };
 
   return (
     <>
@@ -113,24 +134,49 @@ export default function AdminUsers() {
         </button>
       </div>
 
-      <div className="min-toolbar">
-        <input
-          className="min-search"
-          placeholder={t("Search name or email...")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <div className="min-pills">
-          {[{ value: "all", short: "All" }, ...roles].map((r) => (
-            <button
-              key={r.value}
-              type="button"
-              className={`min-pill ${filter === r.value ? "active" : ""}`}
-              onClick={() => setFilter(r.value)}
-            >
-              {t(r.short)} ({countFor(r.value)})
-            </button>
-          ))}
+      {/* Search + filters (isang row) */}
+      <div className="sp-card">
+        <div className="sp-row">
+          <div className="sp-field grow">
+            <label htmlFor="usr-search">{t("Search")}</label>
+            <input
+              id="usr-search"
+              type="search"
+              autoComplete="off"
+              value={search}
+              placeholder={t("Search name or email...")}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="sp-field" style={{ minWidth: 220 }}>
+            <label htmlFor="usr-role">{t("Filter by role")}</label>
+            <select id="usr-role" value={filter} onChange={(e) => setParam("role", e.target.value)}>
+              <option value="all">{t("All roles")} ({countRole("all")})</option>
+              {roles.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {t(r.short)} ({countRole(r.value)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="sp-field" style={{ minWidth: 180 }}>
+            <label htmlFor="usr-status">{t("Filter by status")}</label>
+            <select id="usr-status" value={statusFilter} onChange={(e) => setParam("status", e.target.value)}>
+              <option value="all">{t("All status")} ({countStatus("all")})</option>
+              {statuses.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {t(s.label)} ({countStatus(s.value)})
+                </option>
+              ))}
+            </select>
+          </div>
+          {hasFilter && (
+            <div className="sp-actions">
+              <button className="sp-btn" type="button" onClick={clearAll}>
+                {t("Clear")}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

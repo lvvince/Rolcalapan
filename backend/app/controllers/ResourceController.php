@@ -15,6 +15,9 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
  * NEW: kapag may bagong notification (website), nag-e-email din sa Gmail
  * ng recipient gamit ang rol_email_notification() sa rolmail.
  *
+ * NEW: attendance may recorded_by (user id ng nag-record), lumalabas bilang recorded_by_name.
+ *      Kailangan ng column: ALTER TABLE attendance ADD COLUMN recorded_by INT NULL;
+ *
  * NEW: events may speaker_id (pastor/admin lang). Lumalabas bilang speaker_name.
  * Kailangan ng column: ALTER TABLE events ADD COLUMN speaker_id INT NULL;
  */
@@ -156,8 +159,9 @@ class ResourceController extends Controller
                 'defaults' => ['event_id' => 0, 'service_date' => '__today__', 'method' => 'manual'],
                 'unique' => ['member_id', 'service_date', 'event_id'],
                 'join' => [
-                    'member_id' => ['members', 'full_name', 'member_name'],
-                    'event_id'  => ['events', 'title', 'event_title'],
+                    'member_id'   => ['members', 'full_name', 'member_name'],
+                    'event_id'    => ['events', 'title', 'event_title'],
+                    'recorded_by' => ['users', 'full_name', 'recorded_by_name'],
                 ],
                 'sort' => ['service_date', 'desc'],
             ],
@@ -404,6 +408,8 @@ class ResourceController extends Controller
             $data['member_code'] = 'ROL-' . strtoupper(substr(md5(uniqid('', true)), 0, 6));
         }
         if (!$id && !empty($c['created_by'])) $data['created_by'] = $this->u['id'];
+        // Attendance: itala kung sino ang admin/secretary na nag-record
+        if ($name === 'attendance' && !$id) $data['recorded_by'] = $this->u['id'];
         if ($name === 'ministry_schedules') $this->check_conflict($data, $id);
 
         // AI classifier para sa bagong prayer request.

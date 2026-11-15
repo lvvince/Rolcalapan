@@ -170,27 +170,29 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
     setConfirming(false);
     setMsg(null);
     setQ("");
+    setOpen(false);
   }, [eventId, date]);
 
   const pickedIds = new Set(picked.map((m) => String(m.id)));
   const needle = q.trim().toLowerCase();
 
-  // Suggestions: hindi pa naka-record, hindi pa napili, tugma sa search (max 8)
-  const suggestions = members
-    .filter((m) => !recorded.has(String(m.id)) && !pickedIds.has(String(m.id)))
-    .filter(
-      (m) =>
-        !needle ||
-        [m.full_name, m.family_name, m.member_code].some((v) =>
-          String(v ?? "").toLowerCase().includes(needle)
+  // Suggestions: WALA kapag walang tinatype. Kapag may tinype: hindi pa naka-record,
+  // hindi pa napili, tugma sa search (max 8)
+  const suggestions = !needle
+    ? []
+    : members
+        .filter((m) => !recorded.has(String(m.id)) && !pickedIds.has(String(m.id)))
+        .filter((m) =>
+          [m.full_name, m.family_name, m.member_code].some((v) =>
+            String(v ?? "").toLowerCase().includes(needle)
+          )
         )
-    )
-    .slice(0, 8);
+        .slice(0, 8);
 
   const add = (m) => {
     setPicked((list) => [...list, m]);
     setQ("");
-    setOpen(true);
+    setOpen(false); // isara ang dropdown para makita agad ang "Selected" sa baba
     setConfirming(false);
   };
 
@@ -207,7 +209,7 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
   const onKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (suggestions[0]) add(suggestions[0]);
+      if (needle && suggestions[0]) add(suggestions[0]);
     }
     if (e.key === "Escape") setOpen(false);
   };
@@ -279,7 +281,8 @@ function ManualAttendance({ eventId, eventLabel, date, refreshKey, onDone }) {
           />
         </div>
 
-        {open && (
+        {/* Lalabas lang kapag may tinatype */}
+        {open && needle && (
           <ul className="ma-suggest" role="listbox">
             {suggestions.length === 0 ? (
               <li className="ma-suggest-empty">{t("No matching members")}</li>
@@ -411,6 +414,14 @@ export function StaffAttendance({ canDelete = false }) {
 
   const refresh = () => setK((x) => x + 1);
 
+  // Ipakita lang ang event kapag ngayong araw mismo ang petsa nito
+  // (hindi pa lalabas ang paparating, hindi na lalabas ang tapos na)
+  const today = todayStr();
+  const upcomingEvents = events.filter((ev) => {
+    const m = String(ev?.event_date || "").match(/^\d{4}-\d{2}-\d{2}/);
+    return !!m && m[0] === today;
+  });
+
   return (
     <>
       <PageHeader
@@ -426,7 +437,7 @@ export function StaffAttendance({ canDelete = false }) {
             <label htmlFor="att-event">{t("Event")}</label>
             <select id="att-event" value={eventId} onChange={(e) => pickEvent(e.target.value)}>
               <option value={0}>{t("Sunday Service")}</option>
-              {events.map((ev) => (
+              {upcomingEvents.map((ev) => (
                 <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date})</option>
               ))}
             </select>
@@ -464,6 +475,11 @@ export function StaffAttendance({ canDelete = false }) {
           { key: "member_name", label: t("Member") },
           { label: t("Event"), render: (r) => r.event_title || t("Sunday Service") },
           { label: t("Method"), render: (r) => <span className="badge">{t(r.method)}</span> },
+          {
+            label: t("Recorded by"),
+            // Walang recorded_by = GPS (sariling check-in ng member) o lumang record
+            render: (r) => r.recorded_by_name || (r.method === "gps" ? t("Self (GPS)") : "—"),
+          },
         ]}
         fields={[]}
       />

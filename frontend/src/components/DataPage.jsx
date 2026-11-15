@@ -110,7 +110,10 @@ function FieldInput({ f, value, onChange, t, options }) {
     case "number":
       return <input {...common} type="number" step={f.step} min={f.min} max={f.max} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
 
+    // May min/max: hindi na makakapili ng petsa sa labas ng saklaw sa calendar picker
     case "date":
+      return <input {...common} type="date" min={f.min} max={f.max} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
+
     case "time":
     case "email":
     case "tel":
@@ -145,9 +148,11 @@ function FieldInput({ f, value, onChange, t, options }) {
  *  reloadKey | refreshKey   palitan para mag-refetch
  *  emptyText, onLoaded, hideTitle, searchable, rowClassName, className
  *
- * Field options (bago)
+ * Field options
  *  half: true            kalahati lang ng lapad (2 fields sa isang row)
  *  showIf: (values) => bool   ipakita lang ang field kapag true
+ *  min / max             para sa type "number" at "date" (YYYY-MM-DD).
+ *                        Sa date, sine-check din ito sa Save kahit manual na tinype.
  */
 export default function DataPage({
   title,
@@ -183,6 +188,7 @@ export default function DataPage({
   const [msg, setMsg] = useState(null);
   const [modal, setModal] = useState(null); // { mode: "add" | "edit", row? }
   const [values, setValues] = useState({});
+  const [formErr, setFormErr] = useState(""); // error sa loob ng modal
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [q, setQ] = useState("");
@@ -282,12 +288,14 @@ export default function DataPage({
 
   const openAdd = () => {
     setValues(Object.fromEntries(fields.map((f) => [f.key, f.default ?? defaults?.[f.key] ?? ""])));
+    setFormErr("");
     setModal({ mode: "add" });
   };
 
   const openEdit = (row) => {
     const list = editFields || fields;
     setValues(Object.fromEntries(list.map((f) => [f.key, row[f.key] ?? f.default ?? ""])));
+    setFormErr("");
     setModal({ mode: "edit", row });
   };
 
@@ -295,8 +303,29 @@ export default function DataPage({
     if (!saving) setModal(null);
   }, [saving]);
 
+  // Sine-check ang min/max ng mga date field (para sa manual na pag-type)
+  const dateProblem = () => {
+    for (const f of activeFields) {
+      if (f.type !== "date") continue;
+      if (f.showIf && !f.showIf(values)) continue;
+      const v = String(values[f.key] ?? "").slice(0, 10);
+      if (!v) continue;
+      if (f.min && v < f.min) return `${f.label}: ${t("cannot be earlier than")} ${f.min}.`;
+      if (f.max && v > f.max) return `${f.label}: ${t("cannot be later than")} ${f.max}.`;
+    }
+    return "";
+  };
+
   const submit = async (e) => {
     e.preventDefault();
+
+    const problem = dateProblem();
+    if (problem) {
+      setFormErr(problem);
+      return;
+    }
+    setFormErr("");
+
     setSaving(true);
     try {
       // Custom save (hal. pagpapadala sa buong group). Kapag undefined ang
@@ -318,7 +347,8 @@ export default function DataPage({
       setMsg({ ok: true, text: "Saved." });
       await load();
     } catch (x) {
-      setMsg({ ok: false, text: err(x) });
+      // Error mula sa server: ipakita sa loob ng modal para hindi matakpan
+      setFormErr(err(x));
     } finally {
       setSaving(false);
     }
@@ -476,11 +506,21 @@ export default function DataPage({
                       t={t}
                       options={optionsFor(f)}
                       value={values[f.key]}
-                      onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+                      onChange={(v) => {
+                        setValues((s) => ({ ...s, [f.key]: v }));
+                        if (formErr) setFormErr("");
+                      }}
                     />
                   </div>
                 ))}
             </div>
+
+            {/* Error sa loob ng modal (petsa o galing sa server) */}
+            {formErr && (
+              <div className="msg err" role="alert" style={{ flexShrink: 0, marginTop: 12 }}>
+                {t(formErr)}
+              </div>
+            )}
 
             {/* Laging nakikita: Cancel / Save */}
             <div

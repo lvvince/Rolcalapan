@@ -5,6 +5,10 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
  * backend/app/controllers/PortalController.php
  * Custom endpoints: profile, profile picture, overview, join/leave, recommender, check-in, reports, notifications.
  * Recommender: interests + age + history (walang location).
+ *
+ * NEW: attendance.recorded_by = user id ng admin/secretary na nag-QR check-in.
+ *      (GPS check-in ng member mismo = NULL)
+ *      Kailangan ng column: ALTER TABLE attendance ADD COLUMN recorded_by INT NULL;
  */
 class PortalController extends Controller
 {
@@ -540,14 +544,19 @@ class PortalController extends Controller
         return 2 * $r * asin(min(1, sqrt($a)));
     }
 
-    private function record_attendance($memberId, $eventId, $method)
+    // $recordedBy = user id ng admin/secretary na nag-record (NULL kung GPS check-in ng member)
+    private function record_attendance($memberId, $eventId, $method, $recordedBy = null)
     {
         $today = date('Y-m-d');
         $dup = $this->db->table('attendance')
             ->where('member_id', $memberId)->where('service_date', $today)->where('event_id', $eventId)->get();
         if ($dup) $this->out(['error' => 'Already checked in today'], 409);
         $this->db->table('attendance')->insert([
-            'member_id' => $memberId, 'event_id' => $eventId, 'service_date' => $today, 'method' => $method,
+            'member_id'    => $memberId,
+            'event_id'     => $eventId,
+            'service_date' => $today,
+            'method'       => $method,
+            'recorded_by'  => $recordedBy,
         ]);
     }
 
@@ -569,7 +578,8 @@ class PortalController extends Controller
             if ($dist > $radius) {
                 $this->out(['error' => 'You are too far from the event (' . round($dist) . ' m away, allowed ' . $radius . ' m)'], 422);
             }
-            $this->record_attendance($m['id'], (int)$ev['id'], 'gps');
+            // GPS: sariling check-in ng member, walang recorded_by
+            $this->record_attendance($m['id'], (int)$ev['id'], 'gps', null);
             $this->out(['success' => true, 'message' => 'Checked in to ' . $ev['title']]);
         }
 
@@ -578,7 +588,8 @@ class PortalController extends Controller
             if ($code === '') $this->out(['error' => 'Member code is required'], 422);
             $m = $this->db->table('members')->where('member_code', $code)->get();
             if (!$m) $this->out(['error' => 'Member code not found'], 404);
-            $this->record_attendance($m['id'], (int)($in['event_id'] ?? 0), 'qr');
+            // QR / code: itala ang admin o secretary na nag-check in
+            $this->record_attendance($m['id'], (int)($in['event_id'] ?? 0), 'qr', (int)$this->u['id']);
             $this->out(['success' => true, 'message' => 'Checked in: ' . $m['full_name']]);
         }
 

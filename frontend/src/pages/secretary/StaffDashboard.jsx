@@ -120,10 +120,11 @@ export function QrCodes() {
 // Ginawang function para magamit ang t(). Ginagamit din ito ng MinistryDashboard.
 // canAssignSpeaker: kung false, naka-disable ang Speaker dropdown
 // half = kalahating lapad, showIf = ipakita lang kapag true
+// min sa Date = hindi makakapili ng petsang lumipas na (nire-recompute tuwing render)
 export const getEventFields = (t, canAssignSpeaker = false) => [
   { key: "title", label: t("Title"), required: true },
   { key: "description", label: t("Description"), type: "textarea", rows: 3 },
-  { key: "event_date", label: t("Date"), type: "date", required: true, half: true },
+  { key: "event_date", label: t("Date"), type: "date", required: true, half: true, min: ymd(new Date()) },
   {
     key: "event_type",
     label: t("Type"),

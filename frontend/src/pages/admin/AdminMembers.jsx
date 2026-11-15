@@ -13,6 +13,7 @@ export default function AdminMembers() {
   const { t } = useLang();
   const [families, setFamilies] = useState([]);
   const [family, setFamily] = useState("all"); // all | __none | <family name>
+  const [status, setStatus] = useState("all"); // all | active | inactive
   const [q, setQ] = useState("");
 
   // Listahan ng family names para sa dropdown
@@ -31,15 +32,17 @@ export default function AdminMembers() {
     const fam = String(m.family_name || "").trim();
     if (family === "__none" && fam !== "") return false;
     if (family !== "all" && family !== "__none" && fam !== family) return false;
+    if (status !== "all" && String(m.status || "").toLowerCase() !== status) return false;
     if (!needle) return true;
     return [m.member_code, m.full_name, m.family_name, m.phone, m.email].some((v) =>
       String(v ?? "").toLowerCase().includes(needle)
     );
   };
 
-  const hasFilter = family !== "all" || needle !== "";
+  const hasFilter = family !== "all" || status !== "all" || needle !== "";
   const clearAll = () => {
     setFamily("all");
+    setStatus("all");
     setQ("");
   };
 
@@ -66,7 +69,7 @@ export default function AdminMembers() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div className="sp-field" style={{ minWidth: 220 }}>
+          <div className="sp-field" style={{ minWidth: 200 }}>
             <label htmlFor="mem-family">{t("Filter by family")}</label>
             <select id="mem-family" value={family} onChange={(e) => setFamily(e.target.value)}>
               <option value="all">{t("All families")}</option>
@@ -74,6 +77,14 @@ export default function AdminMembers() {
               {families.map((f) => (
                 <option key={f} value={f}>{f}</option>
               ))}
+            </select>
+          </div>
+          <div className="sp-field" style={{ minWidth: 160 }}>
+            <label htmlFor="mem-status">{t("Filter by status")}</label>
+            <select id="mem-status" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="all">{t("All status")}</option>
+              <option value="active">{t("Active")}</option>
+              <option value="inactive">{t("Inactive")}</option>
             </select>
           </div>
           {hasFilter && (
