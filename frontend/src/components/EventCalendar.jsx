@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Clock, MapPin } from "lucide-react";
+import { ArrowRight, Clock, MapPin, Mic } from "lucide-react";
 import api from "../api";
 import { hm } from "./DataPage";
 import { useLang } from "../i18n/LanguageContext";
@@ -186,6 +186,11 @@ export default function EventCalendar({ viewAllTo }) {
                       {e.location && (
                         <span>
                           <MapPin size={13} aria-hidden="true" /> {e.location}
+                        </span>
+                      )}
+                      {e.speaker_name && (
+                        <span title={t("Speaker")}>
+                          <Mic size={13} aria-hidden="true" /> {e.speaker_name}
                         </span>
                       )}
                     </p>

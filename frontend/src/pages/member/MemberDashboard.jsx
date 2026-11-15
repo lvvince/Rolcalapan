@@ -15,6 +15,7 @@ import {
   FileText,
   Calendar,
   Clock,
+  Mic,
   Save,
   LogOut,
   UserPlus,
@@ -478,6 +479,9 @@ export function EventsRsvp() {
                 <span><Ico icon={Clock} size={14} /> {hm(e.start_time)}-{hm(e.end_time)}</span>
               )}
               {e.location && <span><Ico icon={MapPin} size={14} /> {e.location}</span>}
+              {e.speaker_name && (
+                <span title={t("Speaker")}><Ico icon={Mic} size={14} /> {e.speaker_name}</span>
+              )}
             </p>
             {e.description && <p>{t(e.description)}</p>}
 
