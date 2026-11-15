@@ -1,59 +1,19 @@
 // frontend/src/components/RoleLayout.jsx
-// Layout para sa Secretary, Ministry Leader, at Member. May chatbot widget ang Member.
+// Layout para sa Secretary, Ministry Leader, at Member. Ang itsura ay nasa PortalShell (Member ay may sariling disenyo).
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Menu, X, LogOut } from "lucide-react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useLang } from "../i18n/LanguageContext";
 import { roleMenus } from "../config/roleMenus";
-import Icon from "./Icon";
+import useNotifCount from "../hooks/useNotifCount";
 import ChatWidget from "./ChatWidget";
-import LanguageSwitcher from "./LanguageSwitcher";
-import ThemeToggle from "./ThemeToggle";
-
-// Mga role na walang icons sa sidebar (Secretary at Member ay may icons pa rin)
-const NO_ICON_ROLES = ["ministry", "ministry_leader", "leader"];
-
-// path ng menu item -> pangalan ng icon sa components/Icon.jsx
-const menuIcons = {
-  // Secretary / Staff
-  members: "users",
-  qr: "qr",
-  "qr-codes": "qr",
-  attendance: "check",
-  predictive: "chart",
-  events: "calendar",
-  geofence: "pin",
-  schedules: "clock",
-  giving: "gift",
-  reports: "chart",
-  sermons: "mic",
-  announcements: "message",
-  notifications: "bell",
-
-  // Ministry Leader
-  schedule: "calendar",
-  volunteers: "heart",
-  activities: "check",
-
-  // Member
-  profile: "member",
-  rsvp: "calendar",
-  prayer: "heart",
-  prayers: "heart",
-  checkin: "pin",
-  ministries: "users",
-  donate: "gift",
-};
-
-const getMenuIcon = (item) => item.icon || menuIcons[item.path] || "dashboard";
+import PortalShell from "./PortalShell";
 
 // Staff menu: hiwalay na "Events & Schedules" at "Announcements".
-// Gumagana kahit hindi pa napapalitan ang config/roleMenus.js:
 // - kung wala pang Announcements, idinadagdag sa ilalim ng Events
-// - ang Events ay may bagong translation key (events_schedules) para hindi
-//   lumabas ang lumang "Events & Announcements" galing sa translation file
+// - ang Events ay may bagong translation key (events_schedules)
 const buildItems = (role, items) => {
   if (role !== "staff") return items;
 
@@ -71,100 +31,15 @@ const buildItems = (role, items) => {
   return next;
 };
 
-const initialsOf = (name = "") =>
-  name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("") || "?";
-
-// Mga posibleng pangalan ng photo field (dagdagan kung iba ang gamit ng banner mo)
-const PHOTO_KEYS = [
-  "photo",
-  "photo_url",
-  "photoUrl",
-  "avatar",
-  "avatar_url",
-  "avatarUrl",
-  "profile_pic",
-  "profile_picture",
-  "profilePicture",
-  "profile_photo",
-  "profilePhoto",
-  "picture",
-  "image",
-  "image_url",
-  "imageUrl",
-];
-
-// Hanapin ang larawan sa user mismo at sa mga nested object (member / profile)
-const pickPhoto = (user) => {
-  if (!user) return null;
-  const sources = [user, user.member, user.profile, user.user];
-  for (const src of sources) {
-    if (!src || typeof src !== "object") continue;
-    for (const key of PHOTO_KEYS) {
-      const val = src[key];
-      if (typeof val === "string" && val.trim()) return val;
-    }
-  }
-  return null;
-};
-
-// Avatar na may fallback sa initials kapag walang larawan o hindi ma-load
-// `pic` = larawan galing sa /portal/me (member.profile_pic), mas inuuna ito
-function UserAvatar({ user, pic }) {
-  const photo = pic || pickPhoto(user);
-  const [failed, setFailed] = useState(false);
-
-  // i-reset ang error kapag nagbago ang larawan
-  useEffect(() => {
-    setFailed(false);
-  }, [photo]);
-
-  return (
-    <span className="sb-avatar" aria-hidden="true">
-      {photo && !failed ? (
-        <img
-          src={photo}
-          alt=""
-          referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
-          style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
-        />
-      ) : (
-        initialsOf(user?.name)
-      )}
-    </span>
-  );
-}
-
 export default function RoleLayout({ role }) {
   const { t } = useTranslation();
+  const { t: tr } = useLang();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const menu = roleMenus[role];
-  const items = buildItems(role, menu.items);
-  const showIcons = !NO_ICON_ROLES.includes(role);
-  const [open, setOpen] = useState(false); // mobile drawer
   const [memberPic, setMemberPic] = useState(null);
-  const [confirmLogout, setConfirmLogout] = useState(false);
-
-  const doLogout = () => {
-    setConfirmLogout(false);
-    logout();
-    navigate("/login", { replace: true });
-  };
-
-  // Click sa Logout: isara ang drawer (mobile) at itanong muna
-  const askLogout = () => {
-    setOpen(false);
-    setConfirmLogout(true);
-  };
-
-  const linkClass = ({ isActive }) => (isActive ? "active" : "");
+  const { unread, markSeen } = useNotifCount(user?.id); // pop-up ay hawak ng global NotifToast
 
   // Kunin ang larawan galing sa /portal/me (doon naka-save ang profile_pic).
   // Nagre-refresh kapag lumipat ng page, para makita agad ang bagong upload.
@@ -181,132 +56,37 @@ export default function RoleLayout({ role }) {
     };
   }, [location.pathname]);
 
-  // isara ang drawer kapag lumipat ng page
+  // Kapag nasa Notifications page, ituring na nabasa na
   useEffect(() => {
-    setOpen(false);
-  }, [location.pathname]);
-
-  // Escape para isara + i-lock ang scroll ng page habang bukas ang drawer
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  // Escape para isara ang logout confirmation
-  useEffect(() => {
-    if (!confirmLogout) return;
-    const onKey = (e) => e.key === "Escape" && setConfirmLogout(false);
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [confirmLogout]);
+    if (location.pathname === `${menu.base}/notifications` && unread > 0) markSeen();
+  }, [location.pathname, unread, markSeen, menu.base]);
 
   const roleTitle = t(`menu.title.${role}`, { defaultValue: menu.title });
 
+  const items = [
+    { to: menu.base, end: true, label: t("common.dashboard") },
+    ...buildItems(role, menu.items).map((i) => ({
+      to: `${menu.base}/${i.path}`,
+      label: t(`menu.label.${role}.${i.key || i.path}`, { defaultValue: i.label }),
+      badge: i.path === "notifications" && unread > 0 ? (unread > 99 ? "99+" : unread) : null,
+    })),
+  ];
+
   return (
-    <div className="shell">
-      <aside id="app-sidebar" className={`sidebar${open ? " open" : ""}`} aria-label="Main navigation">
-        <div className="brand">
-          <img src="/logo.png" alt="River of Life Calapan logo" width={36} height={36} />
-          <span>River of Life</span>
-          <button
-            type="button"
-            className="sb-close"
-            aria-label="Close menu"
-            onClick={() => setOpen(false)}
-          >
-            <X size={20} aria-hidden="true" />
-          </button>
-        </div>
-
-        <nav>
-          <NavLink to={menu.base} end className={linkClass}>
-            {showIcons && <Icon name="dashboard" />}
-            <span>{t("common.dashboard")}</span>
-          </NavLink>
-
-          {items.map((i) => (
-            <NavLink key={i.path} to={`${menu.base}/${i.path}`} className={linkClass}>
-              {showIcons && <Icon name={getMenuIcon(i)} />}
-              <span>{t(`menu.label.${role}.${i.key || i.path}`, { defaultValue: i.label })}</span>
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="sb-footer">
-          <div className="sb-user">
-            <UserAvatar user={user} pic={memberPic} />
-            <div className="sb-user-text">
-              <strong title={user?.name}>{user?.name}</strong>
-              <small title={roleTitle}>{roleTitle}</small>
-            </div>
-          </div>
-          <button type="button" className="sb-logout" onClick={askLogout}>
-            <LogOut size={16} aria-hidden="true" />
-            <span>{t("common.logout")}</span>
-          </button>
-        </div>
-      </aside>
-
-      {open && <div className="sb-overlay" onClick={() => setOpen(false)} aria-hidden="true" />}
-
-      <div className="main">
-        <header className="topbar">
-          <div className="topbar-left">
-            <button
-              type="button"
-              className="menu-btn"
-              aria-label="Open menu"
-              aria-expanded={open}
-              aria-controls="app-sidebar"
-              onClick={() => setOpen(true)}
-            >
-              <Menu size={20} aria-hidden="true" />
-            </button>
-            <span className="topbar-title">{roleTitle}</span>
-          </div>
-          <div className="topbar-right">
-            <ThemeToggle />
-            <LanguageSwitcher />
-          </div>
-        </header>
-        <main className="content">
-          <Outlet />
-        </main>
-      </div>
-
-      {role === "member" && <ChatWidget userId={user?.id} />}
-
-      {/* Are you sure to logout? */}
-      {confirmLogout && (
-        <div className="modal" onClick={() => setConfirmLogout(false)}>
-          <div
-            className="modal-card"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="logout-title"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 380 }}
-          >
-            <h3 id="logout-title">{t("logout.title", "Log out?")}</h3>
-            <p>{t("logout.message", "Are you sure you want to log out?")}</p>
-            <div className="modal-actions">
-              <button type="button" className="btn secondary" autoFocus onClick={() => setConfirmLogout(false)}>
-                {t("logout.cancel", "Cancel")}
-              </button>
-              <button type="button" className="btn" onClick={doLogout}>
-                {t("logout.confirm", "Yes, log out")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    <PortalShell
+      variant={role}
+      base={menu.base}
+      roleTitle={roleTitle}
+      items={items}
+      user={user}
+      photo={memberPic || user?.profile_pic || user?.photo}
+      unread={unread}
+      onLogout={() => {
+        logout();
+        navigate("/login", { replace: true });
+      }}
+      afterMain={role === "member" ? <ChatWidget userId={user?.id} /> : null}
+      tt={(s) => (s === "Log out" ? t("common.logout") : tr(s))}
+    />
   );
 }

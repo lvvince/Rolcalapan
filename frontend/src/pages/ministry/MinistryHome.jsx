@@ -1,63 +1,26 @@
 // frontend/src/pages/ministry/MinistryHome.jsx
-import { useEffect, useState } from "react";
+// Bagong disenyo ng Dashboard (itim at puti). Pareho pa rin ang endpoints na ginagamit.
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  CalendarDays,
-  Users,
-  HandHelping,
-  ClipboardList,
-  ClipboardCheck,
-  Bell,
-  User,
-  ArrowRight,
-  Clock,
-  MapPin,
-  Plus,
-} from "lucide-react";
+import { CalendarDays, Users, HandHelping, ClipboardList, ClipboardCheck, Bell, User, ArrowRight, ArrowUpRight, Clock, MapPin, Plus } from "lucide-react";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { hm } from "../../components/DataPage";
 import { useLang } from "../../i18n/LanguageContext";
 import DailyVerse from "../../components/DailyVerse";
 import EventCalendar from "../../components/EventCalendar";
-import "../../components/portal.css";
+import { Avatar, Head, LineChart, StatStrip, greeting, todayLabel } from "../../components/DashKit";
 
-const GROUPS = [
-  {
-    title: "Ministry",
-    items: [
-      { to: "/ministry/schedule", icon: CalendarDays, name: "Schedule", desc: "View your ministry schedule" },
-      { to: "/ministry/members", icon: Users, name: "Members", desc: "Manage your ministry members" },
-      { to: "/ministry/volunteers", icon: HandHelping, name: "Volunteers", desc: "Coordinate volunteers" },
-      { to: "/ministry/activities", icon: ClipboardList, name: "Activities", desc: "Plan and track activities" },
-      { to: "/ministry/events", icon: CalendarDays, name: "Events", desc: "Upcoming ministry events" },
-      { to: "/ministry/attendance", icon: ClipboardCheck, name: "Attendance", desc: "Check ministry attendance" },
-    ],
-  },
-  {
-    title: "Account",
-    items: [
-      { to: "/ministry/notifications", icon: Bell, name: "Notifications", desc: "View your notifications" },
-      { to: "/ministry/profile", icon: User, name: "My Profile", desc: "Update your personal information" },
-    ],
-  },
+const QUICK = [
+  { to: "/ministry/schedule", icon: CalendarDays, name: "Schedule", desc: "View your ministry schedule" },
+  { to: "/ministry/members", icon: Users, name: "Members", desc: "Manage your ministry members" },
+  { to: "/ministry/volunteers", icon: HandHelping, name: "Volunteers", desc: "Coordinate volunteers" },
+  { to: "/ministry/activities", icon: ClipboardList, name: "Activities", desc: "Plan and track activities" },
+  { to: "/ministry/events", icon: CalendarDays, name: "Events", desc: "Upcoming ministry events" },
+  { to: "/ministry/attendance", icon: ClipboardCheck, name: "Attendance", desc: "Check ministry attendance" },
+  { to: "/ministry/notifications", icon: Bell, name: "Notifications", desc: "View your notifications" },
+  { to: "/ministry/profile", icon: User, name: "My Profile", desc: "Update your personal information" },
 ];
-
-const greeting = () => {
-  // Oras sa Pilipinas, kahit iba ang timezone ng device
-  const h = Number(
-    new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      hour12: false,
-      timeZone: "Asia/Manila",
-    }).format(new Date())
-  ) % 24;
-
-  if (h >= 5 && h < 11) return "Good morning";
-  if (h >= 11 && h < 13) return "Good noon";
-  if (h >= 13 && h < 18) return "Good afternoon";
-  return "Good evening";
-};
 
 const getList = (name, extra = {}) =>
   api
@@ -65,180 +28,178 @@ const getList = (name, extra = {}) =>
     .then((r) => (Array.isArray(r.data) ? r.data : []))
     .catch(() => []);
 
+const short = (key) => new Date(`${key}T00:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+
 export default function MinistryHome() {
   const { t } = useLang();
   const { user } = useAuth();
   const [member, setMember] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [stats, setStats] = useState(null);
-
-  const loadStats = () =>
-    Promise.all([
-      getList("ministries", { mine: 1 }),
-      getList("ministry_members"),
-      getList("events"),
-      getList("attendance"),
-    ]).then(([mins, mm, ev, att]) => {
-      const ids = new Set(mins.map((m) => String(m.id)));
-      const scoped = (r) => ids.size === 0 || ids.has(String(r.ministry_id));
-      // Events na walang ministry (para sa buong simbahan) ay kasama rin
-      const scopedEvent = (e) => !e.ministry_id || scoped(e);
-
-      const today = new Date().toLocaleDateString("en-CA");
-      const month = today.slice(0, 7);
-
-      const myMembers = mm.filter(scoped);
-      const upcoming = ev
-        .filter(scopedEvent)
-        .filter((e) => e.event_date >= today)
-        .sort((a, b) => (a.event_date + (a.start_time || "")).localeCompare(b.event_date + (b.start_time || "")));
-
-      setEvents(upcoming.slice(0, 3));
-      setStats({
-        ministries: mins.length,
-        members: myMembers.filter((r) => r.role !== "volunteer").length,
-        volunteers: myMembers.filter((r) => r.role === "volunteer").length,
-        events: upcoming.length,
-        attendance: att.filter((a) => String(a.service_date || "").startsWith(month)).length,
-      });
-    });
+  const [raw, setRaw] = useState(null);
 
   useEffect(() => {
     api.get("/portal/me").then((r) => setMember(r.data.member)).catch(() => {});
-    loadStats();
+    Promise.all([getList("ministries", { mine: 1 }), getList("ministry_members"), getList("events"), getList("attendance")]).then(([mins, mm, ev, att]) =>
+      setRaw({ mins, mm, ev, att })
+    );
   }, []);
 
-  const name =
-    member?.full_name ||
-    user?.full_name ||
-    user?.name ||
-    t("Ministry Leader");
-  const pic = member?.profile_pic || user?.profile_pic;
+  const s = useMemo(() => {
+    if (!raw) return null;
+    const { mins, mm, ev, att } = raw;
+    const ids = new Set(mins.map((m) => String(m.id)));
+    const scoped = (r) => ids.size === 0 || ids.has(String(r.ministry_id));
+    // Events na walang ministry (para sa buong simbahan) ay kasama rin
+    const scopedEvent = (e) => !e.ministry_id || scoped(e);
+    const today = new Date().toLocaleDateString("en-CA");
+    const month = today.slice(0, 7);
+    const mine = mm.filter(scoped);
+    const upcoming = ev
+      .filter(scopedEvent)
+      .filter((e) => e.event_date >= today)
+      .sort((a, b) => (a.event_date + (a.start_time || "")).localeCompare(b.event_date + (b.start_time || "")));
+    const perDay = {};
+    att.forEach((a) => {
+      const k = String(a.service_date || "").slice(0, 10);
+      if (k) perDay[k] = (perDay[k] || 0) + 1;
+    });
+    return {
+      ministries: mins.length,
+      members: mine.filter((r) => r.role !== "volunteer").length,
+      volunteers: mine.filter((r) => r.role === "volunteer").length,
+      upcoming,
+      attendance: att.filter((a) => String(a.service_date || "").startsWith(month)).length,
+      trend: Object.keys(perDay).sort().slice(-12).map((k) => ({ key: k, label: short(k), value: perDay[k] })),
+    };
+  }, [raw]);
 
-  const STAT_CARDS = [
-    { to: "/ministry/members", icon: ClipboardList, label: "My Ministries", value: stats?.ministries },
-    { to: "/ministry/members", icon: Users, label: "Members", value: stats?.members },
-    { to: "/ministry/volunteers", icon: HandHelping, label: "Volunteers", value: stats?.volunteers },
-    { to: "/ministry/events", icon: CalendarDays, label: "Upcoming Events", value: stats?.events },
-    { to: "/ministry/attendance", icon: ClipboardCheck, label: "Attendance This Month", value: stats?.attendance },
+  const name = member?.full_name || user?.full_name || user?.name || t("Ministry Leader");
+  const first = name.trim().split(/\s+/)[0];
+  const pic = member?.profile_pic || user?.profile_pic;
+  const loading = !s;
+  const next = s?.upcoming[0];
+  const nd = next ? new Date(next.event_date + "T00:00:00") : null;
+
+  const strip = [
+    { icon: ClipboardList, label: t("My ministries"), value: s?.ministries ?? 0, loading, to: "/ministry/members" },
+    { icon: Users, label: t("Members"), value: s?.members ?? 0, loading, to: "/ministry/members" },
+    { icon: HandHelping, label: t("Volunteers"), value: s?.volunteers ?? 0, loading, to: "/ministry/volunteers" },
+    { icon: ClipboardCheck, label: t("Attendance this month"), value: s?.attendance ?? 0, loading, to: "/ministry/attendance" },
   ];
 
   return (
-    <>
-      {/* Welcome banner */}
-      <div className="dash-hero">
-        <div className="dash-avatar">
-          {pic ? <img src={pic} alt="" /> : <span>{name.charAt(0).toUpperCase()}</span>}
+    <div className="pd">
+      <section className="pd-intro">
+        <Avatar src={pic} name={name} size={56} className="pd-intro-av" />
+        <div className="pd-intro-text">
+          <p className="pd-eyebrow">{todayLabel()}</p>
+          <h2>
+            {t(greeting())}, <em>{first}</em>
+          </h2>
+          <p className="pd-sub">River of Life Calapan · {t("Ministry Leader")}</p>
         </div>
-        <div className="dash-hero-text">
-          <small>{t(greeting())},</small>
-          <h2>{name}</h2>
-          <span className="dash-code">{t("Ministry Leader")}</span>
-        </div>
-        <div className="dash-hero-actions">
-          <Link to="/ministry/add-ministry" className="dash-hero-btn">
-            <Plus size={16} aria-hidden="true" /> {t("Add Ministry")}
-          </Link>
-          <Link to="/ministry/events" className="dash-hero-btn">
+        <div className="pd-actions">
+          <Link to="/ministry/events" className="pd-btn is-solid">
             <Plus size={16} aria-hidden="true" /> {t("Add Event")}
           </Link>
-          <Link to="/ministry/attendance" className="dash-hero-btn">
-            <ClipboardCheck size={16} aria-hidden="true" /> {t("Attendance")}
+          <Link to="/ministry/add-ministry" className="pd-btn">
+            {t("Add Ministry")}
+          </Link>
+          <Link to="/ministry/attendance" className="pd-btn">
+            {t("Attendance")}
           </Link>
         </div>
+      </section>
+
+      <StatStrip items={strip} />
+
+      <div className="pd-cols">
+        <section className="pd-panel pd-chart-panel">
+          <Head title={t("Attendance trend")} to="/ministry/attendance" toLabel={t("Details")} />
+          {loading ? <div className="pd-skel-block" style={{ height: 260 }} /> : <LineChart data={s.trend} unit={` ${t("present")}`} emptyText={t("No attendance records yet")} />}
+        </section>
+
+        <aside className="pd-panel is-dark pd-next">
+          <Head title={t("Next up")} />
+          {loading ? (
+            <span className="pd-skel" />
+          ) : next ? (
+            <>
+              <div className="pd-next-date">
+                <small>{nd.toLocaleDateString("en-US", { month: "short" })}</small>
+                <strong>{nd.getDate()}</strong>
+                <span>{nd.toLocaleDateString("en-US", { weekday: "long" })}</span>
+              </div>
+              <h4>{t(next.title)}</h4>
+              <p className="pd-next-meta">
+                <span>
+                  <Clock size={14} aria-hidden="true" /> {next.start_time ? `${hm(next.start_time)}${next.end_time ? `–${hm(next.end_time)}` : ""}` : t("All day")}
+                </span>
+                {next.location && (
+                  <span>
+                    <MapPin size={14} aria-hidden="true" /> {next.location}
+                  </span>
+                )}
+              </p>
+              <Link to="/ministry/events" className="pd-btn is-light pd-block">
+                {t("Manage event")} <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="pd-dim">{t("No upcoming events yet.")}</p>
+              <Link to="/ministry/events" className="pd-btn is-light pd-block">
+                <Plus size={16} aria-hidden="true" /> {t("Add Event")}
+              </Link>
+            </>
+          )}
+        </aside>
       </div>
 
-      {/* Overview stats */}
-      <div className="dash-stats">
-        {STAT_CARDS.map((s) => {
-          const Icon = s.icon;
+      <section className="pd-panel">
+        <Head title={t("Upcoming events")} to="/ministry/events" toLabel={t("View all")} />
+        {loading ? (
+          <div className="pd-skel-block" style={{ height: 150 }} />
+        ) : s.upcoming.length === 0 ? (
+          <p className="pd-empty">{t("No upcoming events yet.")}</p>
+        ) : (
+          <div className="pd-table" role="table">
+            <div className="pd-tr is-head cols-4" role="row">
+              <span role="columnheader">{t("Event")}</span>
+              <span role="columnheader">{t("Date")}</span>
+              <span role="columnheader">{t("Time")}</span>
+              <span role="columnheader">{t("Where")}</span>
+            </div>
+            {s.upcoming.slice(0, 6).map((e, i) => (
+              <Link to="/ministry/events" className="pd-tr cols-4" role="row" key={e.id ?? i} style={{ "--i": i }}>
+                <strong data-label={t("Event")} role="cell">{t(e.title)}</strong>
+                <span data-label={t("Date")} role="cell">{short(String(e.event_date).slice(0, 10))}</span>
+                <span data-label={t("Time")} role="cell">{e.start_time ? `${hm(e.start_time)}${e.end_time ? ` – ${hm(e.end_time)}` : ""}` : t("All day")}</span>
+                <span data-label={t("Where")} role="cell">{e.location || "—"} {e.event_type === "outside" && <b className="pd-tag">{t("Off-site")}</b>}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <DailyVerse portal="ministry" />
+      <EventCalendar />
+
+      <Head title={t("Quick links")} />
+      <div className="pd-index">
+        {QUICK.map((q, i) => {
+          const Icon = q.icon;
           return (
-            <Link to={s.to} className="dash-stat" key={s.label}>
-              <span className="dash-stat-icon">
-                <Icon size={20} aria-hidden="true" />
+            <Link key={q.to} to={q.to} className="pd-index-row" style={{ "--i": i }}>
+              <Icon size={20} strokeWidth={1.6} aria-hidden="true" />
+              <span>
+                <strong>{t(q.name)}</strong>
+                <small>{t(q.desc)}</small>
               </span>
-              <div>
-                <strong>{s.value ?? "-"}</strong>
-                <p>{t(s.label)}</p>
-              </div>
+              <ArrowUpRight size={18} aria-hidden="true" />
             </Link>
           );
         })}
       </div>
-
-      {/* Daily Bible Verse */}
-      <DailyVerse portal="ministry" />
-
-      {/* Event calendar */}
-      <EventCalendar />
-
-      {/* Upcoming events */}
-      <div className="dash-section-head">
-        <h3>{t("Upcoming Events")}</h3>
-        <Link to="/ministry/events" className="dash-viewall">
-          {t("View all")} <ArrowRight size={14} aria-hidden="true" />
-        </Link>
-      </div>
-      {events.length === 0 ? (
-        <div className="dash-empty">
-          <p>{t("No upcoming events yet.")}</p>
-          <Link to="/ministry/events" className="btn sm">
-            <Plus size={14} aria-hidden="true" /> {t("Add Event")}
-          </Link>
-        </div>
-      ) : (
-        <div className="dash-events">
-          {events.map((e) => {
-            const d = new Date(e.event_date + "T00:00:00");
-            return (
-              <Link to="/ministry/events" className="dash-event" key={e.id}>
-                <div className="dash-date">
-                  <small>{d.toLocaleDateString("en-US", { month: "short" })}</small>
-                  <strong>{d.getDate()}</strong>
-                </div>
-                <div className="dash-event-body">
-                  <h4>{t(e.title)}</h4>
-                  <p className="dash-event-meta">
-                    <span>
-                      <Clock size={13} aria-hidden="true" />{" "}
-                      {e.start_time ? `${hm(e.start_time)}-${hm(e.end_time)}` : t("All day")}
-                    </span>
-                    {e.location && (
-                      <span>
-                        <MapPin size={13} aria-hidden="true" /> {e.location}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                {e.event_type === "outside" && <span className="badge warn">{t("Off-site")}</span>}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Quick actions */}
-      {GROUPS.map((g) => (
-        <div key={g.title}>
-          <div className="dash-section-head"><h3>{t(g.title)}</h3></div>
-          <div className="dash-actions">
-            {g.items.map((it) => {
-              const Icon = it.icon;
-              return (
-                <Link to={it.to} className="dash-action" key={it.to}>
-                  <span className="dash-action-icon">
-                    <Icon size={22} aria-hidden="true" />
-                  </span>
-                  <div>
-                    <strong>{t(it.name)}</strong>
-                    <p>{t(it.desc)}</p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </>
+    </div>
   );
 }

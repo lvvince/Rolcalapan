@@ -1,42 +1,15 @@
 // frontend/src/pages/member/MemberHome.jsx
+// Dashboard ng Member: ibang disenyo kaysa sa Admin/Staff/Ministry (editorial na "Today" view, walang sidebar).
+// Pareho pa rin ang endpoints at logic (join, overview, recommended, interests).
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Users,
-  ClipboardCheck,
-  CalendarDays,
-  QrCode,
-  MapPin,
-  HandHeart,
-  FileText,
-  HeartHandshake,
-  Home,
-  Sparkles,
-  UserPlus,
-  ArrowRight,
-} from "lucide-react";
+import { Users, ClipboardCheck, CalendarDays, QrCode, MapPin, HandHeart, FileText, HeartHandshake, Home, Sparkles, UserPlus, ArrowRight, ArrowUpRight, ScanLine } from "lucide-react";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { useLang } from "../../i18n/LanguageContext";
 import DailyVerse from "../../components/DailyVerse";
 import EventCalendar from "../../components/EventCalendar";
-import "../../components/portal.css";
-
-const greeting = () => {
-  // Oras sa Pilipinas, kahit iba ang timezone ng device
-  const h = Number(
-    new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      hour12: false,
-      timeZone: "Asia/Manila",
-    }).format(new Date())
-  ) % 24;
-
-  if (h >= 5 && h < 11) return "Good morning";
-  if (h >= 11 && h < 13) return "Good noon";
-  if (h >= 13 && h < 18) return "Good afternoon";
-  return "Good evening";
-};
+import { Avatar, CountUp, Head, greeting, todayLabel } from "../../components/DashKit";
 
 // label galing sa /portal/overview -> link at icon
 const STAT_META = {
@@ -71,7 +44,7 @@ export default function MemberHome() {
       .catch(() => setStats([]));
     api
       .get("/portal/recommended")
-      .then((r) => setRecs((r.data || []).slice(0, 3)))
+      .then((r) => setRecs((r.data || []).slice(0, 4)))
       .catch(() => setRecs([]));
   };
 
@@ -98,6 +71,7 @@ export default function MemberHome() {
   };
 
   const name = member?.full_name || user?.full_name || user?.name || t("Member");
+  const first = name.trim().split(/\s+/)[0];
   const pic = member?.profile_pic || user?.profile_pic;
 
   // Kulang ang profile kung walang birthdate o walang interests (kailangan ng Recommended)
@@ -106,141 +80,130 @@ export default function MemberHome() {
   if (interests !== null && interests.length === 0) missing.push(t("interests"));
 
   return (
-    <>
-      {/* Welcome banner */}
-      <div className="dash-hero">
-        <div className="dash-avatar">
-          {pic ? <img src={pic} alt="" /> : <span>{name.charAt(0).toUpperCase()}</span>}
+    <div className="mp">
+      {/* ---------- Hero: greeting + member pass ---------- */}
+      <section className="mp-hero">
+        <div className="mp-hero-text">
+          <p className="mp-eyebrow">{todayLabel()}</p>
+          <h2>
+            {t(greeting())},
+            <br />
+            <em>{first}.</em>
+          </h2>
+          <p className="mp-hero-sub">{t("There is always a seat for you at River of Life Calapan.")}</p>
+          <div className="mp-hero-actions">
+            <Link to="/portal/events" className="pd-btn is-light">
+              <CalendarDays size={16} aria-hidden="true" /> {t("Events & RSVP")}
+            </Link>
+            <Link to="/portal/prayers" className="pd-btn is-ghost-light">
+              <HandHeart size={16} aria-hidden="true" /> {t("Prayer requests")}
+            </Link>
+          </div>
         </div>
-        <div className="dash-hero-text">
-          <small>{t(greeting())},</small>
-          <h2>{name}</h2>
-          <span className="dash-code">{member?.member_code || t("Member")}</span>
-        </div>
-        <div className="dash-hero-actions">
-          <Link to="/portal/qr" className="dash-hero-btn">
-            <QrCode size={16} aria-hidden="true" /> {t("My QR Code")}
-          </Link>
-          <Link to="/portal/events" className="dash-hero-btn">
-            <CalendarDays size={16} aria-hidden="true" /> {t("Events & RSVP")}
-          </Link>
-        </div>
-      </div>
 
-      {/* Overview stats */}
-      <div className="dash-stats">
-        {(stats || []).map((s) => {
+        <Link to="/portal/qr" className="mp-pass" aria-label={t("Show my QR code")}>
+          <div className="mp-pass-top">
+            <Avatar src={pic} name={name} size={52} />
+            <div>
+              <strong>{name}</strong>
+              <small>{member?.member_code || t("Member")}</small>
+            </div>
+          </div>
+          <div className="mp-pass-qr" aria-hidden="true">
+            <ScanLine size={34} strokeWidth={1.4} />
+          </div>
+          <div className="mp-pass-foot">
+            <span>{t("Show my QR code")}</span>
+            <ArrowUpRight size={18} aria-hidden="true" />
+          </div>
+        </Link>
+      </section>
+
+      {/* ---------- Stats ---------- */}
+      <div className="mp-stats">
+        {(stats || []).map((s, i) => {
           const meta = STAT_META[s.label] || { to: "/portal", icon: Users };
           const Icon = meta.icon;
           return (
-            <Link to={meta.to} className="dash-stat" key={s.label}>
-              <span className="dash-stat-icon">
-                <Icon size={20} aria-hidden="true" />
-              </span>
-              <div>
-                <strong>{s.value}</strong>
-                <p>{t(s.label)}</p>
-              </div>
+            <Link to={meta.to} className="mp-stat" key={s.label} style={{ "--i": i }}>
+              <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+              <strong>
+                <CountUp value={s.value} />
+              </strong>
+              <span>{t(s.label)}</span>
             </Link>
           );
         })}
       </div>
 
-      {/* Complete your profile */}
+      {/* ---------- Complete your profile ---------- */}
       {missing.length > 0 && (
-        <div className="dash-empty" style={{ marginBottom: 16 }}>
+        <div className="mp-note">
           <p>
             <strong>{t("Complete your profile")}</strong>
-            <br />
-            {t("Add your")} {missing.join(` ${t("and")} `)} {t("to get better ministry recommendations.")}
+            <span>
+              {t("Add your")} {missing.join(` ${t("and")} `)} {t("to get better ministry recommendations.")}
+            </span>
           </p>
-          <Link to="/portal/profile" className="btn sm">
-            {t("Update profile")}
+          <Link to="/portal/profile" className="pd-btn is-solid">
+            {t("Update profile")} <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </div>
       )}
 
-      {/* Daily Bible Verse */}
+      {/* ---------- Daily Bible Verse ---------- */}
       <DailyVerse portal="member" />
 
-      {/* Recommended for you */}
-      <div className="dash-section-head">
-        <h3>{t("Recommended for You")}</h3>
-        <Link to="/portal/ministries?tab=recommended" className="dash-viewall">
-          {t("View all")} <ArrowRight size={14} aria-hidden="true" />
-        </Link>
-      </div>
-
+      {/* ---------- Recommended (carousel) ---------- */}
+      <Head title={t("Recommended for you")} to="/portal/ministries?tab=recommended" toLabel={t("View all")} />
       {msg && <div className="msg err">{t(msg)}</div>}
 
       {recs === null ? (
-        <p>{t("Loading...")}</p>
+        <div className="pd-skel-block" style={{ height: 190 }} />
       ) : recs.length === 0 ? (
-        <div className="dash-empty">
-          <p>{t("No recommendations right now. You may have joined everything!")}</p>
-        </div>
+        <p className="pd-empty">{t("No recommendations right now. You may have joined everything!")}</p>
       ) : (
-        <div className="min-grid">
-          {recs.map((m) => {
+        <div className="mp-rail" role="list">
+          {recs.map((m, i) => {
             const isGroup = m.type === "small_group";
             const similar = !String(m.reason || "").startsWith("Popular");
             return (
-              <div className="min-card" key={m.id}>
-                <div className="min-head">
-                  <div className={`min-icon ${isGroup ? "group" : ""}`}>
-                    {isGroup ? <Home size={22} aria-hidden="true" /> : <HeartHandshake size={22} aria-hidden="true" />}
-                  </div>
-                  <div>
-                    <h4 className="min-title">{t(m.name)}</h4>
-                    <div className="min-tags">
-                      <span className={`min-tag ${isGroup ? "group" : ""}`}>
-                        {isGroup ? t("Small group") : t("Ministry")}
-                      </span>
-                    </div>
-                  </div>
+              <article className="mp-rec" role="listitem" key={m.id} style={{ "--i": i }}>
+                <div className="mp-rec-top">
+                  <span className="mp-rec-ico">{isGroup ? <Home size={20} aria-hidden="true" /> : <HeartHandshake size={20} aria-hidden="true" />}</span>
+                  <span className="mp-rec-tag">{isGroup ? t("Small group") : t("Ministry")}</span>
                 </div>
-
-                <p className="min-desc">{t(m.description)}</p>
-
-                <div className={`min-reason ${similar ? "" : "popular"}`}>
-                  {similar ? <Sparkles size={14} aria-hidden="true" /> : <Users size={14} aria-hidden="true" />}{" "}
-                  {t(m.reason)}
-                </div>
-
-                <div className="min-foot">
-                  <button className="min-btn" disabled={busy === m.id} onClick={() => join(m.id)}>
-                    <UserPlus size={14} aria-hidden="true" /> {busy === m.id ? t("Joining...") : t("Join")}
-                  </button>
-                </div>
-              </div>
+                <h4>{t(m.name)}</h4>
+                <p>{t(m.description)}</p>
+                <span className="mp-rec-why">
+                  {similar ? <Sparkles size={14} aria-hidden="true" /> : <Users size={14} aria-hidden="true" />} {t(m.reason)}
+                </span>
+                <button type="button" className="mp-rec-join" disabled={busy === m.id} onClick={() => join(m.id)}>
+                  <UserPlus size={15} aria-hidden="true" /> {busy === m.id ? t("Joining...") : t("Join")}
+                </button>
+              </article>
             );
           })}
         </div>
       )}
 
-      {/* Event calendar (kasama na ang Upcoming Events) */}
       <EventCalendar />
 
-      {/* Quick links */}
-      <div className="dash-section-head">
-        <h3>{t("Quick Links")}</h3>
-      </div>
-      <div className="dash-actions">
-        {LINKS.map((it) => {
+      {/* ---------- Quick links ---------- */}
+      <Head title={t("Quick links")} />
+      <div className="mp-links">
+        {LINKS.map((it, i) => {
           const Icon = it.icon;
           return (
-            <Link to={it.to} className="dash-action" key={it.to}>
-              <span className="dash-action-icon">
-                <Icon size={22} aria-hidden="true" />
-              </span>
-              <div>
-                <strong>{t(it.name)}</strong>
-                <p>{t(it.desc)}</p>
-              </div>
+            <Link to={it.to} className="mp-link" key={it.to} style={{ "--i": i }}>
+              <Icon size={22} strokeWidth={1.6} aria-hidden="true" />
+              <strong>{t(it.name)}</strong>
+              <small>{t(it.desc)}</small>
+              <ArrowUpRight size={16} className="mp-link-go" aria-hidden="true" />
             </Link>
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
