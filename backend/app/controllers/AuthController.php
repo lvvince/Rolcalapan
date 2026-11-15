@@ -4,7 +4,7 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 /**
  * backend/app/controllers/AuthController.php
  * Login (with Keep me logged in), Refresh, Logout, Register (member lang),
- * Verify email (6-digit code), Forgot/Reset password,
+ * Verify email (6-digit code), Forgot/Reset password (8-character code),
  * My profile (update, change password, photo upload/remove).
  */
 class AuthController extends Controller
@@ -328,8 +328,8 @@ class AuthController extends Controller
 
     // ---------------------------------------------------------- REGISTER
     // Member lang ang pwedeng mag-register. Ang ibang role ay si Admin ang gagawa.
-    // FIX: kapag existing ang email pero HINDI pa verified, hindi na mag-e-error.
-    // I-uupdate ang data at magpapadala ng bagong code.
+    // Kapag existing ang email pero HINDI pa verified, hindi mag-e-error:
+    // i-uupdate ang data at magpapadala ng bagong code.
     public function register()
     {
         $in    = $this->input();
@@ -538,6 +538,9 @@ class AuthController extends Controller
     }
 
     // ------------------------------------------------------ FORGOT PASSWORD
+    // POST /api/auth/forgot   { email }
+    // Nagpapadala ng 8-character reset CODE (walang link, para hindi
+    // mabalot ng Brevo click tracker at hindi mag-timeout).
     public function forgot()
     {
         $in    = $this->input();
@@ -547,13 +550,19 @@ class AuthController extends Controller
         }
 
         // Parehong sagot kahit wala ang email (para hindi malaman kung may account)
-        $resp = ['success' => true, 'message' => 'If that email is registered, a password reset link has been sent.'];
+        $resp = ['success' => true, 'message' => 'If that email is registered, a reset code has been sent.'];
 
         $user = $this->db->table('users')->where('email', $email)->get();
         if ($user && $user['status'] === 'active') {
             $this->call->helper('rolmail');
 
-            $token = bin2hex(random_bytes(32));
+            // 8-character code (walang magkakahawig na letra: 0/O, 1/I)
+            $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            $token    = '';
+            for ($i = 0; $i < 8; $i++) {
+                $token .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            }
+
             $this->db->table('password_resets')->where('user_id', $user['id'])->delete();
             $this->db->table('password_resets')->insert([
                 'user_id'    => $user['id'],
@@ -561,16 +570,21 @@ class AuthController extends Controller
                 'expires_at' => date('Y-m-d H:i:s', time() + 3600), // 1 oras
             ]);
 
-            $link = APP_URL . '/reset-password?token=' . $token;
-            $n    = htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8');
-            $html = '<p>Hello ' . $n . ',</p>'
-                  . '<p>We received a request to reset your <strong>River of Life Calapan</strong> password.</p>'
-                  . '<p><a href="' . $link . '">Click here to reset your password</a></p>'
-                  . '<p>This link will expire in 1 hour. If you did not ask for this, you can ignore this email.</p>';
+            $link = rtrim(APP_URL, '/') . '/reset-password?token=' . urlencode($token);
+            $html = rol_reset_html($link, $token);
 
-            list($ok, $err) = rol_send_mail($user['email'], $user['full_name'], 'Reset your River of Life password', $html);
+            list($ok, $err) = rol_send_mail(
+                $user['email'],
+                $user['full_name'],
+                'Reset your River of Life password',
+                $html
+            );
 
-            // Para sa testing sa localhost lang, kung hindi pa naka-set ang Gmail
+            if (!$ok) {
+                error_log('Forgot password email failed: ' . $err);
+            }
+
+            // Para sa testing sa localhost lang
             if (!$ok && $this->is_local()) {
                 $resp['debug_link'] = $link;
                 $resp['debug_note'] = $err;
@@ -581,18 +595,34 @@ class AuthController extends Controller
     }
 
     // ------------------------------------------------------- RESET PASSWORD
+    // POST /api/auth/reset   { token, password }   (token = ang 8-character code)
     public function reset()
     {
         $in    = $this->input();
-        $token = trim($in['token'] ?? '');
+        $token = strtoupper(preg_replace('/\s+/', '', (string) ($in['token'] ?? '')));
         $pass  = $in['password'] ?? '';
 
-        if ($token === '') $this->out(['error' => 'Reset token is missing'], 422);
+        if ($token === '') $this->out(['error' => 'Reset code is missing'], 422);
         if (strlen($pass) < 6) $this->out(['error' => 'Password must be at least 6 characters'], 422);
+
+        // Limit: 10 maling subok kada 15 minuto bawat IP (file-based, walang bagong table)
+        $ip   = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'x';
+        $ip   = trim(explode(',', $ip)[0]);
+        $file = sys_get_temp_dir() . '/rol_reset_' . md5($ip) . '.json';
+        $hits = [];
+        if (is_file($file)) {
+            $hits = json_decode((string) file_get_contents($file), true) ?: [];
+            $hits = array_values(array_filter($hits, fn($t) => $t > time() - 900));
+        }
+        if (count($hits) >= 10) {
+            $this->out(['error' => 'Too many attempts. Please wait a few minutes and try again.'], 429);
+        }
 
         $row = $this->db->table('password_resets')->where('token_hash', hash('sha256', $token))->get();
         if (!$row || strtotime($row['expires_at']) < time()) {
-            $this->out(['error' => 'This reset link is invalid or has expired'], 400);
+            $hits[] = time();
+            @file_put_contents($file, json_encode($hits));
+            $this->out(['error' => 'This reset code is invalid or has expired'], 400);
         }
 
         $this->db->table('users')->where('id', $row['user_id'])->update([
@@ -603,6 +633,7 @@ class AuthController extends Controller
         // Mag-logout ang lahat ng "remembered" devices pagkatapos ng reset
         $this->db->table('remember_tokens')->where('user_id', $row['user_id'])->delete();
 
+        @unlink($file);
         $this->out(['success' => true, 'message' => 'Password updated. You can now log in.']);
     }
 }

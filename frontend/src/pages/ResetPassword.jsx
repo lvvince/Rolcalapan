@@ -5,7 +5,7 @@ import api from "../api";
 import { AuthField, LoginLayout, PasswordInput, SubmitButton } from "../components/LoginLayout.jsx";
 import "../components/portal.css";
 
-// Tumatanggap ng buong link O ng code lang, ibinabalik ang token.
+// Tumatanggap ng buong link O ng code lang, ibinabalik ang code.
 function extractToken(value) {
   const v = (value || "").trim();
   if (!v) return "";
@@ -18,6 +18,9 @@ function extractToken(value) {
   }
 }
 
+// Gawing malinis ang code: walang espasyo, uppercase
+const normalizeCode = (value) => extractToken(value).replace(/\s+/g, "").toUpperCase();
+
 const TOKEN_ERROR = /token|expired|invalid|code|link|used/i;
 
 const codeInputStyle = {
@@ -28,6 +31,7 @@ const codeInputStyle = {
   borderRadius: 10,
   font: "inherit",
   fontSize: 14,
+  letterSpacing: "0.08em",
   background: "#f8fafc",
   color: "#0f172a",
   outline: "none",
@@ -62,7 +66,7 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const token = extractToken(code);
+  const token = normalizeCode(code);
   const mismatch = !!confirm && confirm !== password;
 
   const submit = async (e) => {
@@ -72,7 +76,7 @@ export default function ResetPassword() {
 
     if (!token) {
       setEditCode(true);
-      return setError("Please enter your reset code or paste the reset link.");
+      return setError("Please enter your reset code.");
     }
     if (password.length < 6) return setError("Password must be at least 6 characters.");
     if (password !== confirm) return setError("Passwords do not match.");
@@ -90,9 +94,11 @@ export default function ResetPassword() {
 
       if (!err.response) {
         setError("Cannot connect to the server. Please try again.");
+      } else if (status === 429) {
+        setError(serverMsg || "Too many attempts. Please wait a few minutes.");
       } else if (status === 410 || status === 404 || TOKEN_ERROR.test(serverMsg)) {
         setEditCode(true);
-        setError(serverMsg || "This reset code is invalid or has expired. Request a new link below.");
+        setError(serverMsg || "This reset code is invalid or has expired. Request a new one below.");
       } else {
         setError(serverMsg || "Something went wrong. Please try again.");
       }
@@ -105,13 +111,13 @@ export default function ResetPassword() {
     <LoginLayout
       mode="reset"
       title="Set a new password"
-      subtitle="Choose a password you will remember. At least 6 characters."
+      subtitle="Enter the code from your email and choose a new password."
     >
       <form onSubmit={submit} noValidate>
         {error && <div className="auth-alert error" role="alert">{error}</div>}
 
         {editCode ? (
-          <AuthField id="code" label="Reset code" hint="(paste the code or the whole link from your email)">
+          <AuthField id="code" label="Reset code" hint="(from the email we sent you)">
             <input
               id="code"
               type="text"
@@ -119,6 +125,7 @@ export default function ResetPassword() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               autoComplete="off"
+              autoCapitalize="characters"
               spellCheck={false}
               autoFocus={!urlToken}
               required
@@ -126,7 +133,7 @@ export default function ResetPassword() {
           </AuthField>
         ) : (
           <p className="auth-alt" style={{ marginTop: 0 }}>
-            Reset link detected.{" "}
+            Reset code detected.{" "}
             <button type="button" onClick={() => setEditCode(true)} style={linkButtonStyle}>
               Use a different code
             </button>
@@ -162,7 +169,7 @@ export default function ResetPassword() {
         <SubmitButton loading={loading} loadingText="Saving…">Save password</SubmitButton>
 
         <p className="auth-alt">
-          Link not working? <Link to="/forgot-password">Request a new link</Link>
+          Code not working? <Link to="/forgot-password">Request a new code</Link>
         </p>
       </form>
     </LoginLayout>
