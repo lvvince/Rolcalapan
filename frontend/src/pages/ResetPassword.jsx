@@ -1,5 +1,4 @@
 // frontend/src/pages/ResetPassword.jsx
-// Gumagamit ng parehong layout at design ng Login/Register.
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api";
@@ -8,41 +7,59 @@ import "../components/portal.css";
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
-  const token = params.get("token") || "";
+  const token = (params.get("token") || "").trim();
   const navigate = useNavigate();
+
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  const [expired, setExpired] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const mismatch = !!confirm && confirm !== password;
 
   const submit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError("");
+
     if (password.length < 6) return setError("Password must be at least 6 characters.");
     if (password !== confirm) return setError("Passwords do not match.");
+
     setLoading(true);
     try {
       const { data } = await api.post("/auth/reset", { token, password });
-      navigate("/login", { replace: true, state: { message: data.message } });
+      navigate("/login", {
+        replace: true,
+        state: { message: data?.message || "Password updated. You can now log in." },
+      });
     } catch (err) {
-      setError(err.response?.data?.error || "Cannot connect to the server. Please try again.");
+      const status = err.response?.status;
+      if ([400, 401, 404, 410].includes(status)) {
+        // invalid / expired / ginamit na ang token
+        setExpired(true);
+      } else {
+        setError(err.response?.data?.error || "Cannot connect to the server. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  if (!token) {
+  if (!token || expired) {
     return (
       <LoginLayout mode="reset" title="Link expired" subtitle="This reset link is invalid or has already been used.">
-        <div className="auth-alert error" role="alert">Invalid reset link.</div>
-        <Link to="/forgot-password" className="auth-submit" style={{ textDecoration: "none" }}>Request a new link</Link>
+        <div className="auth-alert error" role="alert">Invalid or expired reset link.</div>
+        <Link to="/forgot-password" className="auth-submit" style={{ textDecoration: "none" }}>
+          Request a new link
+        </Link>
       </LoginLayout>
     );
   }
 
   return (
     <LoginLayout mode="reset" title="Set a new password" subtitle="Choose a password you will remember. At least 6 characters.">
-      <form onSubmit={submit}>
+      <form onSubmit={submit} noValidate>
         {error && <div className="auth-alert error" role="alert">{error}</div>}
 
         <AuthField id="password" label="New password" hint="(at least 6 characters)">
@@ -63,9 +80,12 @@ export default function ResetPassword() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"
-            aria-invalid={!!confirm && confirm !== password}
+            aria-invalid={mismatch}
             required
           />
+          {mismatch && (
+            <small className="auth-hint-error" role="alert">Passwords do not match.</small>
+          )}
         </AuthField>
 
         <SubmitButton loading={loading} loadingText="Saving…">Save password</SubmitButton>
