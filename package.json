@@ -1,8 +1,6 @@
 {
   "dependencies": {
     "i18next": "^26.5.4",
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.9",
     "react-i18next": "^17.1.0"
   }
 }
