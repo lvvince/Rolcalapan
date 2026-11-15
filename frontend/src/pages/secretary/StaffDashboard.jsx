@@ -118,18 +118,31 @@ export function QrCodes() {
 
 /* ------------------------------------------ Events & Announcements */
 // Ginawang function para magamit ang t(). Ginagamit din ito ng MinistryDashboard.
-export const getEventFields = (t) => [
+// canAssignSpeaker: kung false, naka-disable ang Speaker dropdown
+// half = kalahating lapad, showIf = ipakita lang kapag true
+export const getEventFields = (t, canAssignSpeaker = false) => [
   { key: "title", label: t("Title"), required: true },
-  { key: "description", label: t("Description"), type: "textarea" },
-  { key: "event_date", label: t("Date"), type: "date", required: true },
-  { key: "start_time", label: t("Start time"), type: "time" },
-  { key: "end_time", label: t("End time"), type: "time" },
+  { key: "description", label: t("Description"), type: "textarea", rows: 3 },
+  { key: "event_date", label: t("Date"), type: "date", required: true, half: true },
+  {
+    key: "event_type",
+    label: t("Type"),
+    type: "select",
+    required: true,
+    half: true,
+    options: [
+      { value: "internal", label: t("Internal (in church)") },
+      { value: "outside", label: t("Outside / Off-site") },
+    ],
+  },
+  { key: "start_time", label: t("Start time"), type: "time", half: true },
+  { key: "end_time", label: t("End time"), type: "time", half: true },
   { key: "location", label: t("Location") },
-  { key: "event_type", label: t("Type"), type: "select", required: true, options: [{ value: "internal", label: t("Internal (in church)") }, { value: "outside", label: t("Outside / Off-site") }] },
-  { key: "ministry_id", label: t("Ministry (optional)"), type: "select", lookup: "ministries" },
-  { key: "lat", label: t("Latitude (off-site)"), type: "number", step: "any" },
-  { key: "lng", label: t("Longitude (off-site)"), type: "number", step: "any" },
-  { key: "radius_m", label: t("Geofence radius (meters)"), type: "number" },
+  { key: "speaker_id", label: t("Speaker (Pastor)"), type: "select", lookup: "speakers", half: true, disabled: !canAssignSpeaker },
+  { key: "ministry_id", label: t("Ministry (optional)"), type: "select", lookup: "ministries", half: true },
+  { key: "lat", label: t("Latitude (off-site)"), type: "number", step: "any", half: true, showIf: (v) => v.event_type === "outside" },
+  { key: "lng", label: t("Longitude (off-site)"), type: "number", step: "any", half: true, showIf: (v) => v.event_type === "outside" },
+  { key: "radius_m", label: t("Geofence radius (meters)"), type: "number", showIf: (v) => v.event_type === "outside" },
 ];
 
 export const getEventColumns = (t) => [
@@ -138,6 +151,7 @@ export const getEventColumns = (t) => [
   { label: t("Time"), render: (r) => (r.start_time ? `${hm(r.start_time)}-${hm(r.end_time)}` : "") },
   { key: "location", label: t("Location") },
   { label: t("Type"), render: (r) => <span className={`badge ${r.event_type === "outside" ? "warn" : ""}`}>{t(r.event_type)}</span> },
+  { label: t("Speaker"), render: (r) => r.speaker_name || "" },
   { key: "ministry_name", label: t("Ministry") },
 ];
 
@@ -194,10 +208,18 @@ export function EventsAnnouncements({ canDelete = false }) {
         filter={archived ? archivedFilter : upcomingFilter}
         sort={archived ? sortDesc : sortAsc}
         emptyText={archived ? "No archived events yet." : "No upcoming events."}
-        lookups={{ ministries: { resource: "ministries", label: "name" } }}
+        lookups={{
+          ministries: { resource: "ministries", label: "name" },
+          speakers: {
+            resource: "users",
+            filter: (u) => u.role === "admin",
+            label: (u) => u.name || u.full_name,
+          },
+        }}
         columns={getEventColumns(t)}
-        fields={getEventFields(t)}
+        fields={getEventFields(t, true)}
         defaults={{ event_type: "internal", radius_m: 100 }}
+        modalWidth={720}
       />
     </>
   );

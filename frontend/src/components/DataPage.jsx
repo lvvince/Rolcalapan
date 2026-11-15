@@ -20,7 +20,8 @@ const normOptions = (opts = []) =>
   );
 
 /* ---------------------------------------------------------------- Modal */
-function Modal({ title, onClose, children }) {
+// Fixed ang header, scrollable ang laman, at laging nakikita ang Cancel/Save
+function Modal({ title, onClose, width, children }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
@@ -32,10 +33,27 @@ function Modal({ title, onClose, children }) {
     };
   }, [onClose]);
 
+  const cardStyle = {
+    display: "flex",
+    flexDirection: "column",
+    maxHeight: "90vh",
+    overflow: "hidden",
+    ...(width ? { width: `min(${width}px, 94vw)`, maxWidth: "none" } : null),
+  };
+
   return createPortal(
     <div className="modal" style={{ zIndex: 1000 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-card" role="dialog" aria-modal="true" aria-label={title}>
-        <h3 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <div className="modal-card" role="dialog" aria-modal="true" aria-label={title} style={cardStyle}>
+        <h3
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexShrink: 0,
+            marginTop: 0,
+          }}
+        >
           <span>{title}</span>
           <button type="button" className="btn sm secondary" onClick={onClose} aria-label="Close" style={{ padding: "4px 8px" }}>
             <X size={16} aria-hidden="true" />
@@ -123,8 +141,13 @@ function FieldInput({ f, value, onChange, t, options }) {
  *            gagamitin (hindi na tatawag ng default /resource/save).
  *            Kapag undefined ang ibinalik, tuloy ang normal na save.
  *  defaults  { key: defaultValue } para sa Add modal
+ *  modalWidth   number (px) para lumapad ang modal at maging 2 columns ang form
  *  reloadKey | refreshKey   palitan para mag-refetch
  *  emptyText, onLoaded, hideTitle, searchable, rowClassName, className
+ *
+ * Field options (bago)
+ *  half: true            kalahati lang ng lapad (2 fields sa isang row)
+ *  showIf: (values) => bool   ipakita lang ang field kapag true
  */
 export default function DataPage({
   title,
@@ -148,6 +171,7 @@ export default function DataPage({
   lookups,
   onSave,
   defaults,
+  modalWidth,
   hideTitle = false,
   searchable = false,
   rowClassName,
@@ -413,27 +437,61 @@ export default function DataPage({
         <Modal
           title={modal.mode === "edit" ? t("Edit") : addLabel ? `${t("Add")} ${addLabel}` : t("Add")}
           onClose={close}
+          width={modalWidth}
         >
-          <form onSubmit={submit}>
-            {activeFields.map((f) => (
-              <div className="field" key={f.key}>
-                {f.type !== "checkbox" && (
-                  <label htmlFor={`f-${f.key}`}>
-                    {f.label}
-                    {f.required ? " *" : ""}
-                  </label>
-                )}
-                <FieldInput
-                  f={f}
-                  t={t}
-                  options={optionsFor(f)}
-                  value={values[f.key]}
-                  onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
-                />
-              </div>
-            ))}
+          <form
+            onSubmit={submit}
+            style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
+          >
+            {/* Scrollable na laman ng form */}
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                paddingRight: 4,
+                display: "grid",
+                gridTemplateColumns: modalWidth ? "repeat(auto-fit, minmax(220px, 1fr))" : "1fr",
+                columnGap: 16,
+                rowGap: 14,
+                alignContent: "start",
+              }}
+            >
+              {activeFields
+                .filter((f) => !f.showIf || f.showIf(values))
+                .map((f) => (
+                  <div
+                    className="field"
+                    key={f.key}
+                    style={{ margin: 0, gridColumn: f.half && modalWidth ? "span 1" : "1 / -1" }}
+                  >
+                    {f.type !== "checkbox" && (
+                      <label htmlFor={`f-${f.key}`}>
+                        {f.label}
+                        {f.required ? " *" : ""}
+                      </label>
+                    )}
+                    <FieldInput
+                      f={f}
+                      t={t}
+                      options={optionsFor(f)}
+                      value={values[f.key]}
+                      onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+                    />
+                  </div>
+                ))}
+            </div>
 
-            <div className="modal-actions">
+            {/* Laging nakikita: Cancel / Save */}
+            <div
+              className="modal-actions"
+              style={{
+                flexShrink: 0,
+                marginTop: 14,
+                paddingTop: 12,
+                borderTop: "1px solid rgba(128,128,128,.25)",
+              }}
+            >
               <button type="button" className="btn secondary" onClick={close} disabled={saving}>
                 {t("Cancel")}
               </button>
