@@ -37,10 +37,11 @@ import {
   Geofence,
   StaffSchedules,
   Giving,
-  Reports,
   Sermons,
   StaffNotifications,
 } from "./pages/secretary/StaffDashboard";
+// Bagong Reports (may Download PDF / CSV): gamit ng admin at staff
+import { Reports } from "./pages/secretary/Reports";
 
 import MinistryHome from "./pages/ministry/MinistryHome";
 import AddMinistryPage from "./pages/ministry/AddMinistryPage";

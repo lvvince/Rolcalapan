@@ -146,10 +146,12 @@ function rol_send_smtp($to, $toName, $subject, $html)
 
 /**
  * HTML template ng password reset email.
- * - Plain-text link (hindi <a>) para hindi i-rewrite ng Brevo click tracker.
- * - May reset code (token) na pwedeng i-paste sa Reset page kung ayaw gumana ang link.
  *
- * Gamit: rol_reset_html($resetUrl)  -> kinukuha na automatic ang token sa URL (?token=...)
+ * WALANG LINK sa email: ang Brevo ay binabalot ang kahit anong URL (kahit plain text)
+ * sa tracking link (sendibt3.com) na minsan hindi nagbubukas. Kaya reset CODE lang
+ * ang ipinapadala; ipapaste ito ng user sa Reset page.
+ *
+ * Gamit: rol_reset_html($resetUrl)         -> kinukuha na automatic ang token sa URL (?token=...)
  *        rol_reset_html($resetUrl, $token) -> kung gusto mong ibigay manually
  */
 function rol_reset_html($resetUrl, $token = '')
@@ -162,24 +164,25 @@ function rol_reset_html($resetUrl, $token = '')
         $token = $q['token'] ?? '';
     }
 
-    // &#58; = ":" para hindi madetect ng tracker bilang link; makokopya pa rin nang tama.
-    $url   = str_replace('://', '&#58;//', htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8'));
-    $code  = htmlspecialchars((string) $token, ENT_QUOTES, 'UTF-8');
-    $from  = htmlspecialchars(MAIL_FROM_NAME, ENT_QUOTES, 'UTF-8');
+    $code = htmlspecialchars((string) $token, ENT_QUOTES, 'UTF-8');
+    $from = htmlspecialchars(MAIL_FROM_NAME, ENT_QUOTES, 'UTF-8');
 
-    $codeBlock = '';
     if ($code !== '') {
-        $codeBlock = '
-        <p style="font-size:14px;line-height:1.5;margin-top:20px;">Hindi gumagana ang link? I-paste ang reset code na ito sa reset page:</p>
-        <p style="font-size:13px;font-family:monospace;background:#f3f4f6;padding:12px;border-radius:6px;word-break:break-all;">' . $code . '</p>';
+        $body = '
+        <p style="font-size:15px;line-height:1.5;">Use this reset code to set a new password. Copy it, then paste it in the <strong>Reset code</strong> box on the website. The code expires soon.</p>
+        <p style="font-size:15px;font-family:monospace;background:#f3f4f6;padding:14px;border-radius:6px;word-break:break-all;user-select:all;">' . $code . '</p>';
+    } else {
+        // Wala ang token (hindi dapat mangyari): ibigay na lang ang URL bilang plain text
+        $url  = str_replace('://', '&#58;//', htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8'));
+        $body = '
+        <p style="font-size:15px;line-height:1.5;">Copy the text below and paste it into your browser to set a new password.</p>
+        <p style="font-size:14px;background:#f3f4f6;padding:12px;border-radius:6px;word-break:break-all;">' . $url . '</p>';
     }
 
     return '
     <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:20px;">
-        <h2 style="margin:0 0 12px;">Reset your password</h2>
-        <p style="font-size:15px;line-height:1.5;">Copy the link below and paste it into your browser to set a new password. This link expires soon.</p>
-        <p style="font-size:14px;background:#f3f4f6;padding:12px;border-radius:6px;word-break:break-all;">' . $url . '</p>'
-        . $codeBlock . '
+        <h2 style="margin:0 0 12px;">Reset your password</h2>'
+        . $body . '
         <p style="color:#888;font-size:12px;margin-top:24px;">If you did not request this, you can ignore this email.<br>' . $from . '</p>
     </div>';
 }

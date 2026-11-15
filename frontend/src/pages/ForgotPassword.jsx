@@ -32,11 +32,16 @@ export default function ForgotPassword() {
     <LoginLayout
       mode="forgot"
       title="Forgot password?"
-      subtitle="No worries. Enter your email and we will send you a link to reset it."
+      subtitle="No worries. Enter your email and we will send you a code to reset it."
     >
       <form onSubmit={submit} noValidate={false}>
         {error && <div className="auth-alert error" role="alert">{error}</div>}
-        {result && <div className="auth-alert ok" role="status">{result.message}</div>}
+
+        {result && (
+          <div className="auth-alert ok" role="status">
+            If that email is registered, we sent a reset code to it. Copy the code from the email, then enter it on the next page.
+          </div>
+        )}
 
         {result?.debug_link && (
           <div className="auth-alert warn" role="status">
@@ -60,7 +65,15 @@ export default function ForgotPassword() {
           />
         </AuthField>
 
-        <SubmitButton loading={loading} loadingText="Sending…">Send reset link</SubmitButton>
+        <SubmitButton loading={loading} loadingText="Sending…">
+          {result ? "Send the code again" : "Send reset code"}
+        </SubmitButton>
+
+        {result && (
+          <p className="auth-alt">
+            Got the code? <Link to="/reset-password">Enter it here</Link>
+          </p>
+        )}
 
         <p className="auth-alt">
           Remembered it? <Link to="/login">Back to login</Link>

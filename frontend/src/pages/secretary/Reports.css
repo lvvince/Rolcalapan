@@ -1,0 +1,290 @@
+/* frontend/src/pages/secretary/Reports.css
+   Naka-import pagkatapos ng StaffPages.css, kaya ito ang nananalo. */
+
+/* ---------- Filter card ---------- */
+.rp-page .rp-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 24px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.rp-page .rp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rp-page .rp-cap {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.2;
+}
+
+.rp-page .rp-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.rp-page .rp-dates .sp-field,
+.rp-page .rp-bar > .sp-field {
+  margin: 0;
+}
+.rp-page .rp-bar > .sp-field.grow {
+  flex: 1 1 240px;
+}
+
+.rp-page .rp-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Export buttons (CSV / PDF / Print) ---------- */
+.rp-page .rp-actions {
+  margin-left: auto;
+}
+.rp-page .rp-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rp-page .rp-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0e7490;
+  background: #fff;
+  border: 1.5px solid #0e7490;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.rp-page .rp-act:hover:not(:disabled) {
+  background: #ecfeff;
+}
+.rp-page .rp-act.primary {
+  color: #fff;
+  background: #0e7490;
+}
+.rp-page .rp-act.primary:hover:not(:disabled) {
+  background: #0b5d74;
+  border-color: #0b5d74;
+}
+.rp-page .rp-act:focus-visible {
+  outline: 3px solid #22d3ee;
+  outline-offset: 2px;
+}
+.rp-page .rp-act:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- Summary: pili ng sections ---------- */
+.rp-page .rp-sections {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+.rp-page .rp-sections .rp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Stats at charts ---------- */
+.rp-page .rp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.rp-page .sp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+/* Members table: mag-scroll sa maliit na screen imbes na lumampas */
+.rp-page .rp-table-wrap {
+  overflow-x: auto;
+}
+.rp-page .rp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+@media (max-width: 760px) {
+  .rp-page .rp-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .rp-page .rp-actions-row .rp-act {
+    flex: 1 1 140px;
+  }
+}
+
+/* ---------- Print: logo at header ---------- */
+.rp-page .rp-logo {
+  height: 56px;
+  width: auto;
+  object-fit: contain;
+}
+
+@media print {
+  .rp-page .rp-print-head {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+    border-bottom: 2px solid #0e7490;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .rp-page .rp-print-head h3 {
+    margin: 0;
+    font-size: 20px;
+    color: #0b2e3a;
+  }
+  .rp-page .rp-print-head h4 {
+    margin: 2px 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0e7490;
+  }
+  .rp-page .rp-print-head p {
+    margin: 0;
+    font-size: 12px;
+    color: #475569;
+  }
+  .rp-page .sp-card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+  .rp-page .rp-table tr {
+    break-inside: avoid;
+  }
+  .rp-page .sp-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Pirma (signatures) ---------- */
+.rp-page .rp-signopts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 24px;
+  padding: 14px 20px;
+  margin-bottom: 18px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+.rp-page .rp-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+.rp-page .rp-signgrid {
+  flex: 1 1 520px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.rp-page .rp-signgrid .sp-field {
+  margin: 0;
+}
+
+.rp-page .rp-sign {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 56px;
+  margin-top: 36px;
+  padding: 28px 8px 8px;
+  break-inside: avoid;
+}
+.rp-page .rp-sign-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.rp-page .rp-sign-cap {
+  align-self: flex-start;
+  font-size: 13px;
+  color: #5b7480;
+}
+.rp-page .rp-sign-line {
+  align-self: stretch;
+  height: 56px;
+  border-bottom: 1.5px solid #0b2e3a;
+}
+.rp-page .rp-sign-name {
+  margin-top: 8px;
+  font-size: 15px;
+  color: #0b2e3a;
+}
+.rp-page .rp-sign-role {
+  font-size: 13px;
+  color: #5b7480;
+}
+.rp-page .rp-sign-date {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #5b7480;
+}
+
+@media (max-width: 640px) {
+  .rp-page .rp-sign {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+@media print {
+  .rp-page .rp-sign {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+.rp-page .rp-signnote {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 14px;
+  color: #334155;
+}
+.rp-page .rp-signnote small {
+  font-size: 12.5px;
+  color: #5b7480;
+}
