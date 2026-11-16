@@ -159,6 +159,7 @@ export default function App() {
             <>
               <Route path="schedule" element={<LeaderSchedule />} />
               <Route path="members" element={<LeaderMembers />} />
+              <Route path="ministries" element={<AdminMinistries />} />
               <Route path="add-ministry" element={<AddMinistryPage />} />
               <Route path="volunteers" element={<LeaderVolunteers />} />
               <Route path="activities" element={<LeaderActivities />} />

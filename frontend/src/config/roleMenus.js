@@ -25,6 +25,7 @@ export const roleMenus = {
     items: [
       { path: "schedule", label: "Ministry Schedule", desc: "View the ministry schedule" },
       { path: "members", label: "Ministry Members", desc: "Manage ministry members" },
+      { path: "ministries", label: "Ministries & Groups", desc: "View, edit and delete your ministries and small groups" },
       { path: "add-ministry", label: "Add Ministry", desc: "Add a ministry or small group" },
       { path: "volunteers", label: "Volunteers", desc: "Assign volunteers" },
       { path: "activities", label: "Activities", desc: "Manage and update activity status" },
@@ -34,7 +35,7 @@ export const roleMenus = {
       { path: "profile", label: "My Profile", desc: "Update your profile and photo" },
     ],
   },
-    member: {
+  member: {
     title: "Member Portal",
     base: "/portal",
     items: [

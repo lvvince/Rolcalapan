@@ -67,7 +67,8 @@ function Modal({ title, onClose, width, children }) {
 }
 
 /* ---------------------------------------------------------------- Field */
-function FieldInput({ f, value, onChange, t, options }) {
+// minOverride: para sa date. undefined = gamitin ang f.min; null = walang min
+function FieldInput({ f, value, onChange, t, options, minOverride }) {
   const common = {
     id: `f-${f.key}`,
     required: f.required,
@@ -112,7 +113,16 @@ function FieldInput({ f, value, onChange, t, options }) {
 
     // May min/max: hindi na makakapili ng petsa sa labas ng saklaw sa calendar picker
     case "date":
-      return <input {...common} type="date" min={f.min} max={f.max} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
+      return (
+        <input
+          {...common}
+          type="date"
+          min={minOverride === undefined ? f.min : minOverride || undefined}
+          max={f.max}
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
 
     case "time":
     case "email":
@@ -153,6 +163,10 @@ function FieldInput({ f, value, onChange, t, options }) {
  *  showIf: (values) => bool   ipakita lang ang field kapag true
  *  min / max             para sa type "number" at "date" (YYYY-MM-DD).
  *                        Sa date, sine-check din ito sa Save kahit manual na tinype.
+ *                        Sa Edit, pinapayagan ang orihinal na petsa ng record kahit
+ *                        nakaraan na, basta hindi ito binago.
+ *  after: "otherKey"     para sa "time": dapat mas huli kaysa sa field na "otherKey"
+ *                        (hal. end_time: after: "start_time")
  */
 export default function DataPage({
   title,
@@ -303,15 +317,33 @@ export default function DataPage({
     if (!saving) setModal(null);
   }, [saving]);
 
-  // Sine-check ang min/max ng mga date field (para sa manual na pag-type)
-  const dateProblem = () => {
+  // Sa Edit: true kung hindi pa binabago ang petsa ng record (orihinal pa rin)
+  const dateUnchanged = (f) => {
+    if (modal?.mode !== "edit" || !modal.row) return false;
+    const orig = String(modal.row[f.key] ?? "").slice(0, 10);
+    return orig !== "" && orig === String(values[f.key] ?? "").slice(0, 10);
+  };
+
+  // Sine-check ang min/max ng date at ang pagkakasunod ng oras (para sa manual na pag-type)
+  const formProblem = () => {
     for (const f of activeFields) {
-      if (f.type !== "date") continue;
       if (f.showIf && !f.showIf(values)) continue;
-      const v = String(values[f.key] ?? "").slice(0, 10);
-      if (!v) continue;
-      if (f.min && v < f.min) return `${f.label}: ${t("cannot be earlier than")} ${f.min}.`;
-      if (f.max && v > f.max) return `${f.label}: ${t("cannot be later than")} ${f.max}.`;
+
+      if (f.type === "date") {
+        const v = String(values[f.key] ?? "").slice(0, 10);
+        if (!v || dateUnchanged(f)) continue;
+        if (f.min && v < f.min) return `${f.label}: ${t("cannot be earlier than")} ${f.min}.`;
+        if (f.max && v > f.max) return `${f.label}: ${t("cannot be later than")} ${f.max}.`;
+      }
+
+      if (f.type === "time" && f.after) {
+        const a = hm(values[f.after]);
+        const b = hm(values[f.key]);
+        if (a && b && b <= a) {
+          const other = activeFields.find((x) => x.key === f.after)?.label || f.after;
+          return `${f.label}: ${t("must be later than")} ${other}.`;
+        }
+      }
     }
     return "";
   };
@@ -319,7 +351,7 @@ export default function DataPage({
   const submit = async (e) => {
     e.preventDefault();
 
-    const problem = dateProblem();
+    const problem = formProblem();
     if (problem) {
       setFormErr(problem);
       return;
@@ -506,6 +538,8 @@ export default function DataPage({
                       t={t}
                       options={optionsFor(f)}
                       value={values[f.key]}
+                      // Sa Edit: kapag orihinal pa ang petsa, huwag i-block ng min
+                      minOverride={f.type === "date" && dateUnchanged(f) ? null : undefined}
                       onChange={(v) => {
                         setValues((s) => ({ ...s, [f.key]: v }));
                         if (formErr) setFormErr("");
@@ -515,7 +549,7 @@ export default function DataPage({
                 ))}
             </div>
 
-            {/* Error sa loob ng modal (petsa o galing sa server) */}
+            {/* Error sa loob ng modal (petsa, oras, o galing sa server) */}
             {formErr && (
               <div className="msg err" role="alert" style={{ flexShrink: 0, marginTop: 12 }}>
                 {t(formErr)}
